@@ -1,0 +1,274 @@
+\documentclass{article}
+\usepackage[a4paper,innermargin=1.2in,outermargin=1.2in,
+bottom=1.5in,marginparwidth=1in,marginparsep
+=3mm]{geometry}
+\usepackage{amsmath,amsthm,amssymb,enumerate}
+\usepackage{ctex}
+\usepackage{natbib}
+\usepackage{graphicx}
+\graphicspath{{images/}}
+\usepackage{float}
+\usepackage{subfigure}
+\usepackage{color}
+\usepackage{array}
+\title{神经网络解Lorenz63方程}
+\author{MG21210021李庆春}
+%\date{2022.8.20}
+\linespread{1.25}
+\bibliographystyle{plain}
+
+\usepackage{listings}
+\lstset{
+	columns=fixed,       
+	numbers=left,                                        % 在左侧显示行号
+	numberstyle=\tiny\color{black},                       % 设定行号格式
+	frame=none,                                          % 不显示背景边框
+	backgroundcolor=\color[RGB]{245,245,244},            % 设定背景颜色
+	keywordstyle=\color[RGB]{40,40,255},                 % 设定关键字颜色
+	numberstyle=\footnotesize\color{black},           
+	commentstyle=\it\color[RGB]{0,96,96},                % 设置代码注释的格式
+	stringstyle=\rmfamily\slshape\color[RGB]{128,0,0},   % 设置字符串格式
+	showstringspaces=false,                              % 不显示字符串中的空格
+	language=python,                                        % 设置语言
+}
+
+
+\begin{document}
+	
+\maketitle
+	
+\section{Lorenz63方程简述}
+\begin{equation}
+	\begin{cases}
+		\frac{dx}{dt} = \sigma(y -x) \\
+		\frac{dy}{dt} = x(\rho - z) - y \\
+		\frac{dz}{dt} = xy - \beta z
+	\end{cases}
+\end{equation}
+	
+\section{非混沌情形}
+$\rho = 15 , \sigma = 10 , \beta = \frac{8}{3}$ 初值：[-8., 7., 27.]，RK方法的数值解如下图：
+\begin{figure}[h]
+	\centering
+	\subfigure[lorenz63 二维视图.]{
+		\includegraphics[width=0.45\linewidth]{lorenz63-rk-non-chaos-01}
+	}
+	\subfigure[lorenz63 三维视图.]{
+		\includegraphics[width=0.45\linewidth]{lorenz63-rk-non-chaos-02}
+	}
+	\caption{lorenz63-RK}
+\end{figure}
+
+\subsection{不带观测的神经网络}
+损失函数使用均方误差（MSE），网络结构：[1, 32, 32, 3]，初值：[-8, 7, 27]，迭代轮数：500000，对训练数据进行正规化，关键代码如下：\\
+\begin{lstlisting}
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
+    min_lr=1e-7, mode='min',factor=0.5,patience=50000,verbose=True)
+self.loss_func = nn.MSELoss(reduction='mean')
+
+layers = [1, 32, 32, 3]
+
+total_points = 300
+x_lb = torch.tensor(0.)
+x_ub = torch.tensor(1.24)
+
+rho = torch.tensor(15.0)
+sigma = torch.tensor(10.0)
+beta = torch.tensor(8.0 / 3.0)
+
+x_train_bc = torch.tensor([[0.]])
+y_train_bc = torch.tensor([[-8., 7., 27.]])
+
+epochs = 500000
+\end{lstlisting} 
+通过调整区间长度发现，最多可训练出[0, 1.24]的结果，误差在$10^{-4}$量级，如下图：
+\begin{figure}[h]
+	\centering
+	\subfigure[lorenz63 二维视图.]{
+		\includegraphics[width=0.45\linewidth]{lorenz63-dnn-non-chaos-01}
+	}
+	\subfigure[lorenz63 三维视图.]{
+		\includegraphics[width=0.45\linewidth]{lorenz63-dnn-non-chaos-02}
+	}
+	\caption{lorenz63-DNN}
+\end{figure}
+
+如果区间较大，则训练不出想要的结果，神经网络会趋于零，如下面的图展示的是[0, 3]的训练结果：
+\begin{figure}[h]
+	\centering
+	\subfigure[lorenz63 二维视图.]{
+		\includegraphics[width=0.45\linewidth]{lorenz63-dnn-non-chaos-03}
+	}
+	\subfigure[lorenz63 三维视图.]{
+		\includegraphics[width=0.45\linewidth]{lorenz63-dnn-non-chaos-04}
+	}
+	\caption{lorenz63-DNN}
+\end{figure}
+
+\section{混沌情形}
+$\rho = 28 , \sigma = 10 , \beta = \frac{8}{3}$ ，初值[-4., 7., 15.]，RK方法的数值解如下图：（暂时没贴）
+\subsection{整数阶Lorenz方程}
+接下来用神经网络训练，离散步长h=0.005，区间[0, 1.5]，观测值如下：\\
+\begin{tabular}{| p{1.5cm}<{\centering} || p{1.5cm}<{\centering} | p{1.5cm}<{\centering} | p{1.5cm}<{\centering} | } \hline
+	t & x & y & z  \\ \hline \hline
+	0.0000 & -4.0000 &   7.0000 &  15.0000 \\ \hline
+	0.5000 & 5.6789 &  -2.6593 &  33.0093 \\ \hline
+	1.0000 & -12.0143 & -17.4640 &  24.3640 \\ \hline
+	1.500 & -1.1838 &  -1.6864 &  15.08598 \\ \hline
+\end{tabular}
+\subsection{分数阶Lorenz方程}
+\subsubsection{Caputo导数及数值逼近}
+Caputo分数阶导数的定义：
+\begin{equation}
+	_aD_t^\alpha f(t) = \frac{1}{\Gamma(n - \alpha)}\int_a^t (t - \tau)^{n-\alpha-1} f^{(n)}(\tau) d\tau  \qquad (n-1 \leq \alpha < n).
+\end{equation}
+当a=0时，简记为$D^\alpha$。\\
+分数阶微积分的差商逼近格式可以写成如下统一的形式：
+\begin{equation}
+	D^\alpha f(t_n) \approx h^{-\alpha}\sum_{k=0}^{N}c_{n,k}f_k
+\end{equation}
+L1算法（即$0\leq\alpha<1$ ，上式中N=n）：
+\begin{equation}
+	c_{n,k} = \frac{1}{\Gamma(2-\alpha)}
+	\begin{cases}
+		-c_{n-1},     & k = 0; \\
+		c_{n-k} - c_{n-k-1},  & 1\leq k \leq n-1; \\
+		1,   & k=n; \\
+		0,   & else.
+	\end{cases}
+\end{equation}
+\begin{equation}
+	(D_t^\alpha f(t_n))_{L1} = \frac{1}{\Gamma(2 - \alpha)h^\alpha}\sum_{k=0}^{n-1}c_k(f_{n-k} - f_{n-k-1})
+\end{equation}
+其中，$c_l = (l+1)^{1-\alpha} - l^{1-\alpha}$，fPINN论文中另一种等价表述如下：
+
+\begin{equation}
+\begin{aligned}
+	&\frac{\partial^\gamma \tilde{u} (\boldsymbol{x}, t)}{\partial t^\gamma} 
+	\approx 
+	\frac{1}{\Gamma (2 - \gamma)(\Delta t)^\gamma} \\
+	&\bigg \{
+		-c_{\lceil \lambda t \rceil - 1} \tilde{u} (\boldsymbol{x}, 0) + 
+		c_0 \tilde{u} (\boldsymbol{x}, t) + 
+		\sum_{k=1}^{\lceil \lambda t \rceil - 1} (c_{\lceil \lambda t \rceil - k} - c_{\lceil \lambda t \rceil - k - 1}) \tilde{u} (\boldsymbol{x}, k\Delta t)
+	\bigg \}, \\
+	&0 < \gamma < 1
+\end{aligned}
+\end{equation}
+时间步长 $\Delta t = t/\lceil \lambda t \rceil \approx 1/\lambda$，$\lceil \cdot \rceil $ 是向上取整函数，表示离散化后的区间数，相当于L1算法公式中的n；常量因子$\lambda$决定着步长，如$\lambda = 200$，则意味着把单位1长度划分为200个小区间。由于计算机在运算时，存在舍入误差，所以$c_0 \tilde{u} (\boldsymbol{x}, n\Delta t) $写成$c_0 \tilde{u} (\boldsymbol{x}, t) $。\\
+{\color{red} (这里有疑问，t=0的导数是不是没法计算) } \\
+所以，可先对每个训练点计算出其时间划分，然后拼成一个大向量。 \\
+如果不引入观测，训练结果的趋势是趋于0，不符合预期；
+
+\subsubsection{分数阶常微分方程数值解法}
+（直接法）考虑齐次初值条件的分数阶微分方程：
+\begin{equation}
+	\begin{cases}
+		\frac{\partial^\alpha y(t)}{\partial t^\alpha} = f(t,y(t)), \quad t\in [0,T], \\
+		y^{(k)}(0) = 0, \quad k = 0,1,\cdots , m-1.
+	\end{cases}
+\end{equation}
+则直接应用分数阶导数的一般差商逼近公式得：
+\begin{equation}
+	h^{-\alpha}\sum_{k=0}^{N}c_{n,k}y_k = f(t_n,y_n), \quad n = 0,1,\cdots,[t/h]
+\end{equation}
+上式左边为y在t处的$\alpha$阶导数，注意此时将[0,t]分成了n份，每份长度为h，t对应$t_n$，$y(t_n)$对应$y_n$。则上面方程组可以按下面的方式逐点计算：
+\begin{equation}
+	y_N = \frac{h^\alpha}{c_{n,N}}f(t_n,y_n)  - \frac{1}{c_{n,N}}\sum_{k=1}^{N-1}c_{n,k}y_k , \quad n =1,\cdots,[T/h]
+\end{equation}
+其中，N=n(对应到G1算法、D算法、L1算法、线性多步法)或N=n+1（对应到G2算法、L2算法）。上式中，由于$y_0=0$，所以求和项从k=1开始，对于一般的L1算法，可写成如下形式：
+\begin{equation}
+	\begin{aligned}
+		y_n &= \frac{h^\alpha}{c_{n,n}}f(t_n,y_n)  - \frac{1}{c_{n,n}}\sum_{k=0}^{n-1}c_{n,k}y_k , \quad n =1,\cdots,[T/h] \\
+		       &= \Gamma(2 - \alpha)h^\alpha f(t_n,y_n) - \sum_{k=1}^{n-1} (c_{n-k}-c_{n-k-1})y_k + c_{n-1}y_0 \\
+		       &= \Gamma(2 - \alpha)h^\alpha f(t_n,y_n) - \sum_{k=1}^{n-1}[(n-k+1)^{1-\alpha} -2(n-k)^{1-\alpha} + (n-k-1)^{1-\alpha}]y_k + \\
+		       &\qquad [n^{1-\alpha} - (n-1)^{1-\alpha}]y_0
+	\end{aligned}
+\end{equation}
+
+\subsubsection{简单的例子}
+已知正弦、余弦函数的整数阶微分表达式分别为
+\begin{equation}
+	\frac{d^k}{dt^k}[\sin at] = a^k \sin(at+\frac{k\pi}{2}), \quad \frac{d^k}{dt^k}[\cos at] = a^k \cos(at+\frac{k\pi}{2})
+\end{equation}
+由Cauchy积分公式可以证明，对于分数阶的微分方程来说，当k为分数时，上述公式仍然成立。所以考虑如下分数阶微分方程：
+\begin{equation}
+	\begin{cases}
+		\frac{d^\alpha u}{dt^\alpha} = \sin(t+\frac{\alpha\pi}{2}), \qquad 0<\alpha<1 \\
+		u(0) = 0
+	\end{cases}
+\end{equation}
+（这里暂时不知道解析解，所以作废）
+
+对于$f(t)=t^\lambda, \lambda>-1$，n为大于 $\alpha$的最小整数，则其$\alpha$阶Caputo导数为：
+\begin{equation}
+	\begin{aligned}
+		D^\alpha t^\lambda &= \frac{1}{\Gamma(n-\alpha)}\int_0^t (t-\tau)^{n-\alpha-1}\frac{d^n \tau^\lambda}{d\tau^n}d\tau \\
+		&= \frac{1}{\Gamma(n-\alpha)}\int_0^t (t-\tau)^{n-\alpha-1} \lambda(\lambda-1)\cdots(\lambda-n+1)t^{\lambda-n} d\tau \\
+		&= \frac{\Gamma(\lambda+1)}{\Gamma(n-\alpha)\Gamma(\lambda-n+1)}\int_0^t (t-\tau)^{n-\alpha-1} t^{\lambda-n} d\tau \\
+		&= \frac{\Gamma(\lambda+1)}{\Gamma(n-\alpha)\Gamma(\lambda-n+1)} t^{\lambda-\alpha}\int_0^1 (1-\tau)^{n-\alpha-1} t^{\lambda-n} d\tau \quad (substitution) \\
+		&= \frac{\Gamma(\lambda+1)}{\Gamma(n-\alpha)\Gamma(\lambda-n+1)} t^{\lambda-\alpha} B(n-\alpha, \lambda-n+1) \\
+		&= \frac{\Gamma(\lambda+1)}{\Gamma(n-\alpha)\Gamma(\lambda-n+1)} t^{\lambda-\alpha} \frac{\Gamma(n-\alpha)\Gamma(\lambda-n+1)}{\Gamma(\lambda-\alpha+1)}  \\
+		&=\frac{\Gamma(\lambda+1)}{\Gamma(\lambda-\alpha+1)} t^{\lambda-\alpha}
+	\end{aligned}
+\end{equation}
+这和R-L导数一致，这是由于$D^n t^\lambda$在区间$[0, +\infty)$ 上连续，且$D^kf(0)=0, k=0,1,\cdots,n-1$，所以$D^n$和$D^{-\nu}$可交换。\\
+例子：考虑$y=t^3$，则对应的分数阶微分方程为：
+\begin{equation}
+	\begin{cases}
+		D^\alpha t^3 = \frac{6}{\Gamma(4-\alpha)} t^{3-\alpha} \\
+		y(0) = 0
+	\end{cases}
+\end{equation}
+写成隐式的：
+\begin{equation}
+	\begin{cases}
+		D^\alpha u = \frac{6u}{\Gamma(4-\alpha)} t^{-\alpha} \\
+		u(0) = 0.000001
+	\end{cases}
+\end{equation}
+数值计算结果如下：{\color{red} (这里有疑问，时间是不是一定要从0开始，变成时发现如果不是0作为离散的初始点，则得不到结果) }
+\begin{figure}[h]
+	\centering
+	\subfigure[显示]{
+		\includegraphics[width=0.45\linewidth]{frac-ode-fdm-explicit-01}
+	}
+	\subfigure[隐式]{
+		\includegraphics[width=0.45\linewidth]{frac-ode-fdm-implicit-01}
+	}
+	\caption{ODE-FDM}
+\end{figure}
+
+\subsubsection{分数阶Lorenz63方程}
+\begin{equation}
+	\begin{cases}
+		\frac{d^\alpha x}{dt^\alpha} = \sigma(y -x) \\
+		\frac{d^\alpha y}{dt^\alpha} = x(\rho - z) - y \\
+		\frac{d^\alpha z}{dt^\alpha} = xy - \beta z
+	\end{cases}
+\end{equation}
+取$\alpha = 0.99$，离散步长h=0.005，区间[0, 3]，隐式收敛阈值$\epsilon = 0.001$，初值[-4., 7., 15.]，数值计算结果如下：
+\begin{figure}[h]
+	\centering
+	\subfigure[分数阶lorenz63-2D]{
+		\includegraphics[width=0.45\linewidth]{florenz63-fdm-2d-01}
+	}
+	\subfigure[分数阶lorenz63-3D]{
+		\includegraphics[width=0.45\linewidth]{florenz63-fdm-3d-01}
+	}
+	\caption{lorenz63-FDM}
+\end{figure}
+
+接下来用神经网络训练，先用参数$\alpha = 0.99$，离散步长h=0.005，区间[0, 1.5]，观测值如下：\\
+\begin{tabular}{| p{1.3cm}<{\centering} || p{1.3cm}<{\centering} | p{1.3cm}<{\centering} | p{1.3cm}<{\centering} | } \hline
+	t & x & y & z  \\ \hline \hline
+	0.0050 & -3.4659 &  6.7226 & 14.6728 \\ \hline
+	0.2500 & 10.4394 & 17.7745 & 17.9601 \\ \hline
+	0.5000 & 5.6236 & -0.6432 & 31.2168 \\ \hline
+	0.7500 & 0.7111 &  0.8086 & 15.8068 \\ \hline
+	1.0000 & 4.2548 &  7.9222 &  9.8927 \\ \hline
+	1.2500 & 13.9364 &  7.5091 & 39.7435 \\ \hline
+	1.5000 & 0.5546 & -0.6693 & 20.8581 \\ \hline
+\end{tabular}
+
+\end{document}
