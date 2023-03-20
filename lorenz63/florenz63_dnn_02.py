@@ -24,8 +24,8 @@ class FCN(nn.Module):
     def __init__(self, layers):
         super().__init__()
         self.activation = nn.Tanh()
-        # self.loss_func = nn.MSELoss(reduction='mean')
-        self.loss_func = LInfiniteLoss()
+        self.loss_func = nn.MSELoss(reduction='mean')
+        # self.loss_func = LInfiniteLoss()
         self.linears = nn.ModuleList([nn.Linear(layers[j], layers[j + 1]) for j in range(len(layers) - 1)])
         for linear in self.linears:
             nn.init.xavier_normal_(linear.weight.data)
@@ -109,7 +109,7 @@ if "__main__" == __name__:
 
     obs = np.load('florenz63_rho_28_interval_0.005_total_point_301.npy')
     # 选取观测值
-    idx = [1, 50, 100, 150, 200, 250, 300]
+    idx = [1, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300]
     x_train_bc = x_test[idx].unsqueeze(1)
     y_train_bc = torch.from_numpy(obs[idx])
     print('x_train_bc :', x_train_bc)
@@ -177,7 +177,7 @@ if "__main__" == __name__:
         if epoch % 1000 == 0:
             print('epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
 
-        if loss.item() < 0.01:
+        if loss.item() < 0.001:
             print('epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
             break
 

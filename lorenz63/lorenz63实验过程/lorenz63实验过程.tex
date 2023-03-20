@@ -299,7 +299,7 @@ bottom=1.5in,marginparwidth=1in,marginparsep
 	1.2500 & 7.2898 &  12.7107 &  14.2827 \\ \hline
 	1.5000 & 9.4016 &   2.1509 &  35.2638 \\ \hline
 \end{tabular} \\
-训练结果如图\ref{florenz63-dnn-02}，除个别点尖锐突变，其他部分符合预期：
+训练结果如图\ref{florenz63-dnn-02}，除个别点尖锐突变，根据几次训练，突变点在[0.4,0.8]之间，有时是个小尖角，其他部分符合预期：
 \begin{figure}[h]
 	\centering
 	\subfigure[分数阶lorenz63-2D]{
@@ -311,5 +311,37 @@ bottom=1.5in,marginparwidth=1in,marginparsep
 	\caption{frac-lorenz63-FDM}
 	\label{florenz63-dnn-02}
 \end{figure}
-	
+所以继续对[0.4,0.8]增加一些观测值，如下：\\
+\begin{tabular}{| p{1.6cm}<{\centering} || p{1.6cm}<{\centering} | p{1.6cm}<{\centering} | p{1.6cm}<{\centering} | } \hline
+	t & x & y & z  \\ \hline \hline
+	0.4000 & -3.0048 &  -5.7771 &   8.0258 \\ \hline
+	0.6000 & -15.5885 & -21.0788 &  30.5955 \\ \hline
+	0.7000 & -12.4916 &  -3.5173 &  39.8045 \\ \hline
+	0.8000 & -3.9029 &   2.2364 &  29.9654 \\ \hline
+\end{tabular} \\
+得到的训练结果如图\ref{florenz63-dnn-03}：
+\begin{figure}[h]
+	\centering
+	\subfigure[分数阶lorenz63-2D]{
+		\includegraphics[width=0.45\linewidth]{florenz63-dnn-03-2d}
+	}
+	\subfigure[分数阶lorenz63-3D]{
+		\includegraphics[width=0.45\linewidth]{florenz63-dnn-03-3d}
+	}
+	\caption{frac-lorenz63-FDM}
+	\label{florenz63-dnn-03}
+\end{figure}
+继续增加观测值，变为每0.1的长度，引入一个观测值，训练结果如图\ref{florenz63-dnn-04}：
+\begin{figure}[h]
+	\centering
+	\subfigure[分数阶lorenz63-2D]{
+		\includegraphics[width=0.45\linewidth]{florenz63-dnn-04-2d}
+	}
+	\subfigure[分数阶lorenz63-3D]{
+		\includegraphics[width=0.45\linewidth]{florenz63-dnn-04-3d}
+	}
+	\caption{frac-lorenz63-FDM}
+	\label{florenz63-dnn-04}
+\end{figure}
+
 \end{document}
