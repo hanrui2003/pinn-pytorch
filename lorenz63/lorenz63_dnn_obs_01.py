@@ -89,7 +89,7 @@ if "__main__" == __name__:
 
     obs = np.load('lorenz63_10_28_8_3_0.005_600.npy')
     # 选取观测值
-    idx = [i for i in range(0, len(obs), 200)]
+    idx = [i for i in range(0, len(obs), 4)]
     x_train_bc = x_test[idx].unsqueeze(1)
     y_train_bc = torch.from_numpy(obs[idx])
     print('x_train_bc :', x_train_bc)
@@ -103,7 +103,7 @@ if "__main__" == __name__:
     y_train_bc = y_train_bc.float().to(device)
     x_train_nf = x_train_nf.float().to(device)
 
-    optimizer = torch.optim.Adam(PINN.parameters(), lr=1e-2, amsgrad=False)
+    optimizer = torch.optim.Adam(PINN.parameters(), lr=1e-3, amsgrad=False)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-6, mode='min', factor=0.5,
                                                            patience=50000,
                                                            verbose=True)

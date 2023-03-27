@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999994 (TeX Live 2022) (preloaded format=xelatex 2022.9.5)  20 MAR 2023 11:38
+This is XeTeX, Version 3.141592653-2.6-0.999994 (TeX Live 2022) (preloaded format=xelatex 2022.9.5)  26 MAR 2023 16:46
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -644,12 +644,17 @@ LaTeX Warning: `h' float specifier changed to `ht'.
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
+
+Underfull \hbox (badness 10000) in paragraph at lines 357--361
+
+ []
+
 [8] [9] (./lorenz63实验过程.aux) ) 
 Here is how much of TeX's memory you used:
- 10987 strings out of 476179
- 264764 string characters out of 5809545
+ 10998 strings out of 476179
+ 265576 string characters out of 5809545
  796745 words of memory out of 5000000
- 31548 multiletter control sequences out of 15000+600000
+ 31559 multiletter control sequences out of 15000+600000
  481398 words of font info for 101 fonts, out of 8000000 for 9000
  1348 hyphenation exceptions out of 8191
  89i,12n,97p,379b,1611s stack positions out of 10000i,1000n,20000p,200000b,200000s

@@ -1,6 +1,6 @@
 import torch
 import numpy as np
 
-items = [1, 2, 3, 4, 5]
-squared = map(lambda x: x**2, items)
-print(squared)
+l1 = np.arange(5)
+l2, l3 = l1 * 2, l1 * 3
+np.savetxt('test.txt', (l1, l2, l3))

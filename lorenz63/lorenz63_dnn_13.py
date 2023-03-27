@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.autograd as autograd
 import numpy as np
 import matplotlib.pyplot as plt
-from pyDOE import lhs
 
 
 class LInfiniteLoss(nn.Module):
@@ -16,14 +15,11 @@ class LInfiniteLoss(nn.Module):
 
 
 class FCN(nn.Module):
-    """
-    MSE + Input Norm + Batch Norm
-    """
-
     def __init__(self, layers):
         super().__init__()
         self.activation = nn.Tanh()
-        self.loss_func = nn.MSELoss(reduction='mean')
+        self.loss_func = nn.MSELoss(reduction='none')
+        # self.loss_func =LInfiniteLoss()
         self.linears = nn.ModuleList([nn.Linear(layers[j], layers[j + 1]) for j in range(len(layers) - 1)])
         for linear in self.linears:
             nn.init.xavier_normal_(linear.weight.data)
@@ -39,7 +35,7 @@ class FCN(nn.Module):
 
     def loss_bc(self, x_bc, y_bc):
         y_hat = self.forward(x_bc)
-        return self.loss_func(y_bc, y_hat)
+        return self.loss_func(y_bc, y_hat).max()
 
     def loss_pde(self, x_pde):
         x_pde.requires_grad = True
@@ -50,11 +46,11 @@ class FCN(nn.Module):
         x_t = autograd.grad(x_nn, x_pde, torch.ones_like(x_nn), create_graph=True)[0]
         y_t = autograd.grad(y_nn, x_pde, torch.ones_like(y_nn), create_graph=True)[0]
         z_t = autograd.grad(z_nn, x_pde, torch.ones_like(z_nn), create_graph=True)[0]
-        loss_x = self.loss_func(x_t, sigma * (y_nn - x_nn))
-        loss_y = self.loss_func(y_t, x_nn * (rho - z_nn) - y_nn)
-        loss_z = self.loss_func(z_t, x_nn * y_nn - beta * z_nn)
 
-        return loss_x + loss_y + loss_z
+        lhs = torch.hstack((x_t, y_t, z_t))
+        rhs = torch.hstack((sigma * (y_nn - x_nn), x_nn * (rho - z_nn) - y_nn, x_nn * y_nn - beta * z_nn))
+
+        return self.loss_func(lhs, rhs).max()
 
     def loss(self, x_bc, y_bc, x_pde):
         loss_bc = self.loss_bc(x_bc, y_bc)
@@ -75,35 +71,37 @@ if "__main__" == __name__:
     PINN.to(device)
     print(PINN)
 
+    # 区间总数
+    total_interval = 400
     # 总点数
-    total_points = 601
+    total_points = total_interval + 1
+    # 区间长度
+    h = 0.005
     x_lb = torch.tensor(0.)
-    x_ub = torch.tensor(3.)
+    x_ub = torch.tensor(total_interval * h)
 
     # lorenz 方程参数
-    rho = torch.tensor(28.0)
+    rho = torch.tensor(15.0)
     sigma = torch.tensor(10.0)
     beta = torch.tensor(8.0 / 3.0)
 
     x_test = torch.linspace(x_lb, x_ub, total_points)
 
-    obs = np.load('lorenz63_10_28_8_3_0.005_600.npy')
-    # 选取观测值
-    idx = [i for i in range(0, len(obs), 4)]
-    x_train_bc = x_test[idx].unsqueeze(1)
-    y_train_bc = torch.from_numpy(obs[idx])
-    print('x_train_bc :', x_train_bc)
-    print('y_train_bc :', y_train_bc)
+    # 初值
+    x_train_bc = torch.tensor([[0.]])
+    y_train_bc = torch.tensor([[-4., 7., 15]])
 
-    # 配置点
+    # 配置点，修改为均匀取点
     n_f = total_points
-    x_train_nf = (x_lb + (x_ub - x_lb) * lhs(1, n_f)).float()
+    # x_train_nf = (x_lb + (x_ub - x_lb) * lhs(1, n_f)).float()
+    x_train_nf = torch.linspace(x_lb, x_ub, n_f).unsqueeze(1)
+    print("x_train_nf", x_train_nf)
 
     x_train_bc = x_train_bc.float().to(device)
     y_train_bc = y_train_bc.float().to(device)
     x_train_nf = x_train_nf.float().to(device)
 
-    optimizer = torch.optim.Adam(PINN.parameters(), lr=1e-2, amsgrad=False)
+    optimizer = torch.optim.Adam(PINN.parameters(), lr=1e-3, amsgrad=False)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-6, mode='min', factor=0.5,
                                                            patience=50000,
                                                            verbose=True)
@@ -118,10 +116,11 @@ if "__main__" == __name__:
         scheduler.step(loss)
         if epoch % 1000 == 0:
             print('epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
-        if loss.item() < 0.001:
+        if loss.item() < 0.1:
             print('epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
             break
 
+    torch.save(PINN, 'lorenz63_dnn_13.pt')
     PINN = PINN.cpu()
     nn_predict = PINN(x_test[:, None]).detach().numpy()
     x_nn = nn_predict[:, [0]]
@@ -136,7 +135,7 @@ if "__main__" == __name__:
     ax.set_xlabel('t', color='black')
     ax.set_ylabel('f(t)', color='black', rotation=0)
     ax.legend(loc='upper right')
-    plt.savefig('./figure/florenz63_dnn_obs_01_2d.png')
+    plt.savefig('./figure/lorenz63_dnn_13_2d.png')
     plt.close()
     # plt.show()
 
@@ -146,5 +145,5 @@ if "__main__" == __name__:
     ax.set_ylabel('y')
     ax.set_zlabel('z')
     ax.set_title('lorenz63')
-    plt.savefig('./figure/florenz63_dnn_obs_01_3d.png')
+    plt.savefig('./figure/lorenz63_dnn_13_3d.png')
     # plt.show()

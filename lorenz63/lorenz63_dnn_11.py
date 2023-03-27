@@ -16,10 +16,6 @@ class LInfiniteLoss(nn.Module):
 
 
 class FCN(nn.Module):
-    """
-    MSE + Input Norm + Batch Norm
-    """
-
     def __init__(self, layers):
         super().__init__()
         self.activation = nn.Tanh()
@@ -75,35 +71,36 @@ if "__main__" == __name__:
     PINN.to(device)
     print(PINN)
 
+    # 区间总数
+    total_interval = 200
     # 总点数
-    total_points = 601
+    total_points = total_interval + 1
+    # 区间长度
+    h = 0.005
     x_lb = torch.tensor(0.)
-    x_ub = torch.tensor(3.)
+    x_ub = torch.tensor(total_interval * h)
 
     # lorenz 方程参数
-    rho = torch.tensor(28.0)
+    rho = torch.tensor(15.0)
     sigma = torch.tensor(10.0)
     beta = torch.tensor(8.0 / 3.0)
 
     x_test = torch.linspace(x_lb, x_ub, total_points)
 
-    obs = np.load('lorenz63_10_28_8_3_0.005_600.npy')
-    # 选取观测值
-    idx = [i for i in range(0, len(obs), 4)]
-    x_train_bc = x_test[idx].unsqueeze(1)
-    y_train_bc = torch.from_numpy(obs[idx])
-    print('x_train_bc :', x_train_bc)
-    print('y_train_bc :', y_train_bc)
+    # 初值
+    x_train_bc = torch.tensor([[0.]])
+    y_train_bc = torch.tensor([[-4., 7., 15]])
 
     # 配置点
-    n_f = total_points
+    n_f = total_interval // 2
     x_train_nf = (x_lb + (x_ub - x_lb) * lhs(1, n_f)).float()
+    x_train_nf = torch.vstack((x_train_bc, x_train_nf))
 
     x_train_bc = x_train_bc.float().to(device)
     y_train_bc = y_train_bc.float().to(device)
     x_train_nf = x_train_nf.float().to(device)
 
-    optimizer = torch.optim.Adam(PINN.parameters(), lr=1e-2, amsgrad=False)
+    optimizer = torch.optim.Adam(PINN.parameters(), lr=1e-3, amsgrad=False)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-6, mode='min', factor=0.5,
                                                            patience=50000,
                                                            verbose=True)
@@ -136,7 +133,7 @@ if "__main__" == __name__:
     ax.set_xlabel('t', color='black')
     ax.set_ylabel('f(t)', color='black', rotation=0)
     ax.legend(loc='upper right')
-    plt.savefig('./figure/florenz63_dnn_obs_01_2d.png')
+    plt.savefig('./figure/lorenz63_dnn_11_2d.png')
     plt.close()
     # plt.show()
 
@@ -146,5 +143,5 @@ if "__main__" == __name__:
     ax.set_ylabel('y')
     ax.set_zlabel('z')
     ax.set_title('lorenz63')
-    plt.savefig('./figure/florenz63_dnn_obs_01_3d.png')
+    plt.savefig('./figure/lorenz63_dnn_11_3d.png')
     # plt.show()

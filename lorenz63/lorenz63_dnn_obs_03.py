@@ -39,7 +39,7 @@ class FCN(nn.Module):
 
     def loss_bc(self, x_bc, y_bc):
         y_hat = self.forward(x_bc)
-        return self.loss_func(y_bc, y_hat)
+        return self.loss_func(y_bc, y_hat[:, [0, 2]])
 
     def loss_pde(self, x_pde):
         x_pde.requires_grad = True
@@ -70,7 +70,7 @@ if "__main__" == __name__:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(device)
 
-    layers = [1, 32, 32, 3]
+    layers = [1, 32, 32, 32, 32, 3]
     PINN = FCN(layers)
     PINN.to(device)
     print(PINN)
@@ -87,31 +87,33 @@ if "__main__" == __name__:
 
     x_test = torch.linspace(x_lb, x_ub, total_points)
 
-    obs = np.load('lorenz63_10_28_8_3_0.005_600.npy')
+    obs = np.loadtxt('iobsdisturb.txt')
     # 选取观测值
-    idx = [i for i in range(0, len(obs), 4)]
-    x_train_bc = x_test[idx].unsqueeze(1)
-    y_train_bc = torch.from_numpy(obs[idx])
+    x_train_bc = torch.from_numpy(obs[:, [0]])
+    # 第1列为x的观测，第2列为z的观测，y没有观测。
+    y_train_bc = torch.from_numpy(obs[:, [1, 2]])
     print('x_train_bc :', x_train_bc)
     print('y_train_bc :', y_train_bc)
 
     # 配置点
-    n_f = total_points
+    n_f = 100
     x_train_nf = (x_lb + (x_ub - x_lb) * lhs(1, n_f)).float()
+    x_train_nf = torch.vstack((x_train_bc, x_train_nf))
+    print('x_train_nf :', x_train_nf)
 
     x_train_bc = x_train_bc.float().to(device)
     y_train_bc = y_train_bc.float().to(device)
     x_train_nf = x_train_nf.float().to(device)
 
-    optimizer = torch.optim.Adam(PINN.parameters(), lr=1e-2, amsgrad=False)
+    optimizer = torch.optim.Adam(PINN.parameters(), lr=1e-3, amsgrad=False)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-6, mode='min', factor=0.5,
-                                                           patience=50000,
+                                                           patience=40000,
                                                            verbose=True)
 
     epoch = 0
     while True:
         epoch += 1
-        loss = PINN.loss(x_train_bc, y_train_bc, x_train_nf)
+        loss = PINN.loss_bc(x_train_bc, y_train_bc)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -122,6 +124,7 @@ if "__main__" == __name__:
             print('epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
             break
 
+    torch.save(PINN.state_dict(), 'lorenz63_dnn_obs_03.pt')
     PINN = PINN.cpu()
     nn_predict = PINN(x_test[:, None]).detach().numpy()
     x_nn = nn_predict[:, [0]]
@@ -136,7 +139,7 @@ if "__main__" == __name__:
     ax.set_xlabel('t', color='black')
     ax.set_ylabel('f(t)', color='black', rotation=0)
     ax.legend(loc='upper right')
-    plt.savefig('./figure/florenz63_dnn_obs_01_2d.png')
+    plt.savefig('./figure/lorenz63_dnn_obs_03_2d.png')
     plt.close()
     # plt.show()
 
@@ -146,5 +149,5 @@ if "__main__" == __name__:
     ax.set_ylabel('y')
     ax.set_zlabel('z')
     ax.set_title('lorenz63')
-    plt.savefig('./figure/florenz63_dnn_obs_01_3d.png')
+    plt.savefig('./figure/lorenz63_dnn_obs_03_3d.png')
     # plt.show()

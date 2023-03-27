@@ -344,4 +344,28 @@ bottom=1.5in,marginparwidth=1in,marginparsep
 	\label{florenz63-dnn-04}
 \end{figure}
 
+\section{Burgers方程}
+\begin{equation}
+	\begin{cases}
+		\frac{\partial u}{\partial t} + u \frac{\partial u}{\partial x} = \nu \frac{\partial^2 u}{\partial x^2}  \\
+		x \in [-1, 1] \\
+		t \in [0, 1]
+	\end{cases}
+\end{equation}
+
+\section{TODO}
+lorenz63时间长的时候，趋于0，什么原因？\\
+pinn解PDE的论文，多看看，多总结，作为自己毕设素材 \\
+GL算法实现 \\
+神经网络解burgers \\
+
+lorenz63-dnn-obs-01  [0,3] 训练 每个0.02 一个观测值，观测值由RK法计算，初值为：[1.508870, -1.531271, 25.46091] ，训练不收敛
+
+lorenz63-dnn-obs-02 [0,1.5]
+lorenz63-dnn-obs-03 [0,3] 观测值为iobsdisturb.txt , 导师发是数据；
+
+lorenz63-dnn-12 [0,3]  尝试分段mse，意图为规避训练区间加长，后续趋于0 ，失败，仍然趋于0。换个思路， 把三个导数的平方和相加，取导数加入损失函数。失败
+
+lorenz63-dnn-13 使用L1Smooth + 无穷范数，失败
+
 \end{document}
