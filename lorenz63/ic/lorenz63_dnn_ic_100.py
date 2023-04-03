@@ -5,21 +5,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-class LInfiniteLoss(nn.Module):
-    def __init__(self):
-        super(LInfiniteLoss, self).__init__()
-
-    def forward(self, y, y_hat):
-        max_loss = torch.max(torch.abs(y - y_hat))
-        return max_loss
-
-
 class FCN(nn.Module):
     def __init__(self, layers):
         super().__init__()
         self.activation = nn.Tanh()
         self.loss_func = nn.MSELoss(reduction='none')
-        # self.loss_func =LInfiniteLoss()
         self.linears = nn.ModuleList([nn.Linear(layers[j], layers[j + 1]) for j in range(len(layers) - 1)])
         for linear in self.linears:
             nn.init.xavier_normal_(linear.weight.data)
@@ -35,7 +25,7 @@ class FCN(nn.Module):
 
     def loss_bc(self, x_bc, y_bc):
         y_hat = self.forward(x_bc)
-        return self.loss_func(y_bc, y_hat).max()
+        return self.loss_func(y_bc, y_hat).mean()
 
     def loss_pde(self, x_pde):
         x_pde.requires_grad = True
@@ -50,7 +40,9 @@ class FCN(nn.Module):
         lhs = torch.hstack((x_t, y_t, z_t))
         rhs = torch.hstack((sigma * (y_nn - x_nn), x_nn * (rho - z_nn) - y_nn, x_nn * y_nn - beta * z_nn))
 
-        return self.loss_func(lhs, rhs).max()
+        loss_vector = self.loss_func(lhs, rhs)
+
+        return loss_vector.mean() + loss_vector.max()
 
     def loss(self, x_bc, y_bc, x_pde):
         loss_bc = self.loss_bc(x_bc, y_bc)
@@ -72,7 +64,7 @@ if "__main__" == __name__:
     print(PINN)
 
     # 区间总数
-    total_interval = 400
+    total_interval = 600
     # 总点数
     total_points = total_interval + 1
     # 区间长度
@@ -102,8 +94,8 @@ if "__main__" == __name__:
     x_train_nf = x_train_nf.float().to(device)
 
     optimizer = torch.optim.Adam(PINN.parameters(), lr=1e-3, amsgrad=False)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-6, mode='min', factor=0.5,
-                                                           patience=50000,
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-8, mode='min', factor=0.5,
+                                                           patience=40000,
                                                            verbose=True)
 
     epoch = 0
@@ -120,7 +112,7 @@ if "__main__" == __name__:
             print('epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
             break
 
-    torch.save(PINN, 'lorenz63_dnn_13.pt')
+    torch.save(PINN, 'lorenz63_dnn_ic_100.pt')
     PINN = PINN.cpu()
     nn_predict = PINN(x_test[:, None]).detach().numpy()
     x_nn = nn_predict[:, [0]]
@@ -135,7 +127,7 @@ if "__main__" == __name__:
     ax.set_xlabel('t', color='black')
     ax.set_ylabel('f(t)', color='black', rotation=0)
     ax.legend(loc='upper right')
-    plt.savefig('./figure/lorenz63_dnn_13_2d.png')
+    plt.savefig('./images/lorenz63_dnn_ic_100_2d.png')
     plt.close()
     # plt.show()
 
@@ -145,5 +137,5 @@ if "__main__" == __name__:
     ax.set_ylabel('y')
     ax.set_zlabel('z')
     ax.set_title('lorenz63')
-    plt.savefig('./figure/lorenz63_dnn_13_3d.png')
+    plt.savefig('./images/lorenz63_dnn_ic_100_3d.png')
     # plt.show()
