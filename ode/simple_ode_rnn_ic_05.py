@@ -17,7 +17,7 @@ class FCN(nn.Module):
 
         self.prev_h_0 = nn.Parameter(torch.randn(num_layers, hidden_size))
         self.post_h_0 = nn.Parameter(torch.randn(1, out_features))
-        # self.post_h_0 = torch.tensor([[np.sin(-0.005)]]).float()
+        # self.post_h_0 = torch.tensor([[0]]).float()
         print("prev_h_0 : ", self.prev_h_0)
         print("post_h_0 : ", self.post_h_0)
 
@@ -35,9 +35,9 @@ class FCN(nn.Module):
         x_pde.requires_grad = True
         y_hat = self.forward(x_pde)
         u_t = autograd.grad(y_hat, x_pde, torch.ones_like(y_hat), create_graph=True)[0]
-        loss_pde = self.loss_func(u_t, torch.cos(x_pde))
+        loss_pde = self.loss_func(u_t, -torch.sin(x_pde))
         # 没有这个约束是不行的，即使h_0设置的为真实的前一个点的输出也不行
-        loss_ic = self.loss_func(self.y_train_ic, y_hat[100])
+        loss_ic = self.loss_func(self.y_train_ic, y_hat[0])
         return loss_pde + loss_ic
 
 
@@ -49,7 +49,7 @@ if "__main__" == __name__:
     print(device)
     cpu_device = torch.device('cpu')
     # 区间总数
-    total_interval = 1500
+    total_interval = 600
     # 总点数
     total_points = total_interval + 1
     # 区间长度
@@ -86,11 +86,11 @@ if "__main__" == __name__:
         if epoch % 100 == 0:
             print('epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
 
-        if loss.item() < 0.001:
+        if loss.item() < 0.0001:
             print('epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
             break
 
-    torch.save(PINN, 'simple_ode_rnn_ic_03.pt')
+    torch.save(PINN, 'simple_ode_rnn_ic_05.pt')
     PINN.cpu()
     print("prev_h_0 : ", PINN.prev_h_0)
     print("post_h_0 : ", PINN.post_h_0)
@@ -110,5 +110,5 @@ if "__main__" == __name__:
     ax.set_xlabel('t', color='black')
     ax.set_ylabel('f(t)', color='black', rotation=0)
     ax.legend(loc='upper right')
-    plt.savefig('./figure/simple_ode_rnn_ic_03tt.png')
-    # plt.show()
+    plt.savefig('./figure/simple_ode_rnn_ic_05.png')
+    plt.show()
