@@ -10,18 +10,18 @@ class FCN(nn.Module):
                  post_input_size=32, post_hidden_size=3, post_num_layers=1):
         super().__init__()
 
-        self.y_train_ic = torch.tensor([-8., 7., 27.])
+        self.y_train_ic = torch.tensor([-4., 7., 15]).to(device)
         self.loss_func = nn.MSELoss(reduction='mean')
 
         self.pre_lstm = nn.LSTM(input_size=pre_input_size, hidden_size=pre_hidden_size, num_layers=pre_num_layers,
                                 batch_first=True)
-        self.pre_h_0 = nn.Parameter(torch.randn(pre_num_layers, pre_hidden_size)).to(device)
-        self.pre_c_0 = nn.Parameter(torch.randn(pre_num_layers, pre_hidden_size)).to(device)
+        self.pre_h_0 = nn.Parameter(torch.randn(pre_num_layers, pre_hidden_size))
+        self.pre_c_0 = nn.Parameter(torch.randn(pre_num_layers, pre_hidden_size))
 
         self.post_lstm = nn.LSTM(input_size=post_input_size, hidden_size=post_hidden_size, num_layers=post_num_layers,
                                  batch_first=True)
-        self.post_h_0 = nn.Parameter(torch.randn(post_num_layers, post_hidden_size)).to(device)
-        self.post_c_0 = nn.Parameter(torch.randn(post_num_layers, post_hidden_size)).to(device)
+        self.post_h_0 = nn.Parameter(torch.randn(post_num_layers, post_hidden_size))
+        self.post_c_0 = nn.Parameter(torch.randn(post_num_layers, post_hidden_size))
 
     def forward(self, x):
         # 正规化
@@ -75,7 +75,7 @@ if "__main__" == __name__:
 
     # 初值
     x_train_bc = torch.tensor([[0.]])
-    y_train_bc = torch.tensor([[-8., 7., 27.]])
+    y_train_bc = torch.tensor([[-4., 7., 15]])
 
     # 配置点
     x_train_nf = x_test.unsqueeze(1)
@@ -84,7 +84,7 @@ if "__main__" == __name__:
     y_train_bc = y_train_bc.float().to(device)
     x_train_nf = x_train_nf.float().to(device)
 
-    optimizer = torch.optim.Adam(PINN.parameters(), lr=1e-3, amsgrad=False)
+    optimizer = torch.optim.Adam(PINN.parameters(), lr=1e-2, amsgrad=False)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-6, mode='min', factor=0.5,
                                                            patience=10000,
                                                            verbose=True)

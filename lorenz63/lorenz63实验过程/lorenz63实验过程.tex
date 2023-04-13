@@ -368,4 +368,330 @@ lorenz63-dnn-12 [0,3]  尝试分段mse，意图为规避训练区间加长，后
 
 lorenz63-dnn-13 使用L1Smooth + 无穷范数，失败
 
+\section{DeepONet}
+\subsection{理论背景}
+一般的函数：
+\begin{equation}
+	z=f_1(x)=sin(x) \in[-1, 1]
+\end{equation}
+算子：
+\begin{equation}
+	 G(f_1(x))=f_2(x)
+\end{equation}
+比如微分算子：
+\begin{equation}
+	f_2=\frac{df_1(x)}{d x}=\frac{d}{d x}sin(x)=cos(x)
+\end{equation}
+如果我们的PDE里面有参数（比如形状、初边值、扩散系数等），这里统一用u(x)表示，我们是允许它变化的。这个时候，每个u对应一个真解s；参数化的PDE可写成如下形式：
+\begin{equation}
+	\mathcal{N}(u,s)=0
+\end{equation}
+PDE的解算子写成（此时，我们可以把PDE的一般解表示为算子G）：
+\begin{equation}
+	G(u)=s
+\end{equation}
+此时，u，s均为函数，并且满足：
+\begin{equation}
+	G(u)(y)=s(y) \in \mathbf{R}
+\end{equation}
+算子的通用逼近定理：\\
+$\forall \epsilon >0$, 存在正整数 $n,p,m$, 常量 $c_i^k,W_{bij}^k,b_{bij}^k,W_{tk},b_{tk}$ 使得:
+\begin{equation}
+	\left|G(u)(y)-\sum_{k=1}^{p} \underset{Branch}{\underbrace{ \sum_{i=1}^{n}c_i^k\sigma\left(\sum_{j=1}^{m}W_{bij}^{k}u(x_j)+b_{bi}^k\right)}}. \underset{Trunk}{\underbrace{\sigma(W_{tk}.y+b_{tk})}}\right|<\epsilon
+\end{equation}
+神经网络：
+\begin{equation}
+	NN(X)=W_n\sigma_{n-1}(W_{n-1}\sigma_{n-2}(...(W_2\sigma_1(W_1X+b_1)+b_2)+..)+b_{n-1})+b_n
+\end{equation}
+所以说，我们可以用两个神经网络去逼近算子，其中分支网络为：
+\begin{equation}
+	NN_b(u(\textbf{x}))=b(u(\textbf{x}))=\textbf{c}.\sigma\left(W_{b}u(\textbf{x})+\textbf{b}_{b}\right)
+\end{equation}
+主干网络：
+\begin{equation}
+	NN_t(\textbf{y})=t(\textbf{y})=\sigma(W_{t}.\textbf{y}+\textbf{b}_{t})
+\end{equation}
+DeepONet（注意：$\theta$ 是网络参数，即weight和bias）
+\begin{equation}
+	G_\theta(u)(y)=\sum_{k=1}^q\underset{Branch}{\underbrace{b_k\left(u(x_1),u(x_2),...,u(x_m)\right)}}.\underset{Trunk}{\underbrace{t_k(\textbf{y})}}
+\end{equation}
+
+\begin{figure}[h]
+	\centering
+	\subfigure[DeepONet架构.]{
+		\includegraphics[width=0.95\linewidth]{deeponet-architecture}
+	}
+	\caption{DeepONet架构}
+	\label{DeepONet架构}
+\end{figure}
+
+神经网络的输出应该逼近真解算子
+\begin{equation}
+	G_\theta(u)(y)\approx G(u)(y)
+\end{equation}
+我们把这个约束加入损失函数
+\begin{equation}
+	\mathcal{L}_{Operator}(\theta)=\frac{1}{NP}\sum_{i=1}^N\sum_{j=1}^P\left|G_{\theta}(u^{(i)})y_j^{(i)}-G(u^{(i)})y_j^{(i)}\right|^2
+\end{equation}
+\begin{equation}
+	\mathcal{L}_{Operator}(\theta)=\frac{1}{NP}\sum_{i=1}^N\sum_{j=1}^P\left|\sum_{k=1}^q{b_k\left(u^{(i)}(x_1),u^{(i)}(x_2),...,u^{(i)}(x_m)\right)}.t_k(y_j^{(i)})-G(u^{(i)})y_j^{(i)}\right|^2
+\end{equation}
+Physics-informed DeepONets
+\begin{equation}
+	\mathcal{L}_{Physics}(\theta)=\frac{1}{NQm}\sum_{i=1}^{N}\sum_{j=1}^{Q}\sum_{k=1}^{m}\left|\mathcal{N}(u^{(i)}(x_k),G_{\theta}(u^{(i)})(y_j^{(i)})\right|^2
+\end{equation}
+\begin{equation}
+	\mathcal{L}(\theta)=\mathcal{L}_{Operator}(\theta)+\mathcal{L}_{Physics}(\theta)
+\end{equation}
+
+\subsection{示例：反应扩散方程}
+\begin{equation}
+	\frac{\partial s}{\partial t}=D\frac{\partial^2 s}{\partial x^2}+ks^2+u(x) \qquad (x,t) \in (0,1] \times(0,1]
+\end{equation}
+其中，扩散系数D=0.01，反应速率k=0.01；u(x)是源项，初边值条件为0；（可以看出PI-DON不需要太多的训练数据）\\
+对于任意给的$u^{(i)}$，我们有：
+\begin{equation}
+	u^{(i)}=\frac{\partial s^{(i)}}{\partial t}-D\frac{\partial^2 s^{(i)}}{\partial x^2}-k[s^{(i)}]^2
+\end{equation}
+理想情况下，我们的DeepONet拟合的算子满足：
+\begin{equation}
+	G_{\theta}(u^{(i)})(x,t)\approx G(u^{(i)})(x,t)= s^{(i)}(x,t)
+\end{equation}
+\begin{equation}
+	u^{(i)}\approx \frac{\partial G_{\theta}(u^{(i)})(x,t)}{\partial t}-D\frac{\partial^2 G_{\theta}(u^{(i)})(x,t)}{\partial x^2}-k[G_{\theta}(u^{(i)})(x,t)]^2
+\end{equation}
+我们记右端项
+\begin{equation}
+	R_{\theta}^{(i)}(x,t)=\frac{\partial G_{\theta}(u^{(i)})(x,t)}{\partial t}-D\frac{\partial^2 G_{\theta}(u^{(i)})(x,t)}{\partial x^2}-k[G_{\theta}(u^{(i)})(x,t)]^2
+\end{equation}
+则物理模型损失：
+\begin{equation}
+	\mathcal{L}_{Physics}(\theta)=\frac{1}{NQ}\sum_{i=1}^{N}\sum_{j=1}^{Q}\left|R_{\theta}^{(i)}(x_{r,j}^{(i)},t_{r,j}^{(i)})-u^{(i)}(x_{r,j}^{(i)})\right|^2
+\end{equation}
+其中，$(x_{r,j},t_{r,j})$是配置点；\\
+另一方面，用零初边值条件计算算子损失：
+\begin{equation}
+	\mathcal{L}_{Operator}(\theta)=\frac{1}{NQ}\sum_{i=1}^{N}\sum_{j=1}^{P}\left|G_{\theta}(u^{(i)})(x_{u,j}^{(i)},t_{u,j}^{(i)})- G(u^{(i)})(x_{u,j}^{(i)},t_{u,j}^{(i)}))\right|^2
+\end{equation}
+其中，$(x_{u,j},t_{u,j})$是初边值条件上的点；因为这里是零初边值，所以
+\begin{equation}
+	G(u^{(i)})(x_{u,j}^{(i)},t_{u,j}^{(i)})=0
+\end{equation}
+\begin{equation}
+	\mathcal{L}_{Operator}(\theta)=\frac{1}{NQ}\sum_{i=1}^{N}\sum_{j=1}^{P}\left|G_{\theta}(u^{(i)})(x_{u,j}^{(i)},t_{u,j}^{(i)})))\right|^2
+\end{equation}
+最终，损失函数为：
+\begin{equation}
+	\mathcal{L}(\theta)=\mathcal{L}_{Ooperator}(\theta)+\mathcal{L}_{Physics}(\theta)
+\end{equation}
+
+\subsubsection{训练算法}
+\begin{enumerate}
+\item 选择N个源项，也就是输入函数，
+	\begin{equation}
+		\{u^{(i)}(\textbf{x})\}_{i=1}^{N}={[u^{(1)}(\textbf{x}),u^{(2)}(\textbf{x}),...,u^{(N)}(\textbf{x})]}
+	\end{equation}
+\item 在m个点（即输入张量）评估N个输入函数
+	\begin{equation}
+		\begin{bmatrix}
+			u^{(1)}(x_1) & u^{(1)}(x_2)& ... & u^{(1)}(x_m) \\
+			u^{(2)}(x_1) & u^{(2)}(x_2)& ... & u^{(2)}(x_m) \\
+			\vdots & \vdots & \ddots & \vdots \\
+			u^{(N)}(x_1) & u^{(N)}(x_2) & ... & u^{(N)}(x_m)
+		\end{bmatrix}
+	\end{equation}
+\item 将其送入分支网络，得到
+	\begin{equation}
+		b_k
+		\begin{bmatrix}
+			u^{(1)}(x_1) & u^{(1)}(x_2)& ... & u^{(1)}(x_m) \\
+			u^{(2)}(x_1) & u^{(2)}(x_2)& ... & u^{(2)}(x_m) \\
+			\vdots & \vdots & \ddots & \vdots \\
+			u^{(N)}(x_1) & u^{(N)}(x_2) & ... & u^{(N)}(x_m)
+		\end{bmatrix}
+	\end{equation}
+\item 从初边值选择P个点（即输出张量）
+	\begin{equation}
+		\textbf{y}_u=y_{u1},y_{u2},...,y_{uP}
+	\end{equation}
+\item 将其送入主干网络，得到
+	\begin{equation}
+		t_k(y_{u1},y_{u2},...,y_{uP})
+	\end{equation}
+\item 将二者输出做点积，得到近似的算子
+	\begin{equation}
+		G_\theta(u)(\textbf{y})=\sum_{k=1}^q\underset{Branch}{\underbrace{b_k\left(u(x_1),u(x_2),...,u(x_m)\right)}}.\underset{Trunk}{\underbrace{t_k(\textbf{y})}}
+	\end{equation}
+\item 理想情况下，$G_\theta(u)(\textbf{y}_u)\approx G(u)(\textbf{y}_u)=0$ ，所以只需计算损失：
+	\begin{equation}
+		\mathcal{L}_{Operator}(\theta)=\frac{1}{NP}\sum_{i=1}^N\sum_{j=1}^P\left|G_{\theta}(u^{(i)})y_{uj}^{(i)}\right|^2
+	\end{equation}
+\item 从定义域中随机选Q个配置点
+	\begin{equation}
+		\textbf{y}_r=y_{r1},y_{r2},...,y_{rQ}
+	\end{equation}
+\item 使用物理信息（PDE），计算配置点的损失
+	\begin{equation}
+		\mathcal{L}_{Physics}(\theta)=\frac{1}{NQ}\sum_{i=1}^{N}\sum_{j=1}^{Q}\left|R_{\theta}^{(i)}(y_{r,j}^{(i)})-u^{(i)}(x_{r,j}^{(i)})\right|^2
+	\end{equation}
+\item 计算总损失
+	\begin{equation}
+		\mathcal{L}(\theta)=\mathcal{L}_{operator}(\theta)+\mathcal{L}_{Physics}(\theta)
+	\end{equation}
+\item 更新神经网络参数使损失最小化
+\item 重复上述过程直至$G_\theta(u)(x,t)\approx G(u)(x,t)$
+\end{enumerate}
+
+\subsubsection{代码中涉及的知识}
+$\textbf{高斯径向基函数}$，是一种高斯核函数，用于计算两个时刻的高斯变量的协方差，用RBF得到的是一个半正定矩阵，注意：向量和自身做RBF的运算，得到的不一定是单位阵。而且这个核函数体现不出负相关性，如果要体现负相关性，用其他的核函数；
+\begin{equation}
+	k(x,x') = \sigma^2 exp(-\frac{||x-x'||^2}{2l^2})
+\end{equation}
+$\textbf{Cholesky分解}$\\
+Cholesky 分解是把一个对称正定的矩阵表示成一个下三角矩阵L和其转置的乘积的分解。它要求矩阵的所有特征值必须大于零，故分解的下三角的对角元也是大于零的。Cholesky分解法又称平方根法。Cholesky分解通常用于解决线性方程组或生成随机数。\\
+jax.numpy.linalg.cholesky 方法返回的是下三角矩阵，称为Cholesky因子。\\
+对于一个正定矩阵$A$，可以通过Cholesky分解将其转换为$A=LL^T$的形式，然后利用标准正态分布的随机数生成方法，即使用均值为0，方差为1的正态分布生成随机数，生成一个$n$维向量$z$，其中$n$是矩阵$A$的维度。\\
+然后，通过矩阵向量乘法，即$y=Lz$，可以得到一个满足多元正态分布$N(0,A)$的$n$维向量$y$。\\
+因此，通过Cholesky分解可以将生成满足多元正态分布的随机数的过程转化为简单的矩阵运算，这在许多机器学习和统计模型中都是非常有用的。\\
+为什么使用Cholesky分解的时候，往往会对正定矩阵做一点扰动？\\
+在数值计算中，对于一个给定的正定矩阵，它的Cholesky分解不是唯一的。这意味着，如果两次使用Cholesky分解来生成随机数，即使使用相同的输入矩阵，也有可能得到不同的结果。\\
+这是由于在使用 Cholesky 分解时，由于分解过程中需要进行平方根运算，当某些元素非常小甚至为零时，平方根运算会出现不稳定的情况，从而导致分解失败或者得到错误的结果。增加一个较小的扰动可以使得这些元素不再为零，从而避免这种不稳定性。\\
+如果输入矩阵有某些特定的结构或数字精度问题，这种不确定性可能会增加，甚至导致错误的结果。为了解决这个问题，可以对输入矩阵进行微小的扰动，以确保得到稳定的Cholesky分解结果。\\
+一种常用的扰动方法是在对角线上添加一个较小的正数$\epsilon$，这样可以确保输入矩阵的条件数（矩阵奇异值的比值）不会太大，从而使得Cholesky分解结果更加稳定。\\
+
+$\textbf{数值解法}$\\
+代码中的函数，是一个求解一般的一维扩散反应方程的程序，主要用到了高斯过程插值和有限差分的方法。以下是对代码的注释和说明：\\
+\begin{enumerate}
+	\item 在程序开始时，定义了微分方程的各项系数和边界条件：
+	\begin{equation}
+		\begin{cases}
+			u_t = (k(x)u_x)_x - (v(x)u)_x + g(u) + f(x) \\
+			k(x) = 0.01 \\
+			v(x) = 0 \\
+			g(u) = 0.01u^2 \\
+			f(x) = Gausian Process Stochastic Function
+		\end{cases}
+	\end{equation}
+	\item 在生成随机函数的时候，使用了高斯过程的方法。先选取一些离散点，计算协方差矩阵，然后进行 Cholesky 分解，得到一个随机向量，再通过一维分段线性插值得到一个连续的函数。
+	\item 利用有限差分离散微分方程，得到一个三对角矩阵，然后求解线性方程组得到下一时刻的解。
+	\item 时间上采用了显式的欧拉方法。
+	\item 整个求解过程是以矩阵形式实现的，使用了 JAX 库进行了自动微分和并行加速。
+\end{enumerate}
+二阶导的中心差分：
+\begin{equation}
+	\frac{d^2s}{dx^2} \approx \frac{s_{i-1} - 2s_i + s_{i+1}}{\Delta x^2}
+\end{equation}
+\begin{equation}
+	\frac{d^2\mathbf{s}}{dx^2} \approx \frac{1}{\Delta x^2}
+	\begin{bmatrix}
+		-2 & 1 & 0 & \cdots & 0 & 0 \\
+		1 & -2& 1 & \cdots & 0 & 0 \\
+		0 & 1 & -2 & \cdots & 0 & 0 \\
+		\vdots & \vdots & \vdots & \ddots & \vdots & \vdots \\
+		0 & 0 & 0 & \cdots & -2 & 1 \\
+		0 & 0 & 0 & \cdots & 1 & -2 \\
+	\end{bmatrix}
+	\begin{bmatrix}
+		s_1 \\
+		s_2 \\
+		s_3 \\
+		\vdots \\
+		s_{N-2} \\
+		s_{N-1} \\
+	\end{bmatrix}
+	= \frac{1}{\Delta x^2} D2\cdot \mathbf{s}
+\end{equation}
+一阶导的中心差分：
+\begin{equation}
+	\frac{ds}{dx} \approx \frac{s_{i+1} - s_{i-1}}{2\Delta x}
+\end{equation}
+\begin{equation}
+	\frac{d\mathbf{s}}{dx} \approx \frac{1}{2\Delta x}
+	\begin{bmatrix}
+		0 & 1 & 0 & \cdots & 0 & 0 \\
+		-1 & 0 & 1 & \cdots & 0 & 0 \\
+		0 & -1 & 0 & \cdots & 0 & 0 \\
+		\vdots & \vdots & \vdots & \ddots & \vdots & \vdots \\
+		0 & 0 & 0 & \cdots & 0 & 1 \\
+		0 & 0 & 0 & \cdots & -1 & 0 \\
+	\end{bmatrix}
+	\begin{bmatrix}
+		s_1 \\
+		s_2 \\
+		s_3 \\
+		\vdots \\
+		s_{N-2} \\
+		s_{N-1} \\
+	\end{bmatrix}
+= \frac{1}{2\Delta x} D1 \cdot \mathbf{s}
+\end{equation}
+代码拆解：
+\begin{equation}
+	\begin{aligned}
+		(k(x)u_x)_x &= k_x u_x + k u_{xx}  \\
+		&\approx  \frac{k_{i+1} - k_{i-1}}{2\Delta x} \cdot  \frac{u_{i+1} - u_{i-1}}{2\Delta x} + k_i \frac{u_{i-1} - 2u_i + u_{i+1}}{\Delta x^2} \\
+		&=\frac{1}{4\Delta x^2} (D1\cdot \mathbf{k} \cdot D1 \cdot \mathbf{u} + 4 \cdot diag(\mathbf{k}) \cdot D2 \cdot \mathbf{u}) \\
+		&=\frac{1}{4\Delta x^2} (diag(D1\cdot \mathbf{k}) \cdot D1 + 4 \cdot diag(\mathbf{k}) \cdot D2 ) \cdot \mathbf{u}
+	\end{aligned}
+\end{equation}
+注意：这个差分格式对应着代码中的$M_{1:-1,1:-1}$，而不是M，因为代码中的M是$N \times N$，而实际做差分，边值为0，所以边界点不考虑，差分矩阵应该是$(N-2) \times (N-2)$。\\
+{\color{red} (这里有疑问，为什么要一开始取$N \times N$的矩阵，后续都是使用其$(N-2) \times (N-2)$的子矩阵，为什么不一开始就构造$(N-2) \times (N-2)$？) }
+\begin{equation}
+	\begin{aligned}
+		(v(x)u)_x &= vu_x + v_x u  \\
+		&\approx  v_i \cdot  \frac{u_{i+1} - u_{i-1}}{2\Delta x} + \frac{v_{i+1} - v_{i-1}}{2\Delta x} \cdot u_i \\
+		&=\frac{1}{4\Delta x^2} (2\Delta x \cdot diag(v_{1:-1}) \cdot D1_{1:-1,1:-1} + 2\Delta x \cdot diag(v_{2:} - v_{:N_x-2})\cdot \mathbf{u} \\
+	\end{aligned}
+\end{equation}
+\begin{equation}
+	1
+\end{equation}
+\begin{equation}
+	1
+\end{equation}
+\begin{equation}
+	M = -diag(D1 \cdot \mathbf{k})\cdot D1 -4\cdot diag(\mathbf{k})\cdot D2
+\end{equation}
+
+\begin{equation}
+	m_{bond} = 8 \cdot \frac{\Delta x^2}{\Delta t} \cdot D_3 + M_{1:-1,1:-1}
+\end{equation}
+\begin{equation}
+	v_{bond} = 2\cdot h \cdot diag(v_{1:-1}) \cdot D1_{1:-1,1:-1} + 2 \cdot h \cdot diag(v_{2:} - v_{:N_x-2})
+\end{equation}
+\begin{equation}
+	mv_{bond} = m_{bond} + v_{bond}
+\end{equation}
+\begin{equation}
+	c = 8 \cdot \frac{h^2}{\Delta t} \cdot D_3 - M_{1:-1,1:-1} - v_{bond}
+\end{equation}
+bond 是指偏微分方程的边界条件。其中 $m_{bond}$ 和 $v_{bond}$ 分别计算了扩散项和反应项的边界条件，$mv_{bond}$ 计算了边界条件的总和，c 则是经过边界条件修正后的方程系数。
+\begin{equation}
+	1
+\end{equation}
+\begin{equation}
+	1
+\end{equation}
+\begin{equation}
+	1
+\end{equation}
+\begin{equation}
+	1
+\end{equation}
+\begin{equation}
+	1
+\end{equation}
+\begin{equation}
+	1
+\end{equation}
+\begin{equation}
+	1
+\end{equation}
+
+这段代码是实现时间步进的函数，其中 u 是当前时间步的解，i 是当前时间步的编号。具体来说，它按照给定的时间步长 dt，计算下一个时间步的解。
+
+首先，函数 g 和 dg 分别计算了 $g(u)$ 和 $g'(u)$。然后，根据离散化后的方程，计算了 $A$ 和 $b1$，其中 $A$ 是矩阵 $M_{bond}$ 和 $v_{bond}$ 的总和减去 $h^2 g'(u)$ 所组成的矩阵，$b1$ 是由 $f(x)$ 和 $g(u)$ 计算得到的向量。
+
+接着，用 np.linalg.solve 函数求解了线性方程组 $Au=b1+b2$，其中 $b2=(c-h^2g'(u))u_i$。最后，返回更新后的解 u。
+
 \end{document}
