@@ -54,21 +54,21 @@ if "__main__" == __name__:
     print(PINN)
 
     t_lb = 0.0
-    t_ub = 2 * np.pi
-    total_points = 500
+    t_ub = 16 * np.pi
+    total_points = 5000
     Nf = total_points
 
     x_test = torch.linspace(t_lb, t_ub, total_points)
 
     t_bc = torch.tensor([[0.0]])
-    t_bc_label = torch.tensor([[1.0]])
+    t_bc_label = torch.tensor([[0.0]])
 
     t_pde = torch.from_numpy(t_lb + (t_ub - t_lb) * lhs(1, Nf)).float()
     t_pde = torch.vstack((t_bc, t_pde))
 
     optimizer = torch.optim.Adam(PINN.parameters(), lr=1e-3, amsgrad=False)
 
-    epochs = 5000
+    epochs = 50000
     for i in range(epochs):
         loss = PINN.loss(t_bc, t_bc_label, t_pde)
         optimizer.zero_grad()

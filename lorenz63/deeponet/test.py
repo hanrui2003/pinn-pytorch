@@ -1,12 +1,11 @@
 import torch
 
-# 创建两个二维张量
-a = torch.tensor([[1, 2], [3, 4], [5, 6]])
-b = torch.tensor([[7, 8], [9, 10], [11, 12]])
+# 创建一个空的张量
+new_tensor = torch.Tensor()
 
-# 计算对应行向量的内积
-c = torch.sum(torch.mul(a, b), dim=1)
+# 循环追加多个张量
+for i in range(5):
+    tensor = torch.randn((3, 4))
+    new_tensor = torch.cat((new_tensor, tensor), dim=0)
 
-# 输出结果
-print(c)
-
+print(new_tensor)
