@@ -62,8 +62,6 @@ def solve_ADR(key, Nx, Nt, P, length_scale):
     dg = lambda u: 0.02 * u
     # 零函数：返回与输入同形的零向量（或标量）
     u0 = lambda x: np.zeros_like(x)
-    # 测试
-    # u0 = lambda x: np.ones_like(x)
 
     # Generate subkeys
     # JAX的key不能重用，不然每次生成的都一样，所以每次要用随机数的时候，都要生成新的子key
@@ -99,6 +97,7 @@ def solve_ADR(key, Nx, Nt, P, length_scale):
     k = k(x)
     # 零函数：返回与输入同形的零向量（或标量）
     v = v(x)
+    # PDE数值解法用到的
     f = f_fn(x)
 
     # Compute finite difference operators
@@ -114,6 +113,8 @@ def solve_ADR(key, Nx, Nt, P, length_scale):
     c = 8 * h2 / dt * D3 - M[1:-1, 1:-1] - v_bond
 
     # Initialize solution and apply initial condition
+    # 注意，这里的u相当于后面UU的角色，是PDE数值解的初值。
+    # 后续赋给了UU
     u = np.zeros((Nx, Nt))
     u = u.at[:, 0].set(u0(x))
 
@@ -148,17 +149,19 @@ def solve_ADR(key, Nx, Nt, P, length_scale):
 
     # Input sensor locations and measurements
     # 输入的源项函数，对应的其实本质就是方程中的f(x)，这里变量的名字有点滥用，注意区分
+    # 因为m不一定等于N_x，所以这里还要再次生成函数，用于神经网络的训练
     xx = np.linspace(xmin, xmax, m)
     u = f_fn(xx)
     # Output sensor locations and measurements
     idx = random.randint(subkeys[1], (P, 2), 0, max(Nx, Nt))
-    # 在PDE解的定义域内随机取点(x,t)，这里取的电不一定是边界上的，但是这些都是有label的点
-    # 这边和讲义不符，讲义上说的是初边值条件点
+    # 在PDE数值解的网格上随机取点(x,t)，这里取的电不一定是边界上的，但是这些都是有label的点
+    # 这边并不是用于网络训练的点
     y = np.concatenate([x[idx[:, 0]][:, None], t[idx[:, 1]][:, None]], axis=1)
     # y对应的函数值
     s = UU[idx[:, 0], idx[:, 1]]
     # x, t: sampled points on grid
     # x,t对应网格的坐标，x总坐标，t横坐标，UU对应的PDE数值解的函数值
+    # 本例中这个函数的返回值只用了 x, t, u ，因为这个方法也是作者直接copy别人的公共方法，所以返回有冗余
     return (x, t, UU), (u, y, s)
 
 
@@ -244,6 +247,7 @@ class DataGenerator(data.Dataset):
         :param key:
         :return:
         """
+        # 这种取法不好，很容易在一个epoch内，某些训练点背重复使用，根据debug观察，确实有这个问题
         idx = random.choice(key, self.N, (self.batch_size,), replace=False)
         s = self.s[idx, :]
         y = self.y[idx, :]
@@ -426,15 +430,21 @@ class PI_DeepONet:
 
 
 # Resolution of the solution (Grid of 100x100)
-Nx = 100
-Nt = 100
-N = 1  # number of input samples
+# PDE的解的定义域网格划分，x和t轴各多少个点，含左右端点
+# 注意这里是一个u(x)，对应一个PDE真解
+Nx = 6
+Nt = 5
+# 总共的样本数，即本例中的u(x)函数个数。
+N = 2  # number of input samples
 # Select the number of sensors
+# 每个函数u(x) 数值解对应的离散函数值个数，因为最终送入网络的不是一个function，而是特定点的函数值向量
 m = Nx  # number of input sensors
-# 注意这里不一定是初边值点，和讲义中的略有不同
-P_train = 300  # number of output sensors, 100 for each side
-Q_train = 100  # number of collocation points for each input sample
+# 选取一些初边值点进行训练，用于计算算子损失
+P_train = 6  # number of output sensors, 100 for each side
+# 选取PDE定义域内的一些点，用于计算物理损失
+Q_train = 2  # number of collocation points for each input sample
 # GRF length scale
+# 用于高斯过程生成随机函数的因子，保持不变即可
 length_scale = 0.2
 
 # jax浮点数默认是32位，这里暂时修改为64位
@@ -473,6 +483,8 @@ t_bc2 = np.zeros((P_train // 3, 1))  # 100 points
 t_bcs = np.vstack([t_bc1, t_bc2])  # 末尾的s只是表示复数
 
 # Training data for BC and IC
+# 复制数组，按第二个参数复制，第二个参数是元祖，表示按各个轴复制的次数
+# 这里就是把u复制P次
 u_train = np.tile(u, (P_train, 1))  # Add dimentions-> copy u P times ，m points
 # 对应讲义中的y_u，相当于一般PINN里面的x_train
 y_train = np.hstack([x_bcs, t_bcs])  # stack the  P output sensors
@@ -502,6 +514,7 @@ u_train, y_train, s_train, u_r_train, y_r_train, f_r_train = vmap(generate_one_t
                                                                                                                P_train,
                                                                                                                Q_train)
 # Reshape the data
+# 每个u(x)分别对应一组随机的初边值点和配置点。 所以每个u(x)要复制P+Q次；
 u_bcs_train = np.float32(u_train.reshape(N * P_train, -1))
 y_bcs_train = np.float32(y_train.reshape(N * P_train, -1))
 s_bcs_train = np.float32(s_train.reshape(N * P_train, -1))
@@ -525,12 +538,14 @@ s_test = np.float32(s_test.reshape(N_test * P_test ** 2, -1))
 config.update("jax_enable_x64", False)
 
 # Initialize model
+# m是源项u(x)的离散值
 branch_layers = [m, 5, 5]
-trunk_layers = [2, 4, 4]
+# 2是pde的定义域上的点y=(x,t)，最后一层要一样，因为要做点积
+trunk_layers = [2, 5, 5]
 model = PI_DeepONet(branch_layers, trunk_layers)
 
 # Create data set
-batch_size = 10000
+batch_size = 2
 bcs_dataset = DataGenerator(u_bcs_train, y_bcs_train, s_bcs_train, batch_size)
 res_dataset = DataGenerator(u_res_train, y_res_train, f_res_train, batch_size)
 
@@ -542,6 +557,7 @@ s_pred = model.predict_s(params, u_test, y_test)[:, None]
 error_s = np.linalg.norm(s_test - s_pred) / np.linalg.norm(s_test)
 print(error_s)
 
+# 单独测试一个函数，然后绘图
 N_test = 1  # number of input samples
 # 这边的key参数可以用于改变输入函数，即不同的输入函数经过算子运算得到不用的PDE的解
 key = random.PRNGKey(456)

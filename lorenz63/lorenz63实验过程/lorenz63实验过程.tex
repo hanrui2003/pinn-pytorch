@@ -692,6 +692,12 @@ bond 是指偏微分方程的边界条件。其中 $m_{bond}$ 和 $v_{bond}$ 分
 
 首先，函数 g 和 dg 分别计算了 $g(u)$ 和 $g'(u)$。然后，根据离散化后的方程，计算了 $A$ 和 $b1$，其中 $A$ 是矩阵 $M_{bond}$ 和 $v_{bond}$ 的总和减去 $h^2 g'(u)$ 所组成的矩阵，$b1$ 是由 $f(x)$ 和 $g(u)$ 计算得到的向量。
 
-接着，用 np.linalg.solve 函数求解了线性方程组 $Au=b1+b2$，其中 $b2=(c-h^2g'(u))u_i$。最后，返回更新后的解 u。
+接着，用 np.linalg.solve 函数求解了线性方程组 $Au=b1+b2$，其中 $b2=(c-h^2g'(u))u_i$。最后，返回更新后的解 u。\\
+
+\begin{equation}
+	u(t_0,x) \approx \sum_{k=1}^p \sum_{i=1}^n c_i^k \sigma\left(\sum_{j=1}^m W_{bij}^k u(t_j,x_j) + b_{bi}^k \right)
+\end{equation}
+
+其中 $u(t_j,x_j)$ 表示在时间 $t_j$ 和空间位置 $x_j$ 上的解，$W_{bij}^k$ 和 $b_{bi}^k$ 是第 $k$ 个分支网络的权重和偏置，$c_i^k$ 是第 $k$ 个分支网络的系数，$\sigma$ 是激活函数。这里没有主干网络的部分，因为初值条件作为参数，不需要主干网络来接收输入。
 
 \end{document}
