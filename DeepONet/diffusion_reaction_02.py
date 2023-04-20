@@ -432,8 +432,8 @@ class PI_DeepONet:
 # Resolution of the solution (Grid of 100x100)
 # PDE的解的定义域网格划分，x和t轴各多少个点，含左右端点
 # 注意这里是一个u(x)，对应一个PDE真解
-Nx = 6
-Nt = 5
+Nx = 100
+Nt = 100
 # 总共的样本数，即本例中的u(x)函数个数。
 N = 2  # number of input samples
 # Select the number of sensors
@@ -459,8 +459,8 @@ keys = random.split(key, N)
 # 不同的key得到不同的输入函数u，对应的UU是PDE的数值解
 # 展示如何生成一个训练样本，非主逻辑 start
 (x, t, UU), (u, y, s) = solve_ADR(key, Nx, Nt, P_train, length_scale)
-# XX, TT = np.meshgrid(x, t)
-# plot(XX, TT, UU)
+XX, TT = np.meshgrid(x, t)
+plot(XX, TT, UU)
 
 # Sample points from the boundary and the inital conditions
 # Geneate subkeys
