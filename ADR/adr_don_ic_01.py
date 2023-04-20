@@ -2,7 +2,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.autograd as autograd
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
+import itertools
 
 
 def RBF(x1, x2, output_scale=1.0, length_scale=0.2):
@@ -142,24 +143,126 @@ class ADRPhysicsDataset(Dataset):
         return self.u0_train[index], self.y_train[index]
 
 
+class ADRNet(nn.Module):
+    def __init__(self, branch_layers, trunk_layers):
+        super().__init__()
+        self.activation = nn.Tanh()
+        self.loss_func = nn.MSELoss(reduction='mean')
+        self.branch_linear = nn.ModuleList(
+            [nn.Linear(branch_layers[i], branch_layers[i + 1]) for i in range(len(branch_layers) - 1)])
+        self.trunk_linear = nn.ModuleList(
+            [nn.Linear(trunk_layers[i], trunk_layers[i + 1]) for i in range(len(trunk_layers) - 1)])
+
+    def forward(self, a_branch, a_trunk):
+        for j in range(len(self.branch_linear) - 1):
+            z_branch = self.branch_linear[j](a_branch)
+            a_branch = self.activation(z_branch)
+        z_branch = self.branch_linear[-1](a_branch)
+
+        for i in range(len(self.trunk_linear) - 1):
+            z_trunk = self.trunk_linear[i](a_trunk)
+            a_trunk = self.activation(z_trunk)
+        z_trunk = self.trunk_linear[-1](a_trunk)
+
+        # pytorch 的内积操作只适用于两个一维向量，而神经网络的训练是批量计算的；
+        # 所以这里用一个变通的方式，批量计算内积
+        dot = torch.sum(torch.mul(z_branch, z_trunk), dim=1, keepdim=True)
+        return dot
+
+    def loss_icbc(self, icbc_batch):
+        u0_train, y_train, label = icbc_batch
+        u_hat = self.forward(u0_train, y_train)
+        return self.loss_func(u_hat, label)
+
+    def loss_physics(self, physics_batch):
+        u0_train, y_train = physics_batch
+        y_train.requires_grad = True
+        u_hat = self.forward(u0_train, y_train)
+
+        u_y = autograd.grad(u_hat, y_train, torch.ones_like(u_hat), create_graph=True)[0]
+        u_yy = autograd.grad(u_y, y_train, torch.ones_like(u_y), create_graph=True)[0]
+
+        u_t = u_y[:, [1]]
+        u_xx = u_yy[:, [0]]
+
+        return self.loss_func(u_t, 0.01 * u_xx + 0.01 * u_hat ** 2)
+
+    def loss(self, icbc_batch, physics_batch):
+        loss_icbc = self.loss_icbc(icbc_batch)
+        loss_physics = self.loss_physics(physics_batch)
+        return loss_icbc + loss_physics
+
+
 if "__main__" == __name__:
-    # torch.manual_seed(1234)
-    np.random.seed(123)
+    # torch.manual_seed(123)
+    # np.random.seed(123)
 
     # 随机生成的函数个数
-    stoch_func_num = 2
+    stoch_func_num = 5000
+
+    # 构建网络网络结构
+    branch_layers = [100, 20, 20, 20]
+    trunk_layers = [2, 20, 20, 20]
+
+    model = ADRNet(branch_layers, trunk_layers)
+    print("model:\n", model)
+
     # 分支网络输入维度
-    branch_input_size = 5
+    branch_input_size = branch_layers[0]
     # 主干网络输入维度
-    trunk_input_size = 2
+    trunk_input_size = trunk_layers[0]
     # 初值训练点个数
-    ic_train_num = 3
+    ic_train_num = 100
     # 边值训练点个数
-    each_bc_train_num = 3
+    each_bc_train_num = 100
     # 物理信息训练点个数
-    physics_train_num = 4
+    physics_train_num = 100
 
     func_list = gp_sample(num=stoch_func_num)
     icbc_ds = ADRICBCDataset(func_list, branch_input_size, ic_train_num, each_bc_train_num)
     physics_ds = ADRPhysicsDataset(func_list, branch_input_size, physics_train_num)
-    print("hold on")
+
+    print("icbc_ds count:", len(icbc_ds), "physics_ds count:", len(physics_ds))
+
+    batch_size = 10000
+    icbc_loader = DataLoader(icbc_ds, batch_size=batch_size, shuffle=True)
+    physics_loader = DataLoader(physics_ds, batch_size=batch_size, shuffle=True)
+
+    icbc_iter = iter(icbc_loader)
+    physics_iter = iter(physics_loader)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, amsgrad=False)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-6, mode='min', factor=0.5,
+                                                           patience=40000,
+                                                           verbose=True)
+
+    batch = 0
+    while True:
+        batch += 1
+
+        # 从dataloader迭代器获取元素，如果到头了，就重新生成迭代器
+        # 注意这里不能用itertools.cycle去实现，会导致shuffle失效，因为本质是同一个iter
+        try:
+            icbc_batch = next(icbc_iter)
+        except StopIteration:
+            icbc_iter = iter(icbc_loader)
+            icbc_batch = next(icbc_iter)
+
+        try:
+            physics_batch = next(physics_iter)
+        except StopIteration:
+            physics_iter = iter(physics_loader)
+            physics_batch = next(physics_iter)
+
+        loss = model.loss(icbc_batch, physics_batch)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        scheduler.step(loss)
+        if batch % 100 == 0:
+            print('batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
+        if loss.item() < 0.01:
+            print('batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
+            break
+
+    torch.save(model, 'adr_don_ic_01.pt')

@@ -1,25 +1,25 @@
 import numpy as np
 
-# 定义多个函数
-def add(x):
-    return x + 1
 
-def square(x):
-    return x ** 2
+# 定义随机函数
+def random_function(x):
+    return np.random.rand(*x.shape) * np.random.choice([-1, 1], size=x.shape)
 
-def cube(x):
-    return x ** 3
 
-# 将多个函数组成一个列表
-funcs = [add, square, cube]
+# 定义边界条件
+def boundary_condition(x):
+    return np.piecewise(x, [x < 0, x == 0, x > 0], [0, 0, 0])
 
-# 将多个函数向量化
-vectorized_funcs = np.vectorize(lambda f, x: f(x))
 
-# 生成一组输入数据
-x = np.array([1, 2, 3])
+# 生成随机函数
+x = np.linspace(-1, 1, 1000)
+y = random_function(x)
 
-# 将多个函数作用于同一个参数
-result = vectorized_funcs(funcs, x)
+# 应用边界条件
+y = y - boundary_condition(x)
 
-print(result)
+# 绘制随机函数
+import matplotlib.pyplot as plt
+
+plt.plot(x, y)
+plt.show()
