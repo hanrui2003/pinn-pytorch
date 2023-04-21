@@ -39,6 +39,8 @@ def gp_sample(num=5000, x_lb=0., x_ub=1.):
     for _ in range(num):
         # 生成N维标准正态分布的向量，与L内积，得到符合协方差为K的正态分布向量
         y_sample = np.dot(L, np.random.randn(N))
+        # 把两端的值修改为0，这主要是因为边值为0，这就要求(0,0)和(1,0)的值为0，才能保持连续
+        y_sample[[0, -1]] = 0.
         # 分段线性差值
         func_list.append(lambda x0, y=y_sample: np.interp(x0, x.flatten(), y))
 
@@ -93,9 +95,9 @@ class ADRICBCDataset(Dataset):
         y_train = np.vstack((y_train_ic, y_train_bc))
         label = np.vstack((label_ic, label_bc))
 
-        self.u0_train = torch.from_numpy(u0_train).float()
-        self.y_train = torch.from_numpy(y_train).float()
-        self.label = torch.from_numpy(label).float()
+        self.u0_train = torch.from_numpy(u0_train).float().to(device)
+        self.y_train = torch.from_numpy(y_train).float().to(device)
+        self.label = torch.from_numpy(label).float().to(device)
         # print("u0_train", self.u0_train)
         # print("y_train", self.y_train)
         # print("label", self.label)
@@ -131,8 +133,8 @@ class ADRPhysicsDataset(Dataset):
         y_physics = np.random.rand(physics_train_count, 2)
         y_train_physics = np.tile(y_physics, (func_count, 1))
 
-        self.u0_train = torch.from_numpy(u0_train_physics).float()
-        self.y_train = torch.from_numpy(y_train_physics).float()
+        self.u0_train = torch.from_numpy(u0_train_physics).float().to(device)
+        self.y_train = torch.from_numpy(y_train_physics).float().to(device)
         # print("u0_train", self.u0_train)
         # print("y_train", self.y_train)
 
@@ -197,14 +199,19 @@ if "__main__" == __name__:
     # torch.manual_seed(123)
     # np.random.seed(123)
 
+    torch.set_default_dtype(torch.float)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(device)
+
     # 随机生成的函数个数
     stoch_func_num = 5000
 
     # 构建网络网络结构
-    branch_layers = [100, 20, 20, 20]
-    trunk_layers = [2, 20, 20, 20]
+    branch_layers = [100, 64, 64, 64, 64]
+    trunk_layers = [2, 64, 64, 64, 64]
 
     model = ADRNet(branch_layers, trunk_layers)
+    model.to(device)
     print("model:\n", model)
 
     # 分支网络输入维度
@@ -233,7 +240,7 @@ if "__main__" == __name__:
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, amsgrad=False)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-6, mode='min', factor=0.5,
-                                                           patience=40000,
+                                                           patience=20000,
                                                            verbose=True)
 
     batch = 0
@@ -261,8 +268,8 @@ if "__main__" == __name__:
         scheduler.step(loss)
         if batch % 100 == 0:
             print('batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
-        if loss.item() < 0.01:
+        if loss.item() < 0.001:
             print('batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
             break
 
-    torch.save(model, 'adr_don_ic_01.pt')
+    torch.save(model, 'adr_don_ic_01_gzz.pt')
