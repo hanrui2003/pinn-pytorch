@@ -1,25 +1,13 @@
-import numpy as np
+from datetime import datetime
 
+# 记录训练开始时间
+start_time = datetime.now()
+print("Training started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
 
-# 定义随机函数
-def random_function(x):
-    return np.random.rand(*x.shape) * np.random.choice([-1, 1], size=x.shape)
+# 在训练中执行操作
 
-
-# 定义边界条件
-def boundary_condition(x):
-    return np.piecewise(x, [x < 0, x == 0, x > 0], [0, 0, 0])
-
-
-# 生成随机函数
-x = np.linspace(-1, 1, 1000)
-y = random_function(x)
-
-# 应用边界条件
-y = y - boundary_condition(x)
-
-# 绘制随机函数
-import matplotlib.pyplot as plt
-
-plt.plot(x, y)
-plt.show()
+# 训练结束后记录结束时间并计算总时间
+end_time = datetime.now()
+elapsed_time = end_time - start_time
+print("Training ended at:", end_time.strftime("%Y-%m-%d %H:%M:%S"))
+print("Elapsed time: ", elapsed_time)

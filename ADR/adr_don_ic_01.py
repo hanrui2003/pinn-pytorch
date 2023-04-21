@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.autograd as autograd
 from torch.utils.data import Dataset, DataLoader
-import itertools
+from datetime import datetime
 
 
 def RBF(x1, x2, output_scale=1.0, length_scale=0.2):
@@ -207,8 +207,8 @@ if "__main__" == __name__:
     stoch_func_num = 5000
 
     # 构建网络网络结构
-    branch_layers = [100, 64, 64, 64, 64]
-    trunk_layers = [2, 64, 64, 64, 64]
+    branch_layers = [100, 64, 64, 64, 64, 64]
+    trunk_layers = [2, 64, 64, 64, 64, 64]
 
     model = ADRNet(branch_layers, trunk_layers)
     model.to(device)
@@ -223,7 +223,7 @@ if "__main__" == __name__:
     # 边值训练点个数
     each_bc_train_num = 100
     # 物理信息训练点个数
-    physics_train_num = 100
+    physics_train_num = 200
 
     func_list = gp_sample(num=stoch_func_num)
     icbc_ds = ADRICBCDataset(func_list, branch_input_size, ic_train_num, each_bc_train_num)
@@ -240,9 +240,12 @@ if "__main__" == __name__:
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, amsgrad=False)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-6, mode='min', factor=0.5,
-                                                           patience=20000,
+                                                           patience=10000,
                                                            verbose=True)
 
+    # 记录训练开始时间
+    start_time = datetime.now()
+    print("Training started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
     batch = 0
     while True:
         batch += 1
@@ -268,8 +271,14 @@ if "__main__" == __name__:
         scheduler.step(loss)
         if batch % 100 == 0:
             print('batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
-        if loss.item() < 0.001:
+        if loss.item() < 0.0001:
             print('batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
             break
 
-    torch.save(model, 'adr_don_ic_01_gzz.pt')
+    torch.save(model, 'adr_don_ic_01_gzz_01.pt')
+
+    # 训练结束后记录结束时间并计算总时间
+    end_time = datetime.now()
+    elapsed_time = end_time - start_time
+    print("Training ended at:", end_time.strftime("%Y-%m-%d %H:%M:%S"))
+    print("Elapsed time: ", elapsed_time)
