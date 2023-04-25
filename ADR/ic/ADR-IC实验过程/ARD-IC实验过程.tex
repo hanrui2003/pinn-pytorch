@@ -1,0 +1,169 @@
+\documentclass{article}
+\usepackage[a4paper,innermargin=1.2in,outermargin=1.2in,
+bottom=1.5in,marginparwidth=1in,marginparsep
+=3mm]{geometry}
+\usepackage{amsmath,amsthm,amssymb,enumerate}
+\usepackage{ctex}
+\usepackage{natbib}
+\usepackage{graphicx}
+\graphicspath{{images/}}
+\usepackage{float}
+\usepackage{subfigure}
+\usepackage{color}
+\usepackage{array}
+\title{反应扩散方程}
+\author{MG21210021李庆春}
+%\date{2022.8.20}
+\linespread{1.25}
+\bibliographystyle{plain}
+
+\usepackage{listings}
+\lstset{
+	columns=fixed,       
+	numbers=left,                                        % 在左侧显示行号
+	numberstyle=\tiny\color{black},                       % 设定行号格式
+	frame=none,                                          % 不显示背景边框
+	backgroundcolor=\color[RGB]{245,245,244},            % 设定背景颜色
+	keywordstyle=\color[RGB]{40,40,255},                 % 设定关键字颜色
+	numberstyle=\footnotesize\color{black},           
+	commentstyle=\it\color[RGB]{0,96,96},                % 设置代码注释的格式
+	stringstyle=\rmfamily\slshape\color[RGB]{128,0,0},   % 设置字符串格式
+	showstringspaces=false,                              % 不显示字符串中的空格
+	language=python,                                        % 设置语言
+}
+
+
+\begin{document}
+	
+\maketitle
+	
+\section{反应扩散方程简述}
+\begin{equation}
+	\frac{\partial u}{\partial t}=D\frac{\partial^2 u}{\partial x^2}+ku^2 \qquad (x,t) \in (0,1] \times(0,1]
+\end{equation}
+其中，扩散系数D=0.01，反应速率k=0.01，边值为零函数；\\
+考虑初值为方程参数的问题，即初值不确定，记为$u_0(x)$；\\
+我们采用DeepONet去拟合这个算子，记$G_{\theta}$为神经网络算子，$G$为真解算子，则对于任意给的初值函数$u^{(i)}_0$：
+\begin{equation}
+	G_{\theta}(u^{(i)}_0)(x,t)\approx G(u^{(i)}_0)(x,t)= u^{(i)}(x,t)
+\end{equation}
+\begin{equation}
+	\frac{\partial G_{\theta}(u^{(i)}_0)(x,t)}{\partial t} \approx D\frac{\partial^2 G_{\theta}(u^{(i)}_0)(x,t)}{\partial x^2} + k[G_{\theta}(u^{(i)}_0)(x,t)]^2
+\end{equation}
+所以我们可以构造两类损失，第一类是神经网络模型的损失，即对于带有label的数据（也就是本例中满足初边值条件的点），它们的label值和网络预测值之间的差异，我们称之为算子损失，定义如下：
+\begin{equation}
+	\mathcal{L}_{Operator}(\theta)=\frac{1}{NP}\sum_{i=1}^{N}\sum_{j=1}^{P}\left|G_{\theta}(u^{(i)}_0)(x_{u,j}^{(i)},t_{u,j}^{(i)})- u^{(i)}(x_{u,j}^{(i)},t_{u,j}^{(i)})\right|^2 \label{eq:loss_operator}
+\end{equation}
+第二类是物理模型损失，在PDE的定义域内随机取点，带入方程，计算两边的差异：
+\begin{equation}
+	\mathcal{L}_{Physics}(\theta)=\frac{1}{NQ}\sum_{i=1}^{N}\sum_{j=1}^{Q}\left|\frac{\partial G_{\theta}(u^{(i)}_0)(x_{r,j}^{(i)},t_{r,j}^{(i)})}{\partial t} - D\frac{\partial^2 G_{\theta}(u^{(i)}_0)(x_{r,j}^{(i)},t_{r,j}^{(i)})}{\partial x^2} - k[G_{\theta}(u^{(i)}_0)(x_{r,j}^{(i)},t_{r,j}^{(i)})]^2\right|^2 \label{eq:loss_physics}
+\end{equation}
+最终，损失函数为：
+\begin{equation}
+	\mathcal{L}(\theta)=\mathcal{L}_{Operator}(\theta)+\mathcal{L}_{Physics}(\theta)
+\end{equation}
+
+\section{神经网络结构}
+\begin{figure}[h]
+	\centering
+	\subfigure[DeepONet架构.]{
+		\includegraphics[width=0.95\linewidth]{deeponet-architecture}
+	}
+	\caption{DeepONet架构}
+	\label{DeepONet架构}
+\end{figure}
+网络结构采用Unstacked DeepONet，这样的好处是代码清晰简洁点。分支网络输入初值函数的离散格式，主干网络输入PDE定义域内的点。将二者的输出做内积，得到网络的预测值；
+
+\section{训练算法}
+\begin{enumerate}
+	\item 随机生成N个初值函数（本例中N=5000）:
+	\begin{equation}
+		\{u^{(i)}_0(\textbf{x})\}_{i=1}^{N}={[u^{(1)}_0(\textbf{x}),u^{(2)}_0(\textbf{x}),...,u^{(N)}_0(\textbf{x})]}
+	\end{equation}
+	\item 对于每个初值函数，在其定义域内等距选取m个点（本例中m=100），取这些点对应的函数值作为分支网络的输入：
+	\begin{equation}
+		\begin{bmatrix}
+			u^{(1)}_0(x_1) & u^{(1)}_0(x_2)& ... & u^{(1)}_0(x_m) \\
+			u^{(2)}_0(x_1) & u^{(2)}_0(x_2)& ... & u^{(2)}_0(x_m) \\
+			\vdots & \vdots & \ddots & \vdots \\
+			u^{(N)}_0(x_1) & u^{(N)}_0(x_2) & ... & u^{(N)}_0(x_m)
+		\end{bmatrix}
+	\end{equation}
+	\item 将其送入分支网络，经过前向传播：
+	\begin{equation}
+		b_k
+		\begin{bmatrix}
+			u^{(1)}_0(x_1) & u^{(1)}_0(x_2)& ... & u^{(1)}_0(x_m) \\
+			u^{(2)}_0(x_1) & u^{(2)}_0(x_2)& ... & u^{(2)}_0(x_m) \\
+			\vdots & \vdots & \ddots & \vdots \\
+			u^{(N)}_0(x_1) & u^{(N)}_0(x_2) & ... & u^{(N)}_0(x_m)
+		\end{bmatrix}
+	\end{equation}
+	\item 从初边值选择P个点（本例中P=100）
+	\begin{equation}
+		\textbf{y}_u=y_{u1},y_{u2},...,y_{uP}
+	\end{equation}
+	\item 将其送入主干网络，经过前向传播：
+	\begin{equation}
+		t_k(y_{u1},y_{u2},...,y_{uP})
+	\end{equation}
+	\item 将二者输出做点积，得到近似的算子
+	\begin{equation}
+		G_\theta(u)(\textbf{y})=\sum_{k=1}^q\underset{Branch}{\underbrace{b_k\left(u(x_1),u(x_2),...,u(x_m)\right)}}.\underset{Trunk}{\underbrace{t_k(\textbf{y})}}
+	\end{equation}
+	\item 根据公式\ref{eq:loss_operator}，计算算子损失；
+	\item 从定义域中随机选Q个点
+	\begin{equation}
+		\textbf{y}_r=y_{r1},y_{r2},...,y_{rQ}
+	\end{equation}
+	\item 根据公式\ref{eq:loss_physics}，计算物理模型损失；
+	\item 计算总损失
+	\begin{equation}
+		\mathcal{L}(\theta)=\mathcal{L}_{operator}(\theta)+\mathcal{L}_{Physics}(\theta)
+	\end{equation}
+	\item 反向传播，利用梯度下降更新神经网络参数，使损失最小化；
+	\item 重复上述过程直至$G_\theta(u_0)(x,t)\approx G(u_0)(x,t)$
+\end{enumerate}
+{\color{red} 这里需要注意的是，初值函数集合要和训练点集合做卡氏积，即对于任何一个初值函数，它要和所有的训练点分别进行一次网络前馈，并做点积。}
+
+\section{主程序解释}
+\subsection{RBF}
+高斯径向基函数，是一种高斯核函数，用于计算两个时刻的高斯变量的协方差，用RBF得到的是一个半正定矩阵；
+\begin{equation}
+	k(x,x') = \sigma^2 exp(-\frac{||x-x'||^2}{2l^2})
+\end{equation}
+
+\subsection{gp\_sample}
+高斯过程采样函数，对x的定义域[0, 1]做网格划分，得到一列点$x_0, x_1, \cdots , x_n$，记为向量$\mathbf{x}$，作为参数调用RBF函数，得到协方差矩阵，再利用cholesky分解定理得到一列符合正态分布的随机变量$y_0, y_1,\cdots, y_n$，记为$
+\mathbf{y}$；以$\mathbf{x}$和$\mathbf{y}$作插值函数，就生成了一个初值函数；方法中通过for循环生成初值函数列表，注意这里返回的就是function对象。
+
+\subsection{ADRICBCDataset}
+初边值条件的数据集，主要逻辑再init方法里面。
+\begin{enumerate}
+	\item 初始化初值训练点\\
+	本例中选取100个初值点进行训练，先对高斯过程采样生成的初值函数列表进行离散化，取离散化的函数值作为分支网的输入，注意这里每个函数要和所有的初边值点作用一下，所以要对函数进行复制，复制的次数等于初值点的个数，对[0 ,1]均匀采样100个点作为初值训练点，并调用初值函数得到函数值作为训练的标签值，这里同样需要注意的是，对于每个初值训练点，都要调用所有的初值函数。
+	\item 初始化边值训练点\\
+	逻辑和上面的初值训练点差不多，区别就是本例采用零边值条件，所以对应的标签值都为0；
+\end{enumerate}
+
+\subsection{ADRPhysicsDataset}
+物理信息的数据集，逻辑和初边值训练点差不多，区别在于是对$[0, 1] \times [0, 1]$ 均匀采点；
+
+\subsection{ADRNet}
+算子网络的具体实现
+\subsubsection{init}
+激活函数设置为双曲正切(Tanh)，损失函数使用均方误差(MSE)，主干网络和分支网络根据传入的参数构造多层感知机，就是多层全连接网络。
+
+\subsubsection{forward}
+将初值函数经过分支网络前向传播，训练点(x,t)经过主干网络前向传播，对两个网络的输出做内积，得到预测值。
+
+\subsubsection{loss\_icbc}
+计算初边值训练损失，将初边值训练点经过网络前馈，计算得到的预测试和标签值的均方误差。
+
+\subsubsection{loss\_physics}
+计算物理模型损失，将物理训练点经过网络前馈，对得到的预测值计算各阶导数，按照公式\ref{eq:loss_physics}计算损失。
+
+\subsubsection{loss}
+将初边值损失和物理损失进行加总，这里相当于设置二者的权重各位0.5。
+
+\end{document}

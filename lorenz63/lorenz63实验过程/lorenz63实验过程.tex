@@ -482,7 +482,7 @@ Physics-informed DeepONets
 \end{equation}
 最终，损失函数为：
 \begin{equation}
-	\mathcal{L}(\theta)=\mathcal{L}_{Ooperator}(\theta)+\mathcal{L}_{Physics}(\theta)
+	\mathcal{L}(\theta)=\mathcal{L}_{Operator}(\theta)+\mathcal{L}_{Physics}(\theta)
 \end{equation}
 
 \subsubsection{训练算法}
@@ -754,36 +754,5 @@ Elapsed time:  2:37:43.443680
 工作站存储的模型文件是：adr\_don\_ic\_01\_gzz\_02.pt，相对误差$10^{-2}$量级。\\
 本地训练的结果：网络层数少一点，损失大一点，物理信息取点少一点。在做预测的时候，相对误差也差不太多。\\
 精度要想提升，一方面可以继续训练，我觉得更主要的一方面应该在初值函数的选取。目前代码逻辑初值函数是随机正态分布的函数值，然后把两端设置为0，所以靠近两端梯度过大。所以看数值解和神经网络解在初值地方，有差异；\\
-
-
-
-
-具体来说，假设我们有一个$n$维的常微分方程组：
-\begin{align}
-	\frac{d\boldsymbol{u}}{dt} &= \boldsymbol{f}(\boldsymbol{u}, t; \boldsymbol{\theta})\
-	\boldsymbol{u}(t_0) &= \boldsymbol{u}_0(\boldsymbol{\xi})
-\end{align}
-其中$\boldsymbol{u}=(u_1, u_2, \dots, u_n)^T$，$\boldsymbol{\theta}$是参数，$\boldsymbol{\xi}$是初始值的参数。我们可以将常微分方程组表示为微分算子$\mathcal{N}$作用在$\boldsymbol{u}$上的形式：
-\begin{equation}
-	\mathcal{N}(\boldsymbol{u}, t; \boldsymbol{\theta}) = \frac{d\boldsymbol{u}}{dt} - \boldsymbol{f}(\boldsymbol{u}, t; \boldsymbol{\theta})
-\end{equation}
-
-然后，我们可以用算子神经网络来逼近微分算子$\mathcal{N}$，形式为：
-\begin{equation}
-	\mathcal{N}_\theta(\boldsymbol{u}, t) \approx \mathcal{N}(\boldsymbol{u}, t; \boldsymbol{\theta})
-\end{equation}
-
-同样地，我们可以用神经网络来逼近初始条件，形式为：
-\begin{equation}
-	\boldsymbol{u}_\theta(t_0; \boldsymbol{\xi}) \approx \boldsymbol{u}(t_0) = \boldsymbol{u}_0(\boldsymbol{\xi})
-\end{equation}
-
-最后，我们可以将整个常微分方程组表示为以下形式：
-\begin{align}
-	\mathcal{N}\theta(\boldsymbol{u}, t) &= 0\
-	\boldsymbol{u}(t_0) - \boldsymbol{u}\theta(t_0; \boldsymbol{\xi}) &= 0
-\end{align}
-
-我们可以通过最小化上述形式中的损失函数来训练神经网络，从而求解参数化的常微分方程组。
 
 \end{document}
