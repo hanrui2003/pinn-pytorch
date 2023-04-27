@@ -1,11 +1,15 @@
 import torch
 
-# 创建一个空的张量
-new_tensor = torch.Tensor()
+# 定义函数
+def my_func(x, y, z):
+    output = x * y + z
+    return output
 
-# 循环追加多个张量
-for i in range(5):
-    tensor = torch.randn((3, 4))
-    new_tensor = torch.cat((new_tensor, tensor), dim=0)
+# 创建输入张量
+x = torch.tensor([1.0], requires_grad=True)
+y = torch.tensor([2.0], requires_grad=True)
+z = torch.tensor([3.0], requires_grad=True)
 
-print(new_tensor)
+# 计算x关于output的梯度
+grad_x = torch.autograd.grad(my_func(x, y, z), x, grad_outputs=torch.tensor([1.0]))[0]
+print(grad_x)

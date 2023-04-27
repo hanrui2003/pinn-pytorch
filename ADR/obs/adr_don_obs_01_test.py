@@ -41,8 +41,8 @@ def plot(X1, T1, U1, X2, T2, U2):
 
 
 if "__main__" == __name__:
-    torch.manual_seed(1234)
-    np.random.seed(1234)
+    # torch.manual_seed(1234)
+    # np.random.seed(1234)
 
     # 测试的初值函数（随机生成）
     test_ic_func = gp_sample(num=1)[0]
@@ -79,20 +79,19 @@ if "__main__" == __name__:
     idx_x = [i for i in range(x_interval, Nx, x_interval)]
     idx_t = [i for i in range(t_interval, Nt, t_interval)]
 
-    x_test = X[idx_t][:, idx_x].flatten()[:, None]
-    t_test = T[idx_t][:, idx_x].flatten()[:, None]
-    y_test = np.hstack((x_test, t_test))
+    y_test = np.hstack([X.flatten()[:, None], T.flatten()[:, None]])
     y_test = torch.from_numpy(y_test).float()
 
     o_test = U[idx_t][:, idx_x].flatten()
     o_test = np.tile(o_test, (Nx * Nt, 1))
     o_test = torch.from_numpy(o_test).float()
 
-    model = torch.load('xxx.pt', map_location=torch.device('cpu'))
+    model = torch.load('adr_don_obs_01.pt', map_location=torch.device('cpu'))
+    print("model", model)
 
     u_hat = model(o_test, y_test).detach()
 
-    plot(X, T, U.T, X, T, u_hat.reshape(100, -1))
+    plot(X, T, U, X, T, u_hat.reshape(100, -1))
 
     u_truth = U.flatten(order="F")[:, None]
     u_pred = u_hat.numpy()
