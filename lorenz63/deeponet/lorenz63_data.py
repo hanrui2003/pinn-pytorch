@@ -30,9 +30,9 @@ def lorenz_f(u):
     # default parameters
     sigma = 10.0
     # 最后趋于稳态的
-    rho = 15.0
+    # rho = 15.0
     # 一直震荡的
-    # rho = 28.0
+    rho = 28.0
     beta = 8 / 3
     dt[0] = sigma * (u[1] - u[0])
     dt[1] = rho * u[0] - u[1] - u[0] * u[2]
@@ -52,15 +52,17 @@ def u_next(u, h):
 
 if "__main__" == __name__:
     # 总点数
-    total_points = 1000
+    total_points = 3000
     # 步长
     h = 0.005
 
     t = np.arange(0., total_points * h, h)
     # 模式积分
     # u0 为初值, 三个分量为 x, y, z 的初值
-    u0 = np.array([-4., 7., 15])
-    # u0 = np.array([1., -1., 1.])
+    # non-chaos
+    # u0 = np.array([-4., 7., 15])
+    # chaos
+    u0 = np.array([1.508870, -1.531271, 25.46091])
     # 计算三千个个点
     Xtrue = np.zeros([total_points, 3])
     Xtrue[0] = u0
@@ -68,7 +70,7 @@ if "__main__" == __name__:
     for j in range(1, total_points):
         Xtrue[j] = u_next(Xtrue[j - 1], h)
 
-    np.save(r'lorenz63_non_chaos.npy', Xtrue)
+    np.save(r'lorenz63_chaos.npy', Xtrue)
 
     # 画图
     fig = plt.figure()

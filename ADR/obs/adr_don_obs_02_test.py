@@ -4,7 +4,7 @@ from adr_don_obs_01 import gp_sample, ADRNet
 import matplotlib.pyplot as plt
 
 """
-使用随机初值函数的方式，生成随机观测
+使用随机源项的方式，生成随机观测
 """
 
 
@@ -68,10 +68,9 @@ if "__main__" == __name__:
     X, T = np.meshgrid(x, t)
 
     U = np.zeros((Nt, Nx))
-    U[0] = test_ic_func(x)
     for n in range(Nt - 1):
         u_n = U[n]
-        u_next = u_n + dt * ((D / h2) * D2 @ u_n + k * u_n ** 2)
+        u_next = u_n + dt * ((D / h2) * D2 @ u_n + k * u_n ** 2 + test_ic_func(x))
         u_next[np.array([0, -1])] = 0.
         U[n + 1] = u_next
 
@@ -90,7 +89,7 @@ if "__main__" == __name__:
     o_test = np.tile(o_test, (Nx * Nt, 1))
     o_test = torch.from_numpy(o_test).float()
 
-    model = torch.load('adr_don_obs_01_gzz_01.pt', map_location=torch.device('cpu'))
+    model = torch.load('adr_don_obs_02_gzz_01.pt', map_location=torch.device('cpu'))
     print("model", model)
 
     u_hat = model(o_test, y_test).detach()

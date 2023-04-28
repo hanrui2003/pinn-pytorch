@@ -49,11 +49,12 @@ def gp_sample(num=5000, x_lb=0., x_ub=1.):
 
 def generate_obs(num=5000):
     """
-    选取一些观测点，并对这些点生成一批观测数据。
+    随机生成一些源项，然后得到数值解，
+    对于每个数值解，在网格上选取一些点，把这些点对应的值作为一组观测数据。
     :param num:观测数据的数量
     :return:
     """
-    ic_func_list = gp_sample(num)
+    func_list = gp_sample(num)
 
     # 以下是数值解
     Nx = 50
@@ -85,18 +86,17 @@ def generate_obs(num=5000):
 
     # 观测训练数据
     o_train = []
-    for func in ic_func_list:
+    for f in func_list:
         U = np.zeros((Nt, Nx))
-        U[0] = func(x)
         for n in range(Nt - 1):
             u_n = U[n]
-            u_next = u_n + dt * ((D / h2) * D2 @ u_n + k * u_n ** 2)
+            u_next = u_n + dt * ((D / h2) * D2 @ u_n + k * u_n ** 2 + f(x))
             u_next[np.array([0, -1])] = 0.
             U[n + 1] = u_next
 
         o_train.append(U[idx_t][:, idx_x].flatten())
 
-    return np.asarray(o_train), y_train
+    return np.asarray(o_train), y_train, func_list
 
 
 class ADRObsDataset(Dataset):
@@ -137,7 +137,7 @@ class ADRPhysicsDataset(Dataset):
     物理信息对应的训练集
     """
 
-    def __init__(self, o_train_raw, physics_train_count=100):
+    def __init__(self, o_train_raw, func_list, physics_train_count=100):
         """
         根据随机函数，初始化数据集
         :param o_train_raw: 观测值
@@ -152,8 +152,12 @@ class ADRPhysicsDataset(Dataset):
         y_physics = np.random.rand(physics_train_count, 2)
         y_train_physics = np.tile(y_physics, (o_train_count, 1))
 
+        x_physics = y_physics[:, [0]]
+        f_train_physics = np.asarray([f(x_physics) for f in func_list]).reshape(-1, 1)
+
         self.o_train = torch.from_numpy(o_train_physics).float().to(device)
         self.y_train = torch.from_numpy(y_train_physics).float().to(device)
+        self.f_train = torch.from_numpy(f_train_physics).float().to(device)
         # print("u0_train", self.u0_train)
         # print("y_train", self.y_train)
 
@@ -161,7 +165,7 @@ class ADRPhysicsDataset(Dataset):
         return self.length
 
     def __getitem__(self, index):
-        return self.o_train[index], self.y_train[index]
+        return self.o_train[index], self.y_train[index], self.f_train[index]
 
 
 class ADRNet(nn.Module):
@@ -196,7 +200,7 @@ class ADRNet(nn.Module):
         return self.loss_func(u_hat, label)
 
     def loss_physics(self, physics_batch):
-        o_train, y_train = physics_batch
+        o_train, y_train, f_train = physics_batch
         y_train.requires_grad = True
         u_hat = self.forward(o_train, y_train)
 
@@ -206,7 +210,7 @@ class ADRNet(nn.Module):
         u_t = u_y[:, [1]]
         u_xx = u_yy[:, [0]]
 
-        return self.loss_func(u_t, 0.01 * u_xx + 0.01 * u_hat ** 2)
+        return self.loss_func(u_t, 0.01 * u_xx + 0.01 * u_hat ** 2 + f_train)
 
     def loss(self, obs_batch, physics_batch):
         loss_obs = self.loss_obs(obs_batch)
@@ -224,7 +228,7 @@ if "__main__" == __name__:
 
     # 随机生成的函数个数
     stoch_obs_group_num = 5000
-    o_train_raw, y_train_raw = generate_obs(stoch_obs_group_num)
+    o_train_raw, y_train_raw, func_list = generate_obs(stoch_obs_group_num)
 
     # 构建网络网络结构
     branch_layers = [o_train_raw.shape[1], 64, 64, 64, 64, 64]
@@ -237,7 +241,7 @@ if "__main__" == __name__:
     obs_ds = ADRObsDataset(o_train_raw, y_train_raw)
 
     physics_train_num = 200
-    physics_ds = ADRPhysicsDataset(o_train_raw, physics_train_num)
+    physics_ds = ADRPhysicsDataset(o_train_raw, func_list, physics_train_num)
 
     print("obs_ds count:", len(obs_ds), "physics_ds count:", len(physics_ds))
 
@@ -285,7 +289,7 @@ if "__main__" == __name__:
             print('batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
             break
 
-    torch.save(model, 'adr_don_obs_01_bak1.pt')
+    torch.save(model, 'adr_don_obs_02_gzz_01.pt')
 
     # 训练结束后记录结束时间并计算总时间
     end_time = datetime.now()
