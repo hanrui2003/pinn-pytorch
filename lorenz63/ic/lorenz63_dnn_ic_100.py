@@ -3,21 +3,31 @@ import torch.nn as nn
 import torch.autograd as autograd
 import numpy as np
 import matplotlib.pyplot as plt
+from datetime import datetime
+
+
+class SinActivation(torch.nn.Module):
+    def forward(self, x):
+        return torch.sin(x)
 
 
 class FCN(nn.Module):
     def __init__(self, layers):
         super().__init__()
+        # lorenz 方程参数
+        self.rho = torch.tensor(15.0)
+        self.sigma = torch.tensor(10.0)
+        self.beta = torch.tensor(8.0 / 3.0)
+
         self.activation = nn.Tanh()
-        self.loss_func = nn.MSELoss(reduction='none')
+        self.last_activation = SinActivation()
+        self.loss_func = nn.MSELoss(reduction='mean')
         self.linears = nn.ModuleList([nn.Linear(layers[j], layers[j + 1]) for j in range(len(layers) - 1)])
         for linear in self.linears:
             nn.init.xavier_normal_(linear.weight.data)
             nn.init.zeros_(linear.bias.data)
 
-    def forward(self, x):
-        # 正规化
-        a = (x - x_lb) / (x_ub - x_lb)
+    def forward(self, a):
         for j in range(len(self.linears) - 1):
             z = self.linears[j](a)
             a = self.activation(z)
@@ -38,11 +48,10 @@ class FCN(nn.Module):
         z_t = autograd.grad(z_nn, x_pde, torch.ones_like(z_nn), create_graph=True)[0]
 
         lhs = torch.hstack((x_t, y_t, z_t))
-        rhs = torch.hstack((sigma * (y_nn - x_nn), x_nn * (rho - z_nn) - y_nn, x_nn * y_nn - beta * z_nn))
+        rhs = torch.hstack(
+            (self.sigma * (y_nn - x_nn), x_nn * (self.rho - z_nn) - y_nn, x_nn * y_nn - self.beta * z_nn))
 
-        loss_vector = self.loss_func(lhs, rhs)
-
-        return loss_vector.mean() + loss_vector.max()
+        return self.loss_func(lhs, rhs)
 
     def loss(self, x_bc, y_bc, x_pde):
         loss_bc = self.loss_bc(x_bc, y_bc)
@@ -59,9 +68,9 @@ if "__main__" == __name__:
     print(device)
 
     layers = [1, 32, 32, 3]
-    PINN = FCN(layers)
-    PINN.to(device)
-    print(PINN)
+    model = FCN(layers)
+    model.to(device)
+    print(model)
 
     # 区间总数
     total_interval = 600
@@ -69,15 +78,10 @@ if "__main__" == __name__:
     total_points = total_interval + 1
     # 区间长度
     h = 0.005
-    x_lb = torch.tensor(0.)
-    x_ub = torch.tensor(total_interval * h)
+    x_lb = 0.
+    x_ub = total_interval * h
 
-    # lorenz 方程参数
-    rho = torch.tensor(15.0)
-    sigma = torch.tensor(10.0)
-    beta = torch.tensor(8.0 / 3.0)
-
-    x_test = torch.linspace(x_lb, x_ub, total_points)
+    x_test = np.linspace(x_lb, x_ub, total_points)
 
     # 初值
     x_train_bc = torch.tensor([[0.]])
@@ -93,49 +97,53 @@ if "__main__" == __name__:
     y_train_bc = y_train_bc.float().to(device)
     x_train_nf = x_train_nf.float().to(device)
 
-    optimizer = torch.optim.Adam(PINN.parameters(), lr=1e-3, amsgrad=False)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-8, mode='min', factor=0.5,
-                                                           patience=40000,
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, amsgrad=False)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-6, mode='min', factor=0.5,
+                                                           patience=20000,
                                                            verbose=True)
 
     epoch = 0
+    condition = 0.1
     while True:
         epoch += 1
-        loss = PINN.loss(x_train_bc, y_train_bc, x_train_nf)
+        loss = model.loss(x_train_bc, y_train_bc, x_train_nf)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         scheduler.step(loss)
         if epoch % 1000 == 0:
-            print('epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
-        if loss.item() < 0.1:
-            print('epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
-            break
+            print(datetime.now(), 'epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
 
-    torch.save(PINN, 'lorenz63_dnn_ic_100.pt')
-    PINN = PINN.cpu()
-    nn_predict = PINN(x_test[:, None]).detach().numpy()
-    x_nn = nn_predict[:, [0]]
-    y_nn = nn_predict[:, [1]]
-    z_nn = nn_predict[:, [2]]
+        if loss.item() < condition:
+            torch.save(model, 'lorenz63_dnn_ic_100_' + str(condition) + '.pt')
+            condition *= 0.1
+            print(datetime.now(), 'epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
+            if condition < 0.001:
+                break
 
-    fig, ax = plt.subplots()
-    ax.plot(x_test, x_nn, color='r', label='x')
-    ax.plot(x_test, y_nn, color='g', label='y')
-    ax.plot(x_test, z_nn, color='b', label='z')
-    ax.set_title('Lorenz63')
-    ax.set_xlabel('t', color='black')
-    ax.set_ylabel('f(t)', color='black', rotation=0)
-    ax.legend(loc='upper right')
-    plt.savefig('./images/lorenz63_dnn_ic_100_2d.png')
-    plt.close()
-    # plt.show()
-
-    ax = plt.axes(projection="3d")
-    ax.plot(x_nn, y_nn, z_nn, color='r')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
-    ax.set_title('lorenz63')
-    plt.savefig('./images/lorenz63_dnn_ic_100_3d.png')
+    # PINN = PINN.cpu()
+    # nn_predict = PINN(x_test[:, None]).detach().numpy()
+    # x_nn = nn_predict[:, [0]]
+    # y_nn = nn_predict[:, [1]]
+    # z_nn = nn_predict[:, [2]]
+    #
+    # fig, ax = plt.subplots()
+    # ax.plot(x_test, x_nn, color='r', label='x')
+    # ax.plot(x_test, y_nn, color='g', label='y')
+    # ax.plot(x_test, z_nn, color='b', label='z')
+    # ax.set_title('Lorenz63')
+    # ax.set_xlabel('t', color='black')
+    # ax.set_ylabel('f(t)', color='black', rotation=0)
+    # ax.legend(loc='upper right')
+    # plt.savefig('./images/lorenz63_dnn_ic_100_2d.png')
+    # plt.close()
+    # # plt.show()
+    #
+    # ax = plt.axes(projection="3d")
+    # ax.plot(x_nn, y_nn, z_nn, color='r')
+    # ax.set_xlabel('x')
+    # ax.set_ylabel('y')
+    # ax.set_zlabel('z')
+    # ax.set_title('lorenz63')
+    # plt.savefig('./images/lorenz63_dnn_ic_100_3d.png')
     # plt.show()

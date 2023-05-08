@@ -17,17 +17,16 @@ def generate_ic(num=5000):
     :return:
     """
     U = np.load('lorenz63_chaos.npy')
-    return U
-    # # 定义带宽范围
-    # bandwidths = 10 ** np.linspace(-1, 1, 100)
-    # # 网格搜索最优带宽
-    # grid = GridSearchCV(KernelDensity(kernel='gaussian'), {'bandwidth': bandwidths}, cv=5)
-    # grid.fit(U)
-    # best_bandwidth = grid.best_params_['bandwidth']
-    # print("best bandwidth", best_bandwidth)
-    # # 拟合KDE模型
-    # kde = KernelDensity(kernel='gaussian', bandwidth=best_bandwidth).fit(U)
-    # return kde.sample(num)
+    # 定义带宽范围
+    bandwidths = 10 ** np.linspace(-1, 1, 100)
+    # 网格搜索最优带宽
+    grid = GridSearchCV(KernelDensity(kernel='gaussian'), {'bandwidth': bandwidths}, cv=5)
+    grid.fit(U)
+    best_bandwidth = grid.best_params_['bandwidth']
+    print("best bandwidth", best_bandwidth)
+    # 拟合KDE模型
+    kde = KernelDensity(kernel='gaussian', bandwidth=best_bandwidth).fit(U)
+    return kde.sample(num)
 
 
 class L63ICDataset(Dataset):
@@ -56,7 +55,7 @@ class L63ICDataset(Dataset):
 
 
 class L63PhysicsDataset(Dataset):
-    def __init__(self, ic, physics_train_count=40):
+    def __init__(self, ic, physics_train_count=100):
         """
         生成初值训练数据
         :param ic: 初值
@@ -66,7 +65,7 @@ class L63PhysicsDataset(Dataset):
 
         u0_train = np.repeat(ic, physics_train_count, axis=0)
 
-        # 均匀取点[0,0.2]
+        # 均匀取点
         t_train = np.linspace(0, 0.2, physics_train_count)[:, None]
         t_train = np.tile(t_train, (ic_count, 1))
 
@@ -80,6 +79,11 @@ class L63PhysicsDataset(Dataset):
         return self.u0_train[index], self.t_train[index]
 
 
+class SinActivation(torch.nn.Module):
+    def forward(self, x):
+        return torch.sin(x)
+
+
 class L63Net(nn.Module):
     def __init__(self, branch_layers, trunk_layers):
         assert branch_layers[-1] == trunk_layers[-1], "分支网络和主干网络的输出维度必须一致"
@@ -89,6 +93,7 @@ class L63Net(nn.Module):
         self.sigma = torch.tensor(10.0)
         self.beta = torch.tensor(8.0 / 3.0)
         self.activation = nn.Tanh()
+        self.last_activation = SinActivation()
         self.loss_func = nn.MSELoss(reduction='mean')
         self.branch_linear = nn.ModuleList(
             [nn.Linear(branch_layers[i], branch_layers[i + 1]) for i in range(len(branch_layers) - 1)])
@@ -110,7 +115,8 @@ class L63Net(nn.Module):
 
         # 计算主干网络和分支网络输出的乘积，注意是元素级别的
         product = torch.mul(z_branch, z_trunk)
-        return self.merge_linear(product)
+        a_product = self.last_activation(product)
+        return self.merge_linear(a_product)
 
     def loss_ic(self, ic_batch):
         u0_train, t_train, label = ic_batch
@@ -160,27 +166,28 @@ if "__main__" == __name__:
 
     print("ic_ds count:", len(ic_ds), "physics_ds count:", len(physics_ds))
 
-    ic_loader = DataLoader(ic_ds, batch_size=1000, shuffle=True)
+    ic_loader = DataLoader(ic_ds, batch_size=stoch_ic_count // 10, shuffle=True)
     physics_loader = DataLoader(physics_ds, batch_size=10000, shuffle=True)
 
     ic_iter = iter(ic_loader)
     physics_iter = iter(physics_loader)
 
     # 构建网络网络结构
-    branch_layers = [3, 64, 64, 64, 64, 64, 64]
-    trunk_layers = [1, 64, 64, 64, 64, 64, 64]
+    branch_layers = [3, 64, 64, 64, 64, 64]
+    trunk_layers = [1, 64, 64, 64, 64, 64]
 
     model = L63Net(branch_layers, trunk_layers)
     model.to(device)
     print("model:\n", model)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, amsgrad=False)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-7, mode='min', factor=0.5,
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-6, mode='min', factor=0.5,
                                                            patience=5000, verbose=True)
     # 记录训练开始时间
     start_time = datetime.now()
     print("Training started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
     batch = 0
+    condition = 0.1
     while True:
         batch += 1
 
@@ -205,16 +212,13 @@ if "__main__" == __name__:
         scheduler.step(loss)
         if batch % 100 == 0:
             print(datetime.now(), 'batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
-        if loss.item() < 0.1:
-            torch.save(model, 'lorenz63_don_02_02_-1_gzz_01.pt')
+
+        if loss.item() < condition:
+            torch.save(model, 'lorenz63_don_03_' + str(condition) + '.pt')
+            condition *= 0.1
             print(datetime.now(), 'batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
-        if loss.item() < 0.01:
-            torch.save(model, 'lorenz63_don_02_02_-2_gzz_non_random.pt')
-            print(datetime.now(), 'batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
-        if loss.item() < 0.001:
-            torch.save(model, 'lorenz63_don_02_-3.pt')
-            print(datetime.now(), 'batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
-            break
+            if condition < 0.001:
+                break
 
     # 训练结束后记录结束时间并计算总时间
     end_time = datetime.now()

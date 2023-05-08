@@ -1,13 +1,13 @@
 import numpy as np
 import torch
-from lorenz63_don_01 import L63Net
+from lorenz63_don_03 import L63Net, SinActivation
 import matplotlib.pyplot as plt
 from sklearn.neighbors import KernelDensity
 from sklearn.model_selection import GridSearchCV
-from lorenz63_data_non_chaos import u_next
+from lorenz63_data_chaos import u_next
 
 """
-训练小区间长度为0.5的测试类
+训练小区间长度为0.2的测试类
 """
 
 
@@ -51,7 +51,7 @@ if "__main__" == __name__:
 
     # 随机生成初值点，
     # 先根据数值解的结果，使用核密度估计，然后再采样
-    U = np.load('lorenz63_non_chaos.npy')
+    U = np.load('lorenz63_chaos.npy')
     # 定义带宽范围
     bandwidths = 10 ** np.linspace(-1, 1, 100)
     # 网格搜索最优带宽
@@ -61,7 +61,8 @@ if "__main__" == __name__:
     print("best bandwidth", best_bandwidth)
     # 拟合KDE模型
     kde = KernelDensity(kernel='gaussian', bandwidth=best_bandwidth).fit(U)
-    u0 = kde.sample(1)
+    # u0 = kde.sample(1)
+    u0 = U[0]
     print("u0", u0)
 
     # 总点数
@@ -81,7 +82,7 @@ if "__main__" == __name__:
     # 以下是神经网络解
     # 神经网络训练时，区间的上下界
     t_lb = 0.
-    t_ub = 0.5
+    t_ub = 0.2
     # 这里让能取到端点，所以在t_ub加上一个小量
     t = np.arange(t_lb, t_ub + h / 2, h)
     t_test = torch.from_numpy(t[:, None]).float()
@@ -90,12 +91,12 @@ if "__main__" == __name__:
     u0_test = np.tile(u0, (N_t, 1))
     u0_test = torch.from_numpy(u0_test).float()
 
-    model = torch.load('lorenz63_don_01_05_bak1.pt', map_location=torch.device('cpu'))
+    model = torch.load('lorenz63_don_03_0.2_0.1_gzz_01.pt', map_location=torch.device('cpu'))
 
     u_pred = np.zeros((total_points, 3))
-    for i in range(10):
+    for i in range(25):
         u_hat = model(u0_test, t_test).detach().numpy()
-        u_pred[i * 100:(i + 1) * 100] = u_hat[0:100]
+        u_pred[i * 40:(i + 1) * 40] = u_hat[0:40]
         u0_test[:] = torch.from_numpy(u_hat[-1])
 
     max_error = abs(u_truth - u_pred).max(axis=0)
