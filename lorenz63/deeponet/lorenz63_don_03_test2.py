@@ -90,7 +90,7 @@ if "__main__" == __name__:
     u0_test = np.tile(u0, (N_t, 1))
     u0_test = torch.from_numpy(u0_test).float()
 
-    model = torch.load('lorenz63_don_03_0.1_0.1_gzz_01.pt', map_location=torch.device('cpu'))
+    model = torch.load('lorenz63_don_03_0.1_0.01_gzz_01.pt', map_location=torch.device('cpu'))
 
     u_pred = np.zeros((total_points, 3))
     for i in range(50):
