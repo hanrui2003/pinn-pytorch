@@ -24,7 +24,7 @@ the acceleration of gravity and H is the resting depth of the fluid."""
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-import viz_tools
+import viz_tools_bak
 
 # ==================================================================================
 # ================================ Parameter stuff =================================

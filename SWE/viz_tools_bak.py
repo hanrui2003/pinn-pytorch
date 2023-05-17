@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from mpl_toolkits.mplot3d import Axes3D
-import fourier_transform as ft
+import fourier_transform_bak as ft
 
 
 # plt.style.use("seaborn")
