@@ -1,0 +1,13 @@
+
+================================================================
+use_coriolis = False
+use_beta = False
+use_friction = False
+use_wind = False
+use_source = False
+use_sink = False
+g = 9.81
+H = 100
+dx = 10101.01 km
+dy = 10101.01 km
+dt = 32.25 s

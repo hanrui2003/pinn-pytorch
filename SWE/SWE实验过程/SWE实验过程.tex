@@ -1,0 +1,64 @@
+\documentclass{article}
+\usepackage[a4paper,innermargin=1.2in,outermargin=1.2in,
+bottom=1.5in,marginparwidth=1in,marginparsep
+=3mm]{geometry}
+\usepackage{amsmath,amsthm,amssymb,enumerate}
+\usepackage{ctex}
+\usepackage{natbib}
+\usepackage{graphicx}
+\graphicspath{{images/}}
+\usepackage{float}
+\usepackage{subfigure}
+\usepackage{color}
+\usepackage{array}
+\title{浅水方程}
+\author{MG21210021李庆春}
+%\date{2022.8.20}
+\linespread{1.25}
+\bibliographystyle{plain}
+
+\usepackage{listings}
+\lstset{
+	columns=fixed,       
+	numbers=left,                                        % 在左侧显示行号
+	numberstyle=\tiny\color{black},                       % 设定行号格式
+	frame=none,                                          % 不显示背景边框
+	backgroundcolor=\color[RGB]{245,245,244},            % 设定背景颜色
+	keywordstyle=\color[RGB]{40,40,255},                 % 设定关键字颜色
+	numberstyle=\footnotesize\color{black},           
+	commentstyle=\it\color[RGB]{0,96,96},                % 设置代码注释的格式
+	stringstyle=\rmfamily\slshape\color[RGB]{128,0,0},   % 设置字符串格式
+	showstringspaces=false,                              % 不显示字符串中的空格
+	language=python,                                        % 设置语言
+}
+
+
+\begin{document}
+\maketitle
+\section{浅水方程简述}
+\begin{equation}
+	\begin{cases}
+		\frac{du}{dt} - fv = -g \frac{d\eta}{dx} + \frac{\tau_x}{\rho_0 H} - \kappa u  \\
+		\frac{dv}{dt} + fv = -g \frac{d\eta}{dy} + \frac{\tau_y}{\rho_0 H} - \kappa v  \\
+		\frac{d\eta}{dt} + \frac{d(\eta + H)u}{dx} + \frac{d(\eta + H)u}{dy}= \sigma - w
+		\label{swe}
+	\end{cases}
+\end{equation}
+以上是二维浅水方程表达式，其中动量方程是线性的，连续方程是非线性的，自变量x，y，t的含义是显然的，应变量u是水平方向的流速，v是垂直方向的流速，$\eta$是水面动态海拔；其中$f = f_0 + \beta y$是全维度变换的科里奥利斯参数；$\kappa$是跟摩擦相关的系数；$\tau_x \tau_y$是跟风应力相关的系数；$\sigma$是跟质量源相关的系数；$w$是跟质量汇相关的系数；先不考虑这些额外的系数，将方程\ref{swe}简化为： \\
+\begin{equation}
+	\begin{cases}
+		\frac{du}{dt} = -g \frac{d\eta}{dx} \\
+		\frac{dv}{dt} = -g \frac{d\eta}{dy} \\
+		\frac{d\eta}{dt} + \frac{d(\eta + H)u}{dx} + \frac{d(\eta + H)u}{dy}= 0
+	\end{cases}
+\end{equation}
+该方程的CFL条件为：
+\begin{equation}
+	\begin{cases}
+		dt \leq \frac{min(dx,dy)}{\sqrt{gH}}  \\
+		\alpha \ll 1 \qquad (if \quad coriolis \quad is \quad used)
+	\end{cases}
+\end{equation}
+其中dx，dy是网格间距，g是重力加速度，H是静水深度。
+
+\end{document}
