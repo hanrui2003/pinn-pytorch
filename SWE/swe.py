@@ -154,10 +154,10 @@ v_n[:, -1] = 0.0  # Ensuring initial v satisfy BC
 # eta_n = np.exp(-((X-0)**2/(2*(L_R)**2) + (Y-0)**2/(2*(L_R)**2)))
 # 这里是调整水面高度初值的地方
 # mu = np.random.uniform(low=[-L_x / 2, -L_y / 2], high=[L_x / 2, L_y / 2], size=(1, 2))
-mu = -L_x / 2 + L_x * np.random.rand(1, 2)
-print("mu", mu)
-eta_n = np.exp(-((X - mu[0][0]) ** 2 / (2 * 5E+4 ** 2) + (Y - mu[0][1]) ** 2 / (2 * 5E+4 ** 2)))
-# eta_n = np.exp(-((X - L_x / 2.7) ** 2 / (2 * (0.05E+6) ** 2) + (Y - L_y / 4) ** 2 / (2 * (0.05E+6) ** 2)))
+# mu = -L_x / 2 + L_x * np.random.rand(1, 2)
+# print("mu", mu)
+# eta_n = np.exp(-((X - mu[0][0]) ** 2 / (2 * 5E+4 ** 2) + (Y - mu[0][1]) ** 2 / (2 * 5E+4 ** 2)))
+eta_n = np.exp(-((X - L_x / 2.7) ** 2 / (2 * (0.05E+6) ** 2) + (Y - L_y / 4) ** 2 / (2 * (0.05E+6) ** 2)))
 # eta_n[int(3*N_x/8):int(5*N_x/8),int(3*N_y/8):int(5*N_y/8)] = 1.0
 # eta_n[int(6*N_x/8):int(7*N_x/8),int(6*N_y/8):int(7*N_y/8)] = 1.0
 # eta_n[int(3*N_x/8):int(5*N_x/8), int(13*N_y/14):] = 1.0
@@ -276,7 +276,7 @@ print("\nVisualizing results...")
 # viz_tools.quiver_plot(X, Y, u_n, v_n, "Final state of velocity field $\mathbf{u}(x,y)$")
 # viz_tools.hovmuller_plot(x, t_sample, hm_sample)
 # viz_tools.plot_time_series_and_ft(t_sample, ts_sample)
-eta_anim = viz_tools.eta_animation(X, Y, eta_list, anim_interval * dt, "eta")
+# eta_anim = viz_tools.eta_animation(X, Y, eta_list, anim_interval * dt, "eta")
 eta_surf_anim = viz_tools.eta_animation3D(X, Y, eta_list, anim_interval * dt, "eta_surface")
 quiv_anim = viz_tools.velocity_animation(X, Y, u_list, v_list, anim_interval * dt, "velocity")
 # ============================ Done with visualization =============================

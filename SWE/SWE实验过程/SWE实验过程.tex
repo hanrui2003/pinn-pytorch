@@ -40,7 +40,7 @@ bottom=1.5in,marginparwidth=1in,marginparsep
 	\begin{cases}
 		\frac{du}{dt} - fv = -g \frac{d\eta}{dx} + \frac{\tau_x}{\rho_0 H} - \kappa u  \\
 		\frac{dv}{dt} + fv = -g \frac{d\eta}{dy} + \frac{\tau_y}{\rho_0 H} - \kappa v  \\
-		\frac{d\eta}{dt} + \frac{d(\eta + H)u}{dx} + \frac{d(\eta + H)u}{dy}= \sigma - w
+		\frac{d\eta}{dt} + \frac{d(\eta + H)u}{dx} + \frac{d(\eta + H)v}{dy}= \sigma - w
 		\label{swe}
 	\end{cases}
 \end{equation}
@@ -49,7 +49,15 @@ bottom=1.5in,marginparwidth=1in,marginparsep
 	\begin{cases}
 		\frac{du}{dt} = -g \frac{d\eta}{dx} \\
 		\frac{dv}{dt} = -g \frac{d\eta}{dy} \\
-		\frac{d\eta}{dt} + \frac{d(\eta + H)u}{dx} + \frac{d(\eta + H)u}{dy}= 0
+		\frac{d\eta}{dt} = -\frac{d(\eta + H)u}{dx} - \frac{d(\eta + H)v}{dy}
+	\end{cases}
+\end{equation}
+等价于
+\begin{equation}
+	\begin{cases}
+		\frac{du}{dt} = -g \frac{d\eta}{dx} \\
+		\frac{dv}{dt} = -g \frac{d\eta}{dy} \\
+		\frac{d\eta}{dt} = - u \frac{d\eta}{dx} - v \frac{d\eta}{dy}  - (\eta + H )(\frac{du}{dx} + \frac{dv}{dy})
 	\end{cases}
 \end{equation}
 该方程的CFL条件为：
@@ -59,6 +67,14 @@ bottom=1.5in,marginparwidth=1in,marginparsep
 		\alpha \ll 1 \qquad (if \quad coriolis \quad is \quad used)
 	\end{cases}
 \end{equation}
-其中dx，dy是网格间距，g是重力加速度，H是静水深度。
+其中dx，dy是网格间距，g是重力加速度，H是静水深度。\\
+下面是把代码贴给GPT，反向翻译出来的公式，与上面是吻合的，所以代码没问题
+\begin{equation}
+\begin{cases}
+	\frac{\partial u}{\partial t} = -g \frac{\partial \eta}{\partial x} \\
+	\frac{\partial v}{\partial t} = -g \frac{\partial \eta}{\partial y} \\
+	\frac{\partial \eta}{\partial t} = -\frac{\partial}{\partial x}\left((\eta + H)u\right) - \frac{\partial}{\partial y}\left((\eta + H)v\right)
+\end{cases}
+\end{equation}
 
 \end{document}
