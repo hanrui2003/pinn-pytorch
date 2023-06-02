@@ -35,7 +35,7 @@ bottom=1.5in,marginparwidth=1in,marginparsep
 
 \begin{document}
 \maketitle
-\section{浅水方程简述}
+\section{2D浅水方程简述}
 \begin{equation}
 	\begin{cases}
 		\frac{du}{dt} - fv = -g \frac{d\eta}{dx} + \frac{\tau_x}{\rho_0 H} - \kappa u  \\
@@ -76,5 +76,71 @@ bottom=1.5in,marginparwidth=1in,marginparsep
 	\frac{\partial \eta}{\partial t} = -\frac{\partial}{\partial x}\left((\eta + H)u\right) - \frac{\partial}{\partial y}\left((\eta + H)v\right)
 \end{cases}
 \end{equation}
+
+\section{1D浅水方程简述}
+\begin{equation}
+	\begin{cases}
+		\frac{\partial}{\partial t} h + \frac{\partial}{\partial x} hv = 0  \\
+		\frac{\partial}{\partial t} hv + \frac{\partial}{\partial x} (hv^2 + \frac{gh^2}{2}) = 0
+		\label{swe-1D}
+	\end{cases}
+\end{equation}
+或
+\begin{equation}
+	\begin{cases}
+		\frac{\partial h}{\partial t} = - h\frac{\partial v}{\partial x} - v\frac{\partial h}{\partial x} \\
+		h\frac{\partial v}{\partial t} + v\frac{\partial h}{\partial t} = - 2hv\frac{\partial v}{\partial x} - (v^2 + gh)\frac{\partial h}{\partial x}
+	\end{cases}
+\end{equation}
+第一个方程式质量守恒方程，第二个方程是动量守恒方程；对应的积分形式如下：
+\begin{equation}
+	\begin{cases}
+		\frac{d}{dt} \int^{x_1}_{x_0} h dx = h(x_0, t) v(x_0, t) -  h(x_1, t) v(x_1, t) = \int^{x_1}_{x_0} -\frac{\partial}{\partial x} (hv)dx \\
+		\frac{d}{dt} \int^{x_1}_{x_0} hv dx = h(x_0, t)v^2(x_0, t) + \frac{gh^2(x_0, t)}{2} - h(x_1, t)v^2(x_1, t) - \frac{gh^2(x_1, t)}{2}
+	\end{cases}
+\end{equation}
+对于浅水方程，对于每个区间$[x_i,x_{i+1}]$，需要存储质量的平均值和动量的平均值：
+\begin{equation}
+	\begin{cases}
+		H_i = \frac{1}{\Delta x} \int^{x_{i+1}}_{x_i} hdx \\
+		M_i = \frac{1}{\Delta x} \int^{x_{i+1}}_{x_i} hvdx
+	\end{cases}
+\end{equation}
+把$H_i, M_i$带入积分形式：
+\begin{equation}
+	\begin{cases}
+		\frac{d}{dt} H_i \Delta x = h(x_i, t) v(x_i, t) -  h(x_{i+1}, t) v(x_{i+1}, t) \\
+		\frac{d}{dt} M_i \Delta x = h(x_i, t)v^2(x_i, t) - h(x_{i+1}, t)v^2(x_{i+1}, t) + \frac{gh^2(x_i, t)}{2} - \frac{gh^2(x_{i+1}, t)}{2}
+	\end{cases}
+\end{equation}
+对于任意的$x \in (x_i, x_{i+1})$，我们可以把$h(x, t)$和$v(x, t)$ 看成常值函数，因为：
+\begin{equation}
+	\begin{cases}
+		h(x, t) \approx H_i(t) \\
+		h(x,t)v(x,t) \approx M_i(t) \\
+		v(x,t) \approx \frac{M_i(t)}{H_i(t)}
+	\end{cases}
+\end{equation}
+在边界点$x_i$和$x_{i+1}$上，我们可以通过对边界点左右两个区间的守恒量取平均值，对于FVM以及其他同类数值解函数存在不连续性的数值方法，这样给定两个相邻的控制体积上的函数解，求两个控制体积交界处的函数值的策略被称为数值通量（numerical flux）。这样简单取两个值的平均的通量被称为中央通量（central flux），不过它只是众多通量选择中的一种。在方程比较简单并且解函数比较平滑的时候，中央通量还是比较可靠的。但是对于SWE，中央通量是数值不稳定（numerically unstable）的。为了解决这一问题，这里我们采用Lax–Friedrichs通量。Lax-Friedrich通量很容易计算：分别取左边和右边两区间上的值计算通量，取二值的平均，再加上一修正参数，即系统中的波速乘以该守恒量在两个区间上的差再除以二。这一修正参数被称为数值消散（numerical dissipation）。\\
+\begin{equation}
+	h(x_i, t) v(x_i, t) \approx \frac{M_{i-1} + M_i}{2} + wavespeed \cdot \frac{H_{i-1} - H_i}{2}
+\end{equation}
+对于边界点$x_0$和$x_n$，当我们使用反射强边界条件时，我们可以人为地设置两个假想体积（ghost cell）。比如，我们可以认为在区间$[x_0,x_1]$的左边还有一个区间： $[x_{-1},x_0]$。并且$H_{-1} = H_0, M_{-1} = -M_0$。也就是说：我们认为在$[x_{-1},x_0]$上的水和$[x_0,x_1]$上的水有相同的高度但是相反的运动方向。形象一点来说的话，那就是我们可以认为$x_0$上有一面镜子，只不过这个“镜子”反射的不是光，而是动量。\\
+所以，我们得到最终的FVM格式：
+\begin{equation}
+	\begin{cases}
+		\frac{d}{dt} H_i(t) = \frac{1}{\Delta x} [ h(x_i, t) v(x_i, t) -  h(x_{i+1}, t) v(x_{i+1}, t) ] \\
+		\frac{d}{dt} M_i(t) = \frac{1}{\Delta x} \{[h(x_i, t)v^2(x_i, t) + \frac{gh^2(x_i, t)}{2} ] - [h(x_{i+1}, t)v^2(x_{i+1}, t) + \frac{gh^2(x_{i+1}, t)}{2}]\}
+		
+	\end{cases}
+\end{equation}
+其中
+\begin{equation}
+	\begin{cases}
+		h(x_i, t) v(x_i, t) = \frac{M_{i-1} + M_i}{2} + c \cdot \frac{H_{i-1} - H_i}{2} \\
+		h(x_i, t)v^2(x_i, t) + \frac{gh^2(x_i, t)}{2}  = \frac{\frac{M^2_{i-1}}{H_{i-1}} + \frac{M^2_{i}}{H_{i}}}{2} + \frac{gH^2_{i-1} + gH^2_i}{4} +c \cdot \frac{M_{i-1} - M_i}{2} 
+	\end{cases}
+\end{equation}
+其中c为波速，$H_{-1} = H_0，H_{n+1} = H_n,  M_{-1} = -M_0, M_{n+1} = -M_n$
 
 \end{document}

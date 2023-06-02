@@ -71,7 +71,7 @@ if "__main__" == __name__:
     # torch.manual_seed(123)
     # np.random.seed(123)
 
-    model = torch.load('swe_pinn_01_gzz_100000_e-8.pt', map_location=torch.device('cpu'))
+    model = torch.load('swe_pinn_01_gzz_100000_e-4.pt', map_location=torch.device('cpu'))
     print("model", model)
 
     # 空间网格设置
@@ -123,5 +123,5 @@ if "__main__" == __name__:
         eta_list.append(eta)
 
     eta_animation3D(X, Y, eta_list, 100, "eta1")
-    velocity_animation(X, Y, u_list, v_list, 100, "velocity1")
+    velocity_animation(X.transpose(), Y.transpose(), u_list, v_list, 100, "velocity1")
     plt.show()

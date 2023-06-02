@@ -37,7 +37,7 @@ if "__main__" == __name__:
     # torch.manual_seed(123)
     # np.random.seed(123)
 
-    model = torch.load('swe_pinn_02_gzz_100000_e-8.pt', map_location=torch.device('cpu'))
+    model = torch.load('swe_pinn_02_gzz_100000_e-8_10layers.pt', map_location=torch.device('cpu'))
     print("model", model)
 
     # 空间网格设置
