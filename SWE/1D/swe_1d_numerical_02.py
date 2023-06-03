@@ -59,7 +59,10 @@ if "__main__" == __name__:
     g = 1.0
 
     # initial height vector
-    ini_h = np.array([u0((i + 0.5) * dx) for i in range(div)])
+    # ini_h = np.array([u0((i + 0.5) * dx) for i in range(div)])
+    ini_h_left = 0.2 * np.ones(20)
+    ini_h_right = 0.1 * np.ones(80)
+    ini_h = np.hstack((ini_h_left, ini_h_right))
     # initial velocity vector
     ini_m = np.array([0 for i in range(div)])
 
@@ -95,7 +98,7 @@ if "__main__" == __name__:
     # 保存动画
     mpeg_writer = animation.FFMpegWriter(fps=24, bitrate=10000,
                                          codec="libx264", extra_args=["-pix_fmt", "yuv420p"])
-    anim.save("{}.mp4".format("swe_1d_numerical_01"), writer=mpeg_writer)
+    anim.save("{}.mp4".format("swe_1d_numerical_02"), writer=mpeg_writer)
 
     plt.show()
 

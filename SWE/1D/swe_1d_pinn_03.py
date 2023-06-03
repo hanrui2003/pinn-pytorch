@@ -74,12 +74,14 @@ if "__main__" == __name__:
     t_train_ic = np.zeros_like(x_train_ic)
     y_train_ic = np.hstack((x_train_ic, t_train_ic))
 
-    h_label_ic = 0.1 + 0.1 * np.exp(-64 * (x_train_ic - 0.25) ** 2)
+    h_label_ic_left = 0.2 * np.ones((21, 1))
+    h_label_ic_right = 0.1 * np.ones((80, 1))
+    h_label_ic = np.vstack((h_label_ic_left, h_label_ic_right))
     v_label_ic = np.zeros_like(h_label_ic)
     label_ic = np.hstack((h_label_ic, v_label_ic))
 
     # 边值条件
-    t_train_bc = np.linspace(0, 3, 301)[:, None]
+    t_train_bc = np.linspace(0, 1, 101)[:, None]
     x_train_bc1 = np.zeros_like(t_train_bc)
     x_train_bc2 = np.ones_like(t_train_bc)
     y_train_bc1 = np.hstack((x_train_bc1, t_train_bc))
@@ -91,7 +93,7 @@ if "__main__" == __name__:
     lb = y_train_bc[0]
     ub = y_train_bc[-1]
     # 配置点
-    y_train_nf = lb + (ub - lb) * lhs(2, 30000)
+    y_train_nf = lb + (ub - lb) * lhs(2, 10000)
 
     y_train_ic = torch.from_numpy(y_train_ic).float().to(device)
     label_ic = torch.from_numpy(label_ic).float().to(device)
@@ -126,7 +128,7 @@ if "__main__" == __name__:
             print(datetime.now(), 'epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
             break
 
-    torch.save(model, 'swe_1d_pinn_01.pt')
+    torch.save(model, 'swe_1d_pinn_03.pt')
 
     # 训练结束后记录结束时间并计算总时间
     end_time = datetime.now()

@@ -2,13 +2,13 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
-from swe_1d_pinn_01 import SWENet
+from swe_1d_pinn_02 import SWENet
 
 if "__main__" == __name__:
     torch.manual_seed(123)
     np.random.seed(123)
 
-    model = torch.load('swe_1d_pinn_01_1_e-7.pt', map_location=torch.device('cpu'))
+    model = torch.load('swe_1d_pinn_02_1_e-6.pt', map_location=torch.device('cpu'))
     print("model", model)
 
     x = np.linspace(0, 1, 101)
@@ -44,7 +44,7 @@ if "__main__" == __name__:
     # 保存动画
     mpeg_writer = animation.FFMpegWriter(fps=24, bitrate=10000,
                                          codec="libx264", extra_args=["-pix_fmt", "yuv420p"])
-    anim.save("{}.mp4".format("swe_1d_pinn_01"), writer=mpeg_writer)
+    anim.save("{}.mp4".format("swe_1d_pinn_02"), writer=mpeg_writer)
 
     plt.show()
 

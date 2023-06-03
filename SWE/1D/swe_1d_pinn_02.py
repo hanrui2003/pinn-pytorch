@@ -29,11 +29,6 @@ class SWENet(nn.Module):
         hat = self.forward(y_train_ic)
         return self.loss_func(label_ic, hat)
 
-    def loss_bc(self, y_train_bc, v_label_bc):
-        hat = self.forward(y_train_bc)
-        v_hat = hat[:, [1]]
-        return self.loss_func(v_label_bc, v_hat)
-
     def loss_pde(self, y_pde):
         y_pde.requires_grad = True
         nn_hat = self.forward(y_pde)
@@ -54,11 +49,10 @@ class SWENet(nn.Module):
 
         return self.loss_func(lhs_, rhs_)
 
-    def loss(self, y_train_ic, label_ic, y_train_bc, v_label_bc, y_train_nf):
+    def loss(self, y_train_ic, label_ic, y_train_nf):
         loss_ic = self.loss_ic(y_train_ic, label_ic)
-        loss_bc = self.loss_bc(y_train_bc, v_label_bc)
         loss_pde = self.loss_pde(y_train_nf)
-        return loss_ic + loss_bc + loss_pde
+        return loss_ic + loss_pde
 
 
 if "__main__" == __name__:
@@ -78,25 +72,11 @@ if "__main__" == __name__:
     v_label_ic = np.zeros_like(h_label_ic)
     label_ic = np.hstack((h_label_ic, v_label_ic))
 
-    # 边值条件
-    t_train_bc = np.linspace(0, 3, 301)[:, None]
-    x_train_bc1 = np.zeros_like(t_train_bc)
-    x_train_bc2 = np.ones_like(t_train_bc)
-    y_train_bc1 = np.hstack((x_train_bc1, t_train_bc))
-    y_train_bc2 = np.hstack((x_train_bc2, t_train_bc))
-    y_train_bc = np.vstack((y_train_bc1, y_train_bc2))
-
-    v_label_bc = np.zeros((y_train_bc.shape[0], 1))
-
-    lb = y_train_bc[0]
-    ub = y_train_bc[-1]
     # 配置点
-    y_train_nf = lb + (ub - lb) * lhs(2, 30000)
+    y_train_nf = lhs(2, 10000)
 
     y_train_ic = torch.from_numpy(y_train_ic).float().to(device)
     label_ic = torch.from_numpy(label_ic).float().to(device)
-    y_train_bc = torch.from_numpy(y_train_bc).float().to(device)
-    v_label_bc = torch.from_numpy(v_label_bc).float().to(device)
     y_train_nf = torch.from_numpy(y_train_nf).float().to(device)
 
     layers = [2, 64, 64, 64, 64, 64, 64, 2]
@@ -115,7 +95,7 @@ if "__main__" == __name__:
     epoch = 0
     while True:
         epoch += 1
-        loss = model.loss(y_train_ic, label_ic, y_train_bc, v_label_bc, y_train_nf)
+        loss = model.loss(y_train_ic, label_ic, y_train_nf)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -126,7 +106,7 @@ if "__main__" == __name__:
             print(datetime.now(), 'epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
             break
 
-    torch.save(model, 'swe_1d_pinn_01.pt')
+    torch.save(model, 'swe_1d_pinn_02_1_e-6.pt')
 
     # 训练结束后记录结束时间并计算总时间
     end_time = datetime.now()
