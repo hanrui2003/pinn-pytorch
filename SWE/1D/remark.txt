@@ -1,6 +1,8 @@
 关于pinn代码：
 swe_1d_pinn_01.py  带边值条件，边值条件只对速度v进行设置，为0；
 swe_1d_pinn_02.py  不带边值条件
+swe_1d_pinn_03.py  dam break + tanh
+swe_1d_pinn_03.py  dam break + relu
 
 关于网络模型文件：
 swe_1d_pinn_01_1_e-4.pt

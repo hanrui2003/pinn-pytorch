@@ -128,7 +128,7 @@ if "__main__" == __name__:
             print(datetime.now(), 'epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
             break
 
-    torch.save(model, 'swe_1d_pinn_03.pt')
+    torch.save(model, 'swe_1d_pinn_03_1_e-5.pt')
 
     # 训练结束后记录结束时间并计算总时间
     end_time = datetime.now()
