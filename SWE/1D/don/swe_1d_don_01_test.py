@@ -86,7 +86,7 @@ if "__main__" == __name__:
     torch.manual_seed(123)
     np.random.seed(123)
 
-    model = torch.load('swe_1d_don_01_3e-5.pt', map_location=torch.device('cpu'))
+    model = torch.load('swe_1d_don_01_1_3e-5.pt', map_location=torch.device('cpu'))
     print("model", model)
 
     N_x = 101
