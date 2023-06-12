@@ -8,68 +8,78 @@ def u0(x):
     return 0.1 + 0.1 * np.exp(-64 * (x - 0.25) ** 2)
 
 
-def f(H, M, i):
-    return M[i], M[i] * M[i] / H[i] + (g / 2) * H[i] * H[i]
+def dudt(u_n, dx):
+    # 波速
+    c = 0.2
+    # 重力加速度
+    g = 1.0
+    length = len(u_n)
+    half_len = length // 2
+    curr_dhdt = np.zeros(half_len)
+    curr_dmdt = np.zeros(half_len)
+    curr_h = u_n[:half_len]
+    curr_m = u_n[half_len:]
+    for i in range(half_len):
+        if i == 0:
+            curr_dhdt[i] = (-curr_m[i] - curr_m[i + 1] + c * (curr_h[i] - 2 * curr_h[i] + curr_h[i + 1])) / (2 * dx)
+            curr_dmdt[i] = ((curr_m[i] ** 2 / curr_h[i] - curr_m[i + 1] ** 2 / curr_h[i + 1]) + (
+                    curr_h[i] ** 2 - curr_h[i + 1] ** 2) * g / 2 + c * (
+                                    -curr_m[i] - 2 * curr_m[i] + curr_m[i + 1])) / (2 * dx)
+        elif i == half_len - 1:
+            curr_dhdt[i] = (curr_m[i - 1] + curr_m[i] + c * (curr_h[i - 1] - 2 * curr_h[i] + curr_h[i])) / (2 * dx)
+            curr_dmdt[i] = ((curr_m[i - 1] ** 2 / curr_h[i - 1] - curr_m[i] ** 2 / curr_h[i]) + (
+                    curr_h[i - 1] ** 2 - curr_h[i] ** 2) * g / 2 + c * (
+                                    curr_m[i - 1] - 2 * curr_m[i] - curr_m[i])) / (2 * dx)
+        else:
+            curr_dhdt[i] = (curr_m[i - 1] - curr_m[i + 1] + c * (curr_h[i - 1] - 2 * curr_h[i] + curr_h[i + 1])) / (
+                    2 * dx)
+            curr_dmdt[i] = ((curr_m[i - 1] ** 2 / curr_h[i - 1] - curr_m[i + 1] ** 2 / curr_h[i + 1]) + (
+                    curr_h[i - 1] ** 2 - curr_h[i + 1] ** 2) * g / 2 + c * (
+                                    curr_m[i - 1] - 2 * curr_m[i] + curr_m[i + 1])) / (2 * dx)
+
+    return np.hstack((curr_dhdt, curr_dmdt))
 
 
-def flux(H, M, L, R):
-    if L == -1:
-        return 0, f(H, M, R)[1]
-    if R == div:
-        return 0, f(H, M, L)[1]
-    fl = f(H, M, L)
-    fr = f(H, M, R)
-    d = 0.2
-    return (fl[0] + fr[0]) / 2 + d * (H[L] - H[R]) / 2, (fl[1] + fr[1]) / 2 + d * (M[L] - M[R]) / 2
+def rk4(u0, n, dx, dt):
+    """
 
+    :param u0: 初值
+    :param n: 迭代次数
+    :param dt: 时间步长
+    :return: 数值解
+    """
+    u = np.zeros((n + 1, len(u0)))
+    u[0] = u0
+    for i in range(n):
+        k1 = dudt(u[i], dx)
+        k2 = dudt(u[i] + 0.5 * dt * k1, dx)
+        k3 = dudt(u[i] + 0.5 * dt * k2, dx)
+        k4 = dudt(u[i] + dt * k3, dx)
+        u[i + 1] = u[i] + dt * (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
-def dUdt(u_n):
-    curr_dhdt = []
-    curr_dmdt = []
-    curr_h = u_n[:div]
-    curr_m = u_n[div:]
-    for i in range(div):
-        flux_l = flux(curr_h, curr_m, i - 1, i)
-        flux_r = flux(curr_h, curr_m, i, i + 1)
-        curr_dhdt.append((flux_l[0] - flux_r[0]) / dx)
-        curr_dmdt.append((flux_l[1] - flux_r[1]) / dx)
-    return curr_dhdt + curr_dmdt
-
-
-def rk4(f, h):
-    for n in range(500):
-        k1 = np.asarray(f(u[n]))
-        k2 = np.asarray(f(u[n] + 0.5 * h * k1))
-        k3 = np.asarray(f(u[n] + 0.5 * h * k2))
-        k4 = np.asarray(f(u[n] + h * k3))
-        u[n + 1] = u[n] + h * (k1 + 2 * k2 + 2 * k3 + k4) / 6
+    return u
 
 
 if "__main__" == __name__:
-    # mesh parameter
     L = 1
-    div = 100
-    dx = L / div
+    N_x = 100
+    dx = L / N_x
 
     # time parameter
     t0 = 0.0
     T = 5
 
-    # physics constants
-    g = 1.0
-
     # initial height vector
-    # ini_h = np.array([u0((i + 0.5) * dx) for i in range(div)])
-    ini_h_left = 0.2 * np.ones(20)
-    ini_h_right = 0.1 * np.ones(80)
-    ini_h = np.hstack((ini_h_left, ini_h_right))
+    ini_h = np.array([u0((i + 0.5) * dx) for i in range(N_x)])
+    # ini_h_left = 0.2 * np.ones(20)
+    # ini_h_right = 0.1 * np.ones(80)
+    # ini_h = np.hstack((ini_h_left, ini_h_right))
     # initial velocity vector
-    ini_m = np.array([0 for i in range(div)])
+    ini_m = np.array([0 for i in range(N_x)])
 
-    u = np.zeros((501, 200))
-    u[0] = np.hstack((ini_h, ini_m))
+    u0 = np.hstack((ini_h, ini_m))
 
-    rk4(dUdt, 0.01)
+    u = rk4(u0, 500, dx, 0.01)
 
     h = u[:, :100]
 
@@ -94,7 +104,7 @@ if "__main__" == __name__:
 
 
     # 创建动画
-    anim = animation.FuncAnimation(fig, update, frames=len(h), interval=100)
+    anim = animation.FuncAnimation(fig, update, frames=len(h), interval=20)
     # 保存动画
     mpeg_writer = animation.FFMpegWriter(fps=24, bitrate=10000,
                                          codec="libx264", extra_args=["-pix_fmt", "yuv420p"])
