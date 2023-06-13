@@ -89,8 +89,8 @@ if "__main__" == __name__:
     model = torch.load('swe_1d_pinn_01_1_e-6.pt', map_location=torch.device('cpu'))
     print("model", model)
 
-    N_x = 801
-    N_t = 801
+    N_x = 401
+    N_t = 401
 
     x = np.linspace(0, 1, N_x)
     t = np.linspace(0, 1, N_t)
@@ -103,7 +103,7 @@ if "__main__" == __name__:
     y_test = np.hstack((x_test, t_test))
     y_test = torch.from_numpy(y_test).float()
     predict = model(y_test).detach().numpy()
-    h_hat = predict[:, 0].reshape(-1, 801)
+    h_hat = predict[:, 0].reshape(-1, N_x)
 
     # 数值解
     h0 = 0.1 + 0.1 * np.exp(-64 * (x - 0.25) ** 2)
@@ -133,6 +133,8 @@ if "__main__" == __name__:
         line2.set_data(x, h1[i])
         line3.set_data(x, h2[i])
         line1.set_label("t=" + str(round(i * 0.01, 2)))
+        line2.set_label("err=" + str(round(np.linalg.norm(h1[i] - h_hat[i]) / np.linalg.norm(h1[i]), 5)))
+        line3.set_label("err=" + str(round(np.linalg.norm(h2[i] - h_hat[i]) / np.linalg.norm(h2[i]), 5)))
         ax.legend()
         return line1, line2,
 
@@ -142,7 +144,7 @@ if "__main__" == __name__:
     # 保存动画
     mpeg_writer = animation.FFMpegWriter(fps=24, bitrate=10000,
                                          codec="libx264", extra_args=["-pix_fmt", "yuv420p"])
-    anim.save("{}.mp4".format("swe_1d_pinn_01_1_3"), writer=mpeg_writer)
+    anim.save("{}.mp4".format("swe_1d_pinn_01"), writer=mpeg_writer)
 
     plt.show()
 

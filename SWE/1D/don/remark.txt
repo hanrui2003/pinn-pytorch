@@ -1,4 +1,0 @@
-swe_1d_don_01.py  每种数据集设置不同的batch_size，但是相对于各自数据集的大小是等比的。比如都是百分之十。
-swe_1d_don_02.py  batch_size设置为统一的，比如10000
-swe_1d_don_01_1_3e-5.pt  区间长度1，mse<3e-5
-swe_1d_don_01_0.5_e-5.pt 区间长度0.5，mse<e-5
