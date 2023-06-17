@@ -31,17 +31,18 @@ class SWEObsDataset(Dataset):
         v_label = o_train_raw[:, x_len:].reshape(-1, 1)
         label = np.hstack((h_label, v_label))
 
-        self.o_train = torch.from_numpy(o_train).float().to(device)
-        self.y_train = torch.from_numpy(y_train).float().to(device)
-        self.label = torch.from_numpy(label).float().to(device)
         print('obs dataset size (mb):',
-              (sys.getsizeof(self.o_train) + sys.getsizeof(self.y_train) + sys.getsizeof(self.label)) / 1024 / 1024)
+              (sys.getsizeof(o_train) + sys.getsizeof(y_train) + sys.getsizeof(label)) / 1024 / 1024)
+
+        self.o_train = torch.from_numpy(o_train).float()
+        self.y_train = torch.from_numpy(y_train).float()
+        self.label = torch.from_numpy(label).float()
 
     def __len__(self):
         return self.length
 
     def __getitem__(self, index):
-        return self.o_train[index], self.y_train[index], self.label[index]
+        return self.o_train[index].to(device), self.y_train[index].to(device), self.label[index].to(device)
 
 
 class SWEPhysicsDataset(Dataset):
@@ -64,17 +65,17 @@ class SWEPhysicsDataset(Dataset):
         y_physics = lhs(2, physics_train_count)
         y_train_physics = np.tile(y_physics, (o_train_count, 1))
 
-        self.o_train = torch.from_numpy(o_train_physics).float().to(device)
-        self.y_train = torch.from_numpy(y_train_physics).float().to(device)
-
         print('physics dataset size (mb):',
-              (sys.getsizeof(self.o_train) + sys.getsizeof(self.y_train)) / 1024 / 1024)
+              (sys.getsizeof(o_train_physics) + sys.getsizeof(y_train_physics)) / 1024 / 1024)
+
+        self.o_train = torch.from_numpy(o_train_physics).float()
+        self.y_train = torch.from_numpy(y_train_physics).float()
 
     def __len__(self):
         return self.length
 
     def __getitem__(self, index):
-        return self.o_train[index], self.y_train[index]
+        return self.o_train[index].to(device), self.y_train[index].to(device)
 
 
 class SWENet(nn.Module):
@@ -166,7 +167,7 @@ if "__main__" == __name__:
     print("model:\n", model)
 
     obs_ds = SWEObsDataset(o_train, y_train)
-    physics_ds = SWEPhysicsDataset(o_train, 5000)
+    physics_ds = SWEPhysicsDataset(o_train, 1000)
     print("obs_ds count:", len(obs_ds), "physics_ds count:", len(physics_ds))
 
     batch_size = 10000
@@ -177,8 +178,8 @@ if "__main__" == __name__:
     physics_iter = iter(physics_loader)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, amsgrad=False)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-7, mode='min', factor=0.5,
-                                                           patience=6000,
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-8, mode='min', factor=0.5,
+                                                           patience=5000,
                                                            verbose=True)
 
     # 记录训练开始时间
@@ -213,7 +214,7 @@ if "__main__" == __name__:
             print(datetime.now(), 'batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
             break
 
-    torch.save(model, 'swe_1d_don_obs_01.pt')
+    torch.save(model, 'swe_1d_don_obs_03.pt')
 
     # 训练结束后记录结束时间并计算总时间
     end_time = datetime.now()

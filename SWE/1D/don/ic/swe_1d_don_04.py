@@ -4,77 +4,94 @@ import torch.nn as nn
 import torch.autograd as autograd
 from torch.utils.data import Dataset, DataLoader
 from datetime import datetime
-import sys
 from pyDOE import lhs
+import sys
 
 
-class SWEObsDataset(Dataset):
+class SWEICDataset(Dataset):
     """
-    观测点对应的训练集
+    初值训练集
     """
 
-    def __init__(self, o_train_raw, y_train_raw):
-        """
-        根据随机函数，初始化数据集
-        :param o_train_raw: 观测值
-        :param y_train_raw: 观测点
-        """
-        o_train_count = len(o_train_raw)
+    def __init__(self, ic_train_raw, y_train_raw):
+        ic_train_count = len(ic_train_raw)
         y_train_count = len(y_train_raw)
-        self.length = o_train_count * y_train_count
+        self.length = ic_train_count * y_train_count
 
-        o_train = np.repeat(o_train_raw, y_train_count, axis=0)
-        y_train = np.tile(y_train_raw, (o_train_count, 1))
+        ic_train = np.repeat(ic_train_raw, y_train_count, axis=0)
+        y_train = np.tile(y_train_raw, (ic_train_count, 1))
 
-        x_len = o_train_raw.shape[1] // 2
-        h_label = o_train_raw[:, :x_len].reshape(-1, 1)
-        v_label = o_train_raw[:, x_len:].reshape(-1, 1)
+        x_len = ic_train_raw.shape[1] // 2
+        h_label = ic_train_raw[:, :x_len].reshape(-1, 1)
+        v_label = ic_train_raw[:, x_len:].reshape(-1, 1)
         label = np.hstack((h_label, v_label))
+        print('ic dataset size (mb):',
+              (sys.getsizeof(ic_train) + sys.getsizeof(y_train) + sys.getsizeof(label)) / 1024 / 1024)
 
-        self.o_train = torch.from_numpy(o_train).float().to(device)
+        self.ic_train = torch.from_numpy(ic_train).float().to(device)
         self.y_train = torch.from_numpy(y_train).float().to(device)
         self.label = torch.from_numpy(label).float().to(device)
-        print('obs dataset size (mb):',
-              (sys.getsizeof(self.o_train) + sys.getsizeof(self.y_train) + sys.getsizeof(self.label)) / 1024 / 1024)
 
     def __len__(self):
         return self.length
 
     def __getitem__(self, index):
-        return self.o_train[index], self.y_train[index], self.label[index]
+        return self.ic_train[index], self.y_train[index], self.label[index]
+
+
+class SWEBCDataset(Dataset):
+    """
+    初值训练集
+    """
+
+    def __init__(self, ic_train_raw, y_train_bc):
+        ic_train_count = len(ic_train_raw)
+        y_train_count = len(y_train_bc)
+        self.length = ic_train_count * y_train_count
+
+        ic_train = np.repeat(ic_train_raw, y_train_count, axis=0)
+        y_train = np.tile(y_train_bc, (ic_train_count, 1))
+
+        v_label = np.zeros((y_train.shape[0], 1))
+
+        print('bc dataset size (mb):',
+              (sys.getsizeof(ic_train) + sys.getsizeof(y_train) + sys.getsizeof(v_label)) / 1024 / 1024)
+
+        self.ic_train = torch.from_numpy(ic_train).float().to(device)
+        self.y_train = torch.from_numpy(y_train).float().to(device)
+        self.v_label = torch.from_numpy(v_label).float().to(device)
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, index):
+        return self.ic_train[index], self.y_train[index], self.v_label[index]
 
 
 class SWEPhysicsDataset(Dataset):
     """
-    物理信息对应的训练集
+    物理信息训练集
     """
 
-    def __init__(self, o_train_raw, physics_train_count=1000):
-        """
-        根据随机函数，初始化数据集
-        :param o_train_raw: 观测值
-        :param physics_train_count:随机生成的训练点
-        """
-        o_train_count = len(o_train_raw)
-        self.length = o_train_count * physics_train_count
-        # 根据训练点的个数，构造训练数据
-        o_train_physics = np.repeat(o_train_raw, physics_train_count, axis=0)
+    def __init__(self, ic_train_raw, physics_train_count=5000):
+        ic_train_count = len(ic_train_raw)
+        self.length = ic_train_count * physics_train_count
 
-        # 均匀采样
-        y_physics = lhs(2, physics_train_count)
-        y_train_physics = np.tile(y_physics, (o_train_count, 1))
+        ic_train = np.repeat(ic_train_raw, physics_train_count, axis=0)
 
-        self.o_train = torch.from_numpy(o_train_physics).float().to(device)
-        self.y_train = torch.from_numpy(y_train_physics).float().to(device)
+        y_physics = [1, 0.5] * lhs(2, physics_train_count)
+        y_train = np.tile(y_physics, (ic_train_count, 1))
 
-        print('physics dataset size (mb):',
-              (sys.getsizeof(self.o_train) + sys.getsizeof(self.y_train)) / 1024 / 1024)
+        print('physics dataset size (mb):', (sys.getsizeof(ic_train) + sys.getsizeof(y_train)) / 1024 / 1024)
+
+        self.ic_train = torch.from_numpy(ic_train).float().to(device)
+        self.y_train = torch.from_numpy(y_train).float().to(device)
 
     def __len__(self):
         return self.length
 
     def __getitem__(self, index):
-        return self.o_train[index], self.y_train[index]
+        return self.ic_train[index], self.y_train[index]
 
 
 class SWENet(nn.Module):
@@ -113,15 +130,21 @@ class SWENet(nn.Module):
         product = torch.mul(z_branch, z_trunk)
         return self.merge_linear(product)
 
-    def loss_obs(self, obs_batch):
-        o_train, y_train, label = obs_batch
-        u_hat = self.forward(o_train, y_train)
+    def loss_ic(self, ic_batch):
+        u_train, y_train, label = ic_batch
+        u_hat = self.forward(u_train, y_train)
         return self.loss_func(u_hat, label)
 
+    def loss_bc(self, bc_batch):
+        u_train, y_train, v_label = bc_batch
+        u_hat = self.forward(u_train, y_train)
+        v_hat = u_hat[:, [1]]
+        return self.loss_func(v_hat, v_label)
+
     def loss_physics(self, physics_batch):
-        o_train, y_train = physics_batch
+        u_train, y_train = physics_batch
         y_train.requires_grad = True
-        nn_hat = self.forward(o_train, y_train)
+        nn_hat = self.forward(u_train, y_train)
         h_hat = nn_hat[:, [0]]
         v_hat = nn_hat[:, [1]]
 
@@ -139,10 +162,11 @@ class SWENet(nn.Module):
 
         return self.loss_func(lhs_, rhs_)
 
-    def loss(self, obs_batch, physics_batch):
-        loss_obs = self.loss_obs(obs_batch)
+    def loss(self, ic_batch, bc_batch, physics_batch):
+        loss_ic = self.loss_ic(ic_batch)
+        loss_bc = self.loss_bc(bc_batch)
         loss_physics = self.loss_physics(physics_batch)
-        return loss_obs + loss_physics
+        return loss_ic + loss_bc + loss_physics
 
 
 if "__main__" == __name__:
@@ -153,31 +177,50 @@ if "__main__" == __name__:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(device)
 
-    train_data = np.load('swe_1d_don_obs_01.npz')
-    o_train = train_data['o_train']
-    y_train = train_data['y_train']
+    mu = np.linspace(0, 0.1, 11)[:, None]
+    x = np.linspace(0, 1, 101)
+
+    h0_train = 0.1 + 0.1 * np.exp(-64 * (x - mu) ** 2)
+    v0_train = np.zeros_like(h0_train)
+    ic_train = np.hstack((h0_train, v0_train))
 
     # 构建网络网络结构
-    branch_layers = [o_train.shape[1], 128, 64, 64, 64, 64]
-    trunk_layers = [y_train.shape[1], 64, 64, 64, 64, 64]
+    branch_layers = [ic_train.shape[1], 64, 64, 64, 64, 64, 64]
+    trunk_layers = [2, 64, 64, 64, 64, 64, 64]
 
     model = SWENet(branch_layers, trunk_layers)
     model.to(device)
     print("model:\n", model)
 
-    obs_ds = SWEObsDataset(o_train, y_train)
-    physics_ds = SWEPhysicsDataset(o_train, 5000)
-    print("obs_ds count:", len(obs_ds), "physics_ds count:", len(physics_ds))
+    x_train_ic = np.linspace(0, 1, 101)[:, None]
+    t_train_ic = np.zeros_like(x_train_ic)
+    y_train_ic = np.hstack((x_train_ic, t_train_ic))
+
+    t_train_bc = np.linspace(0, 0.5, 51)[:, None]
+    x_train_bc1 = np.zeros_like(t_train_bc)
+    x_train_bc2 = np.ones_like(t_train_bc)
+    y_train_bc1 = np.hstack((x_train_bc1, t_train_bc))
+    y_train_bc2 = np.hstack((x_train_bc2, t_train_bc))
+    y_train_bc = np.vstack((y_train_bc1, y_train_bc2))
+
+    ic_ds = SWEICDataset(ic_train, y_train_ic)
+    bc_ds = SWEBCDataset(ic_train, y_train_bc)
+    physics_ds = SWEPhysicsDataset(ic_train)
+    print("ic_ds count:", len(ic_ds), "bc_ds count:", len(bc_ds), "physics_ds count:", len(physics_ds))
 
     batch_size = 10000
-    obs_loader = DataLoader(obs_ds, batch_size=batch_size, shuffle=True)
+    print("batch_size:", batch_size)
+
+    ic_loader = DataLoader(ic_ds, batch_size=batch_size, shuffle=True)
+    bc_loader = DataLoader(bc_ds, batch_size=batch_size, shuffle=True)
     physics_loader = DataLoader(physics_ds, batch_size=batch_size, shuffle=True)
 
-    obs_iter = iter(obs_loader)
+    ic_iter = iter(ic_loader)
+    bc_iter = iter(bc_loader)
     physics_iter = iter(physics_loader)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, amsgrad=False)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-7, mode='min', factor=0.5,
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=5e-7, mode='min', factor=0.5,
                                                            patience=6000,
                                                            verbose=True)
 
@@ -191,10 +234,16 @@ if "__main__" == __name__:
         # 从dataloader迭代器获取元素，如果到头了，就重新生成迭代器
         # 注意这里不能用itertools.cycle去实现，会导致shuffle失效，因为本质是同一个iter
         try:
-            obs_batch = next(obs_iter)
+            ic_batch = next(ic_iter)
         except StopIteration:
-            obs_iter = iter(obs_loader)
-            obs_batch = next(obs_iter)
+            ic_iter = iter(ic_loader)
+            ic_batch = next(ic_iter)
+
+        try:
+            bc_batch = next(bc_iter)
+        except StopIteration:
+            bc_iter = iter(bc_loader)
+            bc_batch = next(bc_iter)
 
         try:
             physics_batch = next(physics_iter)
@@ -202,7 +251,7 @@ if "__main__" == __name__:
             physics_iter = iter(physics_loader)
             physics_batch = next(physics_iter)
 
-        loss = model.loss(obs_batch, physics_batch)
+        loss = model.loss(ic_batch, bc_batch, physics_batch)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -213,7 +262,7 @@ if "__main__" == __name__:
             print(datetime.now(), 'batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
             break
 
-    torch.save(model, 'swe_1d_don_obs_01.pt')
+    torch.save(model, 'swe_1d_don_04_e-5.pt')
 
     # 训练结束后记录结束时间并计算总时间
     end_time = datetime.now()

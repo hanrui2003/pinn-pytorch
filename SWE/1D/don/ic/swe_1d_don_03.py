@@ -13,27 +13,30 @@ class SWEICDataset(Dataset):
     初值训练集
     """
 
-    def __init__(self, h_train_raw, y_train_raw):
-        self.h_train = torch.from_numpy(h_train_raw).float().to(device)
-        self.y_train = torch.from_numpy(y_train_raw).float().to(device)
-        self.h_train_count = len(h_train_raw)
-        self.y_train_count = len(y_train_raw)
-        self.length = self.h_train_count * self.y_train_count
-        self.v_label = torch.tensor([0.]).float().to(device)
+    def __init__(self, ic_train_raw, y_train_raw):
+        ic_train_count = len(ic_train_raw)
+        y_train_count = len(y_train_raw)
+        self.length = ic_train_count * y_train_count
+
+        ic_train = np.repeat(ic_train_raw, y_train_count, axis=0)
+        y_train = np.tile(y_train_raw, (ic_train_count, 1))
+
+        x_len = ic_train_raw.shape[1] // 2
+        h_label = ic_train_raw[:, :x_len].reshape(-1, 1)
+        v_label = ic_train_raw[:, x_len:].reshape(-1, 1)
+        label = np.hstack((h_label, v_label))
+        print('ic dataset size (mb):',
+              (sys.getsizeof(ic_train) + sys.getsizeof(y_train) + sys.getsizeof(label)) / 1024 / 1024)
+
+        self.ic_train = torch.from_numpy(ic_train).float().to(device)
+        self.y_train = torch.from_numpy(y_train).float().to(device)
+        self.label = torch.from_numpy(label).float().to(device)
 
     def __len__(self):
         return self.length
 
     def __getitem__(self, index):
-        h_idx, y_idx = divmod(index, self.y_train_count)
-        h = self.h_train[h_idx]
-        y = self.y_train[y_idx]
-        h_label = h[y_idx]
-        label = torch.hstack((h_label, self.v_label))
-        # hv = torch.from_numpy(hv).float().to(device)
-        # y = torch.from_numpy(y).float().to(device)
-        # label = torch.from_numpy(label).float().to(device)
-        return h, y, label
+        return self.ic_train[index], self.y_train[index], self.label[index]
 
 
 class SWEBCDataset(Dataset):
@@ -41,22 +44,28 @@ class SWEBCDataset(Dataset):
     初值训练集
     """
 
-    def __init__(self, h_train, y_train_bc):
-        self.h_train = torch.from_numpy(h_train).float().to(device)
-        self.y_train = torch.from_numpy(y_train_bc).float().to(device)
-        self.h_train_count = len(h_train)
-        self.y_train_count = len(y_train_bc)
-        self.length = self.h_train_count * self.y_train_count
-        self.v_label = torch.tensor([0.]).float().to(device)
+    def __init__(self, ic_train_raw, y_train_bc):
+        ic_train_count = len(ic_train_raw)
+        y_train_count = len(y_train_bc)
+        self.length = ic_train_count * y_train_count
+
+        ic_train = np.repeat(ic_train_raw, y_train_count, axis=0)
+        y_train = np.tile(y_train_bc, (ic_train_count, 1))
+
+        v_label = np.zeros((y_train.shape[0], 1))
+
+        print('bc dataset size (mb):',
+              (sys.getsizeof(ic_train) + sys.getsizeof(y_train) + sys.getsizeof(v_label)) / 1024 / 1024)
+
+        self.ic_train = torch.from_numpy(ic_train).float().to(device)
+        self.y_train = torch.from_numpy(y_train).float().to(device)
+        self.v_label = torch.from_numpy(v_label).float().to(device)
 
     def __len__(self):
         return self.length
 
     def __getitem__(self, index):
-        h_idx, y_idx = divmod(index, self.y_train_count)
-        h = self.h_train[h_idx]
-        y = self.y_train[y_idx]
-        return h, y, self.v_label
+        return self.ic_train[index], self.y_train[index], self.v_label[index]
 
 
 class SWEPhysicsDataset(Dataset):
@@ -64,23 +73,25 @@ class SWEPhysicsDataset(Dataset):
     物理信息训练集
     """
 
-    def __init__(self, h_train_raw, physics_train_count=200):
-        self.h_train_count = len(h_train_raw)
-        self.y_train_count = physics_train_count
-        self.length = self.h_train_count * physics_train_count
-        self.h_train = torch.from_numpy(h_train_raw).float().to(device)
-        self.y_train = torch.from_numpy(lhs(2, physics_train_count)).float().to(device)
+    def __init__(self, ic_train_raw, physics_train_count=10000):
+        ic_train_count = len(ic_train_raw)
+        self.length = ic_train_count * physics_train_count
+
+        ic_train = np.repeat(ic_train_raw, physics_train_count, axis=0)
+
+        y_physics = lhs(2, physics_train_count)
+        y_train = np.tile(y_physics, (ic_train_count, 1))
+
+        print('physics dataset size (mb):', (sys.getsizeof(ic_train) + sys.getsizeof(y_train)) / 1024 / 1024)
+
+        self.ic_train = torch.from_numpy(ic_train).float().to(device)
+        self.y_train = torch.from_numpy(y_train).float().to(device)
 
     def __len__(self):
         return self.length
 
     def __getitem__(self, index):
-        h_idx, y_idx = divmod(index, self.y_train_count)
-        h = self.h_train[h_idx]
-        y = self.y_train[y_idx]
-        # hv = torch.from_numpy(hv).float().to(device)
-        # y = torch.from_numpy(y).float().to(device)
-        return h, y
+        return self.ic_train[index], self.y_train[index]
 
 
 class SWENet(nn.Module):
@@ -166,19 +177,15 @@ if "__main__" == __name__:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(device)
 
-    mu = lhs(1, 5000)
+    mu = np.linspace(0, 0.1, 11)[:, None]
+    x = np.linspace(0, 1, 101)
 
-    N_x = 101
-    x = np.linspace(0, 1, N_x)
-    u_train = np.empty((0, N_x))
-    for m in mu:
-        h0 = 0.1 + 0.1 * np.exp(-64 * (x - m) ** 2)
-        u_train = np.vstack((u_train, h0))
-
-    print("u_train size(mb):", sys.getsizeof(u_train) / (1024 * 1024))
+    h0_train = 0.1 + 0.1 * np.exp(-64 * (x - mu) ** 2)
+    v0_train = np.zeros_like(h0_train)
+    ic_train = np.hstack((h0_train, v0_train))
 
     # 构建网络网络结构
-    branch_layers = [101, 128, 64, 64, 64, 64, 64]
+    branch_layers = [ic_train.shape[1], 64, 64, 64, 64, 64, 64]
     trunk_layers = [2, 64, 64, 64, 64, 64, 64]
 
     model = SWENet(branch_layers, trunk_layers)
@@ -196,9 +203,9 @@ if "__main__" == __name__:
     y_train_bc2 = np.hstack((x_train_bc2, t_train_bc))
     y_train_bc = np.vstack((y_train_bc1, y_train_bc2))
 
-    ic_ds = SWEICDataset(u_train, y_train_ic)
-    bc_ds = SWEBCDataset(u_train, y_train_bc)
-    physics_ds = SWEPhysicsDataset(u_train)
+    ic_ds = SWEICDataset(ic_train, y_train_ic)
+    bc_ds = SWEBCDataset(ic_train, y_train_bc)
+    physics_ds = SWEPhysicsDataset(ic_train)
     print("ic_ds count:", len(ic_ds), "bc_ds count:", len(bc_ds), "physics_ds count:", len(physics_ds))
 
     batch_size = 10000
@@ -213,8 +220,8 @@ if "__main__" == __name__:
     physics_iter = iter(physics_loader)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, amsgrad=False)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-8, mode='min', factor=0.5,
-                                                           patience=5000,
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=5e-7, mode='min', factor=0.5,
+                                                           patience=6000,
                                                            verbose=True)
 
     # 记录训练开始时间
@@ -255,7 +262,7 @@ if "__main__" == __name__:
             print(datetime.now(), 'batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
             break
 
-    torch.save(model, 'swe_1d_don_03.pt')
+    torch.save(model, 'swe_1d_don_04_e-5.pt')
 
     # 训练结束后记录结束时间并计算总时间
     end_time = datetime.now()
