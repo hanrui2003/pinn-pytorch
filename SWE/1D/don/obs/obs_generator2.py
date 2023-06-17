@@ -3,8 +3,9 @@ from datetime import datetime
 import sys
 
 """
-数据区间[0,1]*[0,1]
+数据区间[0,1]*[0,0.5]
 """
+
 
 def dudt(u_n, dx):
     # 波速
@@ -60,11 +61,11 @@ def rk4(u0, n, dx, dt):
 
 if "__main__" == __name__:
     N_x = 401
-    N_t = 401
+    N_t = 201
     print("N_x :", N_x, "N_t :", N_t)
 
     x_step = (N_x - 1) // 10
-    t_step = (N_t - 1) // 10
+    t_step = (N_t - 1) // 5
     print("x_step :", x_step, "t_step :", t_step)
 
     idx_x = [i for i in range(0, N_x, x_step)]
@@ -75,7 +76,7 @@ if "__main__" == __name__:
     print("idx_x2 :", idx_x2, "idx_t :", idx_t)
 
     x = np.linspace(0, 1, N_x)
-    t = np.linspace(0, 1, N_t)
+    t = np.linspace(0, 0.5, N_t)
     dx = x[1] - x[0]
     dt = t[1] - t[0]
 
@@ -106,7 +107,7 @@ if "__main__" == __name__:
         o_train.append(np.hstack((h, v)))
         print(datetime.now(), 'generated obs :', index + 1)
 
-    np.savez('swe_1d_don_obs_01.npz', o_train=np.asarray(o_train), y_train=y_train)
+    np.savez('swe_1d_don_obs_05.npz', o_train=np.asarray(o_train), y_train=y_train)
 
     end_time = datetime.now()
     elapsed_time = end_time - start_time

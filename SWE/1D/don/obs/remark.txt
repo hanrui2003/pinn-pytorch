@@ -18,6 +18,8 @@ swe_1d_don_obs_04.py
 由于mse多轮训练，一直降不下来，怀疑是物理点选取的少了，所以改为5000个：(其他和swe_1d_don_obs_01.py一致)
 swe_1d_don_obs_04_e-5.pt batch : 166840 lr : 0.00025 loss : 9.756658073456492e-06 Elapsed time:  6:28:12.704971
 
+swe_1d_don_obs_05.py
+相对于swe_1d_don_obs_04.py，把时间跨度缩短为[0,0.5]，物理信息点为5000个
 
 +++++++++++++++++++++++++++++++ 非主流程
 swe_1d_don_obs_02.py
