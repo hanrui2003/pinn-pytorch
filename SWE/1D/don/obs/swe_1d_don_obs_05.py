@@ -213,7 +213,7 @@ if "__main__" == __name__:
             print(datetime.now(), 'batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
             break
 
-    torch.save(model, 'swe_1d_don_obs_05.pt')
+    torch.save(model, 'swe_1d_don_obs_05_5e-6.pt')
 
     # 训练结束后记录结束时间并计算总时间
     end_time = datetime.now()

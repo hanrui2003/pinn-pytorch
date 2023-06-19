@@ -1,9 +1,9 @@
 import numpy as np
 import torch
-from swe_1d_don_03 import SWENet
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from scipy.integrate import solve_ivp
+from swe_1d_don_obs_05 import SWENet
 
 
 def dudt_of_shallow_water(t, w):
@@ -83,46 +83,63 @@ def rk4(u0, n, dx, dt):
 
 
 if "__main__" == __name__:
-    # torch.manual_seed(123)
-    # np.random.seed(123)
+    torch.manual_seed(123)
+    np.random.seed(123)
 
-    model = torch.load('swe_1d_don_04_5e-7.pt', map_location=torch.device('cpu'))
+    model = torch.load('swe_1d_don_obs_05_5e-6.pt', map_location=torch.device('cpu'))
     print("model", model)
 
+    # 数值解配置
     N_x = 401
     N_t = 201
+    print("N_x :", N_x, "N_t :", N_t)
 
     x = np.linspace(0, 1, N_x)
     t = np.linspace(0, 0.5, N_t)
     dx = x[1] - x[0]
     dt = t[1] - t[0]
 
-    # [0,0.1)随机数
-    mu = 0.1 * np.random.random()
+    # 观测点配置
+    x_step = (N_x - 1) // 10
+    t_step = (N_t - 1) // 5
+    print("x_step :", x_step, "t_step :", t_step)
 
-    h0 = 0.1 + 0.1 * np.exp(-64 * (x - mu) ** 2)
-    m0 = np.zeros(N_x)
-    u0 = np.hstack((h0, m0))
+    idx_x = [i for i in range(0, N_x, x_step)]
+    x_count = len(idx_x)
+    idx_x2 = idx_x + [i + N_x for i in range(0, N_x, x_step)]
+    idx_t = [i for i in range(0, N_t, t_step)]
+    t_count = len(idx_t)
+    print("idx_x2 :", idx_x2, "idx_t :", idx_t)
 
-    # 神经网络
     N_x_nn = 101
     N_t_nn = 51
     x_nn = np.linspace(0, 1, N_x_nn)
     t_nn = np.linspace(0, 0.5, N_t_nn)
-
-    h0_nn = 0.1 + 0.1 * np.exp(-64 * (x_nn - mu) ** 2)
-    v0_nn = np.zeros(N_x_nn)
-    u0_nn = np.hstack((h0_nn, v0_nn))
-    u0_test = torch.from_numpy(u0_nn).float()
-
     X, T = np.meshgrid(x_nn, t_nn)
     x_test = X.flatten()[:, None]
     t_test = T.flatten()[:, None]
     y_test = np.hstack((x_test, t_test))
     y_test = torch.from_numpy(y_test).float()
-    predict = model(u0_test, y_test).detach().numpy()
+
+    mu = np.random.random()
+    h0 = 0.1 + 0.1 * np.exp(-64 * (x - mu) ** 2)
+    m0 = np.zeros_like(h0)
+    u0 = np.hstack((h0, m0))
+
+    # 观测数据
+
+    u = rk4(u0, N_t - 1, dx, dt)
+    tmp = u[idx_t, :][:, idx_x2]
+    h = tmp[:, :x_count].flatten()
+    m = tmp[:, x_count:].flatten()
+    v = m / h
+    o_test = np.hstack((h, v))
+    o_test = torch.from_numpy(o_test).float()
+
+    predict = model(o_test, y_test).detach().numpy()
     h_hat = predict[:, 0].reshape(-1, N_x_nn)
 
+    # 数值解
     # 数值解
     step_x = (N_x - 1) // (N_x_nn - 1)
     x_filter = [i for i in range(0, N_x, step_x)]
@@ -130,7 +147,7 @@ if "__main__" == __name__:
     step_t = (N_t - 1) // (N_t_nn - 1)
     t_filter = [i for i in range(0, N_t, step_t)]
 
-    u1 = rk4(u0, N_t - 1, dx, dt)
+    u1 = u
     h1 = u1[:, :N_x]
     h1 = h1[t_filter, :][:, x_filter]
 
@@ -167,6 +184,6 @@ if "__main__" == __name__:
     # 保存动画
     mpeg_writer = animation.FFMpegWriter(fps=24, bitrate=10000,
                                          codec="libx264", extra_args=["-pix_fmt", "yuv420p"])
-    anim.save("{}.mp4".format("swe_1d_don_04"), writer=mpeg_writer)
+    anim.save("{}.mp4".format("swe_1d_don_obs_05"), writer=mpeg_writer)
 
     plt.show()

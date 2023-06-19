@@ -5,6 +5,7 @@ swe_1d_don_obs_01.npz
 所以最后攻101组观测；
 
 swe_1d_don_obs_01.py
+网络层数
 区间长度[0,1]*[0,1]
 101组观测，每组观测121个点，物理点选取1000个；
 obs dataset size (mb): 0.00020599365234375
@@ -15,11 +16,18 @@ swe_1d_don_obs_01_1.5e-5.pt 区间长度[0,1]*[0,1]  mse<1.5e-5 Elapsed time:  3
 swe_1d_don_obs_01_e-5.pt 区间长度[0,1]*[0,1] mse<1e-5 batch : 155628 lr : 3.125e-05 loss : 9.754292477737181e-06 Elapsed time:  6:17:37.794513
 
 swe_1d_don_obs_04.py
+网络层数：
+[o_train.shape[1], 128, 64, 64, 64, 64]
+[y_train.shape[1], 64, 64, 64, 64, 64]
 由于mse多轮训练，一直降不下来，怀疑是物理点选取的少了，所以改为5000个：(其他和swe_1d_don_obs_01.py一致)
 swe_1d_don_obs_04_e-5.pt batch : 166840 lr : 0.00025 loss : 9.756658073456492e-06 Elapsed time:  6:28:12.704971
+改变网络层数： 暂时还没训练
+[o_train.shape[1], 200, 150, 100, 64, 64, 64, 64, 64]
+[y_train.shape[1], 64, 64, 64, 64, 64, 64, 64, 64]
 
 swe_1d_don_obs_05.py
 相对于swe_1d_don_obs_04.py，把时间跨度缩短为[0,0.5]，物理信息点为5000个
+swe_1d_don_obs_05_5e-6.pt batch : 42849 lr : 0.001 loss : 4.992206413589884e-06 Elapsed time:  1:45:23.684916
 
 +++++++++++++++++++++++++++++++ 非主流程
 swe_1d_don_obs_02.py

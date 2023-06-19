@@ -3,7 +3,7 @@ import torch
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from scipy.integrate import solve_ivp
-from swe_1d_don_obs_01 import SWENet
+from swe_1d_don_obs_04 import SWENet
 
 
 def dudt_of_shallow_water(t, w):
