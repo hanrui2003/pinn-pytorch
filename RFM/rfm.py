@@ -4,6 +4,7 @@ import numpy as np
 import time
 from fdm import u, d2u_dx2, error_plot, time_plot
 import math
+from scipy.linalg import lstsq
 import matplotlib.pyplot as plt
 
 # computational domain，定义域的左右边界
@@ -87,20 +88,33 @@ def pre_define(M_p, J_n):
 
 # Assembling the matrix A,f in linear system 'Au=f'
 def assemble_matrix(models, points, M_p, J_n, Q, lamb):
+    """
+    models：模型，其数量等于M_p
+    points：配点列表，配点的总数是M_p*(Q+1)
+    M_p:划分的区间数
+    Q：每个小区间取配点的个数，实际为Q+1
+    J_n：线性层的输出维度
+    lamb：公式中lambda的平方
+    """
     A_I = np.zeros([M_p * Q, M_p * J_n])  # PDE term
     A_B = np.zeros([2, M_p * J_n])  # boundary condition
     A_C_0 = np.zeros([M_p - 1, M_p * J_n])  # 0-order smoothness condition
     A_C_1 = np.zeros([M_p - 1, M_p * J_n])  # 1-order smoothness condition
     f = np.zeros([M_p * Q + 2 * (M_p - 1) + 2, 1])
 
+    # 遍历每个区间，区间数M_p
     for n in range(M_p):
         # forward and grad
+        # 当前区间的配点
         point = torch.tensor(points[n], requires_grad=True)
         out = models[n](point)
         values = out.detach().numpy()
+        # 小区间的左边界和右边界
         value_l, value_r = values[0, :], values[-1, :]
+        # 记录一阶导和二阶导
         grad1 = []
         grad2 = []
+        # 每个区间的配点求导，由于torch的局限，不能多维函数一起求导，所以只能循环
         for i in range(J_n):
             g1 = torch.autograd.grad(outputs=out[:, i], inputs=point,
                                      grad_outputs=torch.ones_like(out[:, i]),
@@ -115,19 +129,24 @@ def assemble_matrix(models, points, M_p, J_n, Q, lamb):
         grad2 = np.array(grad2).T
         grad_l = grad1[0, :]
         grad_r = grad1[-1, :]
+        # 微分算子，不过这里和公式不太对应，应该是加
+        # 但是和下面f的计算（也是减）是对应的，将错就错还是说文档错误？
         Lu = grad2 - lamb * values
 
         # Lu = f condition
+        # 构造分块对角矩阵，每个块就是一个小区间（扣除尾部）对应的方阵
         A_I[n * Q:(n + 1) * Q, n * J_n:(n + 1) * J_n] = Lu[:Q, :]
         f[n * Q:(n + 1) * Q, :] = F(points[n], lamb).reshape([-1, 1])[:Q]
 
         # boundary conditions
+        # 用分块对角阵表示边值
         if n == 0:
             A_B[0, :J_n] = value_l
         if n == M_p - 1:
             A_B[1, -J_n:] = value_r
 
         # smoothness conditions
+        # 这里需要再细看，请教老师
         if M_p > 1:
             if n == 0:
                 A_C_0[0, :J_n] = -value_r
@@ -149,10 +168,9 @@ def assemble_matrix(models, points, M_p, J_n, Q, lamb):
     f[M_p * Q, :] = u(0.)
     f[M_p * Q + 1, :] = u(8.)
 
+    # 为什么f不赋光滑条件，还是说光滑条件就是0
+
     return (A, f)
-
-
-from scipy.linalg import lstsq
 
 
 def main(M_p, J_n, Q, lamb):
@@ -199,6 +217,9 @@ vanal_d2u_dx2 = np.vectorize(d2u_dx2)
 
 
 def F(points, lamb):
+    """
+    真解构造右端项f
+    """
     return (vanal_d2u_dx2(points) - lamb * vanal_u(points))
 
 
