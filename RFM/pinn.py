@@ -23,8 +23,10 @@ def weights_init(m):
 # network definition
 class Network(nn.Module):
     """
+    一个简单的全连接网络，单隐层
     输入是d维，输出一维，中间一个隐藏层，维度是M
     """
+
     def __init__(self, d, M):
         super(Network, self).__init__()
         self.fc_layer = nn.Sequential(nn.Linear(d, M, bias=True), nn.Tanh())
@@ -37,14 +39,18 @@ class Network(nn.Module):
 
 
 # loss definition
-class Loss():
+class Loss:
     def __init__(self, net, left_boundary, right_boundary):
         self.net = net
         self.left_boundary = left_boundary
         self.right_boundary = right_boundary
 
     def sample(self, N):
-        # x是除了边界的离散点，也就是配置点
+        """
+        就是返回离散点（配点），x是除了边界的离散点，也就是内部配点
+        N: 离散的区间数
+        """
+        # x是除了边界的离散点，也就是内部配点
         x = torch.tensor(np.float64(np.linspace(self.left_boundary, self.right_boundary, N + 1)[1:N]),
                          requires_grad=True).reshape(-1, 1)
         x_boundary_left = torch.ones([1], requires_grad=True) * self.left_boundary
@@ -64,10 +70,12 @@ class Loss():
         dx = torch.autograd.grad(y, x, grad_outputs=torch.ones_like(self.net(x)), create_graph=True)[0].reshape(-1, 1)
         dxx = torch.autograd.grad(dx, x, grad_outputs=torch.ones_like(dx), create_graph=True)[0].reshape(-1, 1)
 
+        # f是已知的，就是fdm.py里面的f(x)，只不过这里不用numpy，用的torch的张量，所以要重写
+        # 这里有点问题，写成了 d2u_dx2(x) - lamb * u(x) ， 应该是d2u_dx2(x) + lamb * u(x) ，不过下面的计算损失也是犯了同样的错误，所以抵消了。
         f = -AA * (aa * aa + bb * bb) * torch.sin(bb * (x + 0.05)) * torch.cos(aa * (x + 0.05)) \
             - 2.0 * AA * aa * bb * torch.cos(bb * (x + 0.05)) * torch.sin(aa * (x + 0.05)) \
             - lamb * (AA * torch.sin(bb * (x + 0.05)) * torch.cos(aa * (x + 0.05)) + 2.0)
-        # 这里为什么是减，按照方程是加啊。
+        # 这里和上面一样，加写成了减。
         diff_error = (dxx - lamb * self.net(x) - f.reshape(-1, 1)) ** 2
 
         # boundary condition

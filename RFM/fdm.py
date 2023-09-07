@@ -8,6 +8,7 @@ AA = 1
 aa = 2.0 * np.pi
 bb = 3.0 * np.pi
 
+# 空间的左右边界（该例子是一维的）
 left_boundary = 0.0
 right_boundary = 8.0
 # 公式中的lambda的平方
@@ -15,16 +16,22 @@ lamb = 4
 
 
 def u(x):
+    """
+    设置一个真解
+    """
     return AA * np.sin(bb * (x + 0.05)) * np.cos(aa * (x + 0.05)) + 2.0
 
 
 def d2u_dx2(x):
+    """
+    对u(x)的二阶导，就是拉普拉斯算子
+    """
     return -AA * (aa * aa + bb * bb) * np.sin(bb * (x + 0.05)) * np.cos(aa * (x + 0.05)) \
            - 2.0 * AA * aa * bb * np.cos(bb * (x + 0.05)) * np.sin(aa * (x + 0.05))
 
 
 def f(x):
-    return (d2u_dx2(x) + lamb * u(x))
+    return d2u_dx2(x) + lamb * u(x)
 
 
 vanal_u = np.vectorize(u)
@@ -33,6 +40,10 @@ vanal_f = np.vectorize(f)
 
 # calculate the matrix A,f in linear equations system 'Au=f'
 def cal_matrix(N, points):
+    """
+    N:离散的区间数，离散点为N+1,因为加入了端点
+    points: 就是离散点，本例中，就是N+1个点
+    """
     A = np.zeros((N + 1, N + 1), dtype=np.float64)
     dx = (right_boundary - left_boundary) / N
     for i in range(1, N):
@@ -50,6 +61,9 @@ def cal_matrix(N, points):
 
 # calculate the l^{inf}-norm and l^{2}-norm error for u
 def test(points, u):
+    """
+    计算真解和数值解的均方误差
+    """
     true_values = vanal_u(points)
     numerical_values = u
     epsilon = true_values - numerical_values

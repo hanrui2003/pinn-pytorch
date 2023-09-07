@@ -23,16 +23,21 @@ def weights_init(m):
 # random feature basis when using \psi^{a} as PoU function
 class RFM_rep_a(nn.Module):
     def __init__(self, d, J_n, x_max, x_min):
+        """
+        创建一个单隐层的全连接网络
+        d:输入维度
+        J_n:隐层维度，注意这里也是输出维度，因为后续没有聚合层。
+        x_max: 单位分解区间的右端
+        x_min: 单位分解区间的左端
+        """
         super(RFM_rep_a, self).__init__()
-        # 输入维度
         self.d = d
-        # 输出维度
         self.J_n = J_n
         # 小区间半径，区间长度的一半
         self.r = (x_max - x_min) / 2.0
         # 小区间中心
         self.x_c = (x_max + x_min) / 2
-        # 这里就是个简单的线性层+Tanh
+        # 这里就是个简单的线性层+Tanh，注意这里是phi，不是psi
         self.phi = nn.Sequential(nn.Linear(self.d, self.J_n, bias=True), nn.Tanh())
 
     def forward(self, x):
@@ -67,23 +72,31 @@ class RFM_rep_b(nn.Module):
             psi = ((d <= -3 / 4) & (d > -5 / 4)) * (1 + torch.sin(2 * np.pi * d)) / 2 + (
                     (d <= 3 / 4) & (d > -3 / 4)) * 1.0 + ((d <= 5 / 4) & (d > 3 / 4)) * (
                           1 - torch.sin(2 * np.pi * d)) / 2
-        return (psi * y)
+        return psi * y
 
 
 # predefine the random feature functions in each PoU region
 def pre_define(M_p, J_n):
+    """
+    为每个单位分解子区间生成一个神经网络
+    M_p：单位分解区间的数量，对应着单隐层神经网络的数量
+    J_n：神经网络隐层的维度
+    """
     models = []
     for n in range(M_p):
+        # 单位分解子区间的左端
         x_min = (X_max - X_min) / M_p * n + X_min
+        # 单位分解子区间的右端
         x_max = (X_max - X_min) / M_p * (n + 1) + X_min
         model = RFM_rep_a(d=1, J_n=J_n, x_min=x_min, x_max=x_max)
         model = model.apply(weights_init)
-        # 将模型中所有的浮点数参数（权重、偏置等）转换为 double
+        # 将模型中所有的浮点数参数（权重、偏置等）转换为 double，就是把默认的float32转成float64
         model = model.double()
+        # 内层参数固定，不需要反向传播更新，所以去除梯度跟踪
         for param in model.parameters():
             param.requires_grad = False
         models.append(model)
-    return (models)
+    return models
 
 
 # Assembling the matrix A,f in linear system 'Au=f'
@@ -170,25 +183,30 @@ def assemble_matrix(models, points, M_p, J_n, Q, lamb):
 
     # 为什么f不赋光滑条件，还是说光滑条件就是0
 
-    return (A, f)
+    return A, f
 
 
 def main(M_p, J_n, Q, lamb):
     # prepare collocation points
     time_begin = time.time()
     points = []
+    # 把定义域划分成多个子区间
     for n in range(M_p):
+        # 单位分解子区间的左端
         x_min = (X_max - X_min) / M_p * n + X_min
+        # 单位分解子区间的右端
         x_max = (X_max - X_min) / M_p * (n + 1) + X_min
+        # 单位分解子区间的配点，Q表示每个单位分解子区间划分的子区间，所以算上端点，配点数为Q+1
         points.append(np.linspace(x_min, x_max, Q + 1).reshape([-1, 1]))
 
     # prepare models
+    # 一个单位分解子区间对应一个单隐层的全连接网络
     models = pre_define(M_p, J_n)
 
     # matrix define (Au=f)
     A, f = assemble_matrix(models, points, M_p, J_n, Q, lamb)
     print('***********************')
-    print('Matrix shape: N=%s,M=%s' % (A.shape))
+    print('Matrix shape: N=%s,M=%s' % A.shape)
     # rescaling
     c = 100.0
     for i in range(len(A)):
@@ -203,7 +221,7 @@ def main(M_p, J_n, Q, lamb):
     error = test(models, M_p, J_n, Q, w)
 
     time_end = time.time()
-    return (error, time_end - time_begin)
+    return error, time_end - time_begin
 
 
 # analytical solution parameters
@@ -220,7 +238,7 @@ def F(points, lamb):
     """
     真解构造右端项f
     """
-    return (vanal_d2u_dx2(points) - lamb * vanal_u(points))
+    return vanal_d2u_dx2(points) - lamb * vanal_u(points)
 
 
 # calculate the l^{infty}-norm and l^{2}-norm error for u
@@ -247,18 +265,23 @@ def test(models, M_p, J_n, Q, w, plot=False):
     print('R_m=%s,M_p=%s,J_n=%s,Q=%s' % (R_m, M_p, J_n, Q))
     print('L_infty error =', epsilon.max(), ', L_2 error =', math.sqrt(8 * sum(epsilon * epsilon) / len(epsilon)))
     x = [((X_max - X_min) / M_p) * i / test_Q for i in range(M_p * (test_Q + 1))]
-    return (math.sqrt((X_max - X_min) * sum(epsilon * epsilon) / len(epsilon)))
+    return math.sqrt((X_max - X_min) * sum(epsilon * epsilon) / len(epsilon))
 
 
 if __name__ == '__main__':
+    # 公式中的lambda的平方
     lamb = 4
     R_m = 3
+    # 每个区间对应的神经网络的隐层的维度
     J_n = 50  # the number of basis functions per PoU region
-    Q = 50  # the number of collocation pointss per PoU region
-    RFM_Error = np.zeros([5, 3])
-    for i in range(5):  # the number of PoU regions
-        M_p = 2 * (2 ** i)
-        RFM_Error[i, 0] = int(M_p * J_n)
-        RFM_Error[i, 1], RFM_Error[i, 2] = main(M_p, J_n, Q, lamb)
-    error_plot([RFM_Error])
-    time_plot([RFM_Error])
+    # 每个区域配点的个数
+    Q = 50  # the number of collocation points per PoU region
+    main(2, J_n, Q, lamb)
+    # RFM_Error = np.zeros([5, 3])
+    # for i in range(5):  # the number of PoU regions
+    #     # 划分的区间数
+    #     M_p = 2 * (2 ** i)
+    #     RFM_Error[i, 0] = int(M_p * J_n)
+    #     RFM_Error[i, 1], RFM_Error[i, 2] = main(M_p, J_n, Q, lamb)
+    # error_plot([RFM_Error])
+    # time_plot([RFM_Error])

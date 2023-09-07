@@ -244,7 +244,7 @@ CFL条件：$c \cdot \Delta t < \Delta x$ \\
 \subsection{局部RFF与单位分解}
 上述随机特征函数是全局定义的，但微分方程的解常常有小尺度的局部变化，因此RFM考虑在多个局部构造局部随机特征函数，再用单位分解（partition of unity）技术将它们组合。\\
 具体来说，首先取定单位分解函数的中心点$\{\boldsymbol{x}_n\}_{n=1}^{M_p}\subset\Omega$，在这$M_p$个局部构造仿射变换\\
-\textcolor{red}{注：这里把定义域等分为$M_p$个小区间，$\{\boldsymbol{x}_n\}$是每个小区间的中点}
+\textcolor{red}{注：这里把定义域划分为$M_p$个小区间，$\{\boldsymbol{x}_n\}$是每个小区间的中点}
 \begin{equation}
 	\tilde{\boldsymbol{x}}=\frac{1}{\boldsymbol{r}_{n}}(\boldsymbol{x}-\boldsymbol{x}_{n}), \quad n=1,\cdots, M_p,
 \end{equation}
@@ -267,5 +267,13 @@ CFL条件：$c \cdot \Delta t < \Delta x$ \\
 	u_M(\boldsymbol{x})=\sum_{n=1}^{M_p} \psi_n (\boldsymbol{x})   \sum_{j=1}^{J_n }u_{nj} \phi_{nj} (\boldsymbol{x})
 	\label{representation2}
 \end{equation*}
+\textcolor{red}{注：右边的$\Sigma$对应的是一个全连接网络，$J_n$表示这个网络的隐层维度（神经元个数），左边的$\Sigma$表示用单位分解技术将它们组合。$M_p$表示划分的区间个数，对应着神经网络的个数。}\\
+
+
+\subsection{待读文献}
+\begin{enumerate}
+	\item 介绍RFM的：J. Chen, X. Chi, W. E, and Z. Yang, Bridging traditional and machine learningbased algorithms for solving pdes: The random feature method, Journal of Machine Learning, 1 (2022), pp. 268–298.
+	\item 关于神经网络MSE缺陷的文章： C. Wang, S. Li, D. He, and L. Wang, Is $ L^ 2$ Physics Informed Loss Always Suitable for Training Physics Informed Neural Network?. Advances in Neural Information Processing Systems, 35 (2022), pp. 8278-8290.
+\end{enumerate}
 
 \end{document}
