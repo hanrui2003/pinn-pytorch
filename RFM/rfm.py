@@ -172,15 +172,20 @@ def assemble_matrix(models, points, M_p, J_n, Q, lamb):
             A_B[1, -J_n:] = value_r
 
         # smoothness conditions
-        # 光滑性处理，当划分为多个区间时，区间连接的地方做光滑处理，就要连接点的左导数=右导数
+        # 光滑性处理，当划分为多个区间时，区间连接的地方做光滑处理：
+        # 每一行对应一个连接点，所以共M_p-1个，
+        # 每行的数据由两部分组成：当前连接点作为左边区间的右端点负值和作为右边区间的左端点值
         if M_p > 1:
             if n == 0:
+                print("n == 0")
                 A_C_0[0, :J_n] = -value_r
                 A_C_1[0, :J_n] = -grad_r
             elif n == M_p - 1:
+                print("n == M_p - 1")
                 A_C_0[M_p - 2, -J_n:] = value_l
                 A_C_1[M_p - 2, -J_n:] = grad_l
             else:
+                print("0 < n < M_p - 1")
                 A_C_0[n - 1, n * J_n:(n + 1) * J_n] = value_l
                 A_C_1[n - 1, n * J_n:(n + 1) * J_n] = grad_l
                 A_C_0[n, n * J_n:(n + 1) * J_n] = -value_r
@@ -196,7 +201,7 @@ def assemble_matrix(models, points, M_p, J_n, Q, lamb):
     f[M_p * Q, :] = u(0.)
     f[M_p * Q + 1, :] = u(8.)
 
-    # 为什么f不赋光滑条件，还是说光滑条件就是0
+    # 为什么f不赋光滑条件，还是说光滑条件就是0？？？
 
     return A, f
 
@@ -223,13 +228,17 @@ def main(M_p, J_n, Q, lamb):
     print('***********************')
     print('Matrix shape: N=%s,M=%s' % A.shape)
     # rescaling
+    # 这个缩放因子，对于其他方程，该如何确定？？？
     c = 100.0
+    # 对每行按其最大值缩放
+    # 为什么不按照绝对值的最大值缩放？这样会映射到[-c,c]，岂不完美？看文档应该是绝对值，代码错误？
     for i in range(len(A)):
         ratio = c / A[i, :].max()
         A[i, :] = A[i, :] * ratio
         f[i] = f[i] * ratio
 
     # solve
+    # 求 Aw=f的最小二乘解，这里w就是外围参数，可以近似认为是神经网络的隐层到输出层的权重参数。
     w = lstsq(A, f)[0]
 
     # test
@@ -261,8 +270,10 @@ def test(models, M_p, J_n, Q, w, plot=False):
     epsilon = []
     true_values = []
     numerical_values = []
+    # 测试的时候，每个单位分解区间里面的配点数，这里故意设置的不一样。
     test_Q = 2 * Q
     for n in range(M_p):
+        # 这里的命名最好改为和之前的一致point，表示一个单位分解区间里面的配点
         points = torch.tensor(
             np.linspace((X_max - X_min) / M_p * n + X_min, (X_max - X_min) / M_p * (n + 1) + X_min, test_Q + 1),
             requires_grad=False).reshape([-1, 1])
@@ -279,11 +290,14 @@ def test(models, M_p, J_n, Q, w, plot=False):
     epsilon = np.maximum(epsilon, -epsilon)
     print('R_m=%s,M_p=%s,J_n=%s,Q=%s' % (R_m, M_p, J_n, Q))
     print('L_infty error =', epsilon.max(), ', L_2 error =', math.sqrt(8 * sum(epsilon * epsilon) / len(epsilon)))
+    # 这行代码没用上，而且有问题，越界了
     x = [((X_max - X_min) / M_p) * i / test_Q for i in range(M_p * (test_Q + 1))]
     return math.sqrt((X_max - X_min) * sum(epsilon * epsilon) / len(epsilon))
 
 
 if __name__ == '__main__':
+    # 固定网络初始化参数，用于debug
+    torch.manual_seed(123)
     # 公式中的lambda的平方
     lamb = 4
     R_m = 3
@@ -291,12 +305,12 @@ if __name__ == '__main__':
     J_n = 5  # the number of basis functions per PoU region
     # 每个区域配点的个数
     Q = 5  # the number of collocation points per PoU region
-    # main(2, J_n, Q, lamb)
-    RFM_Error = np.zeros([5, 3])
-    for i in range(5):  # the number of PoU regions
-        # 划分的区间数
-        M_p = 2 * (2 ** i)
-        RFM_Error[i, 0] = int(M_p * J_n)
-        RFM_Error[i, 1], RFM_Error[i, 2] = main(M_p, J_n, Q, lamb)
-    error_plot([RFM_Error])
-    time_plot([RFM_Error])
+    main(4, J_n, Q, lamb)
+    # RFM_Error = np.zeros([5, 3])
+    # for i in range(5):  # the number of PoU regions
+    #     # 划分的区间数
+    #     M_p = 2 * (2 ** i)
+    #     RFM_Error[i, 0] = int(M_p * J_n)
+    #     RFM_Error[i, 1], RFM_Error[i, 2] = main(M_p, J_n, Q, lamb)
+    # error_plot([RFM_Error])
+    # time_plot([RFM_Error])
