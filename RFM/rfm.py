@@ -26,7 +26,7 @@ class RFM_rep_a(nn.Module):
         """
         创建一个单隐层的全连接网络
         d:输入维度
-        J_n:隐层维度，注意这里也是输出维度，因为后续没有聚合层。
+        J_n:隐层维度，注意这里也是输出维度，因为后续没有聚合层。因为内层的参数固定，聚合层交给后续的外围参数优化。
         x_max: 单位分解区间的右端
         x_min: 单位分解区间的左端
         """
@@ -110,24 +110,30 @@ def assemble_matrix(models, points, M_p, J_n, Q, lamb):
     lamb：公式中lambda的平方
     """
     A_I = np.zeros([M_p * Q, M_p * J_n])  # PDE term
+    # 左右两个边界点，所以横轴维度为2
+    # 每个边界点经过一个神经网络的输出是J_n维，一共M_p个网络，所以纵轴维度是M_p * J_n
     A_B = np.zeros([2, M_p * J_n])  # boundary condition
+    # 0阶和1阶连续性条件，
+    # 单位分解区间的个数是M_p，所以区间的连接点个数M_p - 1，所以横轴维度为M_p - 1
+    # 纵轴维度同上
     A_C_0 = np.zeros([M_p - 1, M_p * J_n])  # 0-order smoothness condition
     A_C_1 = np.zeros([M_p - 1, M_p * J_n])  # 1-order smoothness condition
     f = np.zeros([M_p * Q + 2 * (M_p - 1) + 2, 1])
 
-    # 遍历每个区间，区间数M_p
+    # 遍历每个区间，区间数M_p =========== start
     for n in range(M_p):
         # forward and grad
         # 当前区间的配点
         point = torch.tensor(points[n], requires_grad=True)
+        # 当前单位分解区间的配点进入对应的神经网络
         out = models[n](point)
         values = out.detach().numpy()
-        # 小区间的左边界和右边界
+        # 当前区间的左边界和右边界的输出，注意神经网络的输出维度是J_n
         value_l, value_r = values[0, :], values[-1, :]
         # 记录一阶导和二阶导
         grad1 = []
         grad2 = []
-        # 每个区间的配点求导，由于torch的局限，不能多维函数一起求导，所以只能循环
+        # 当前区间的配点求导，由于torch的局限，不能多维函数（J_n维）一起求导，所以只能循环
         for i in range(J_n):
             g1 = torch.autograd.grad(outputs=out[:, i], inputs=point,
                                      grad_outputs=torch.ones_like(out[:, i]),
@@ -137,29 +143,36 @@ def assemble_matrix(models, points, M_p, J_n, Q, lamb):
             g2 = torch.autograd.grad(outputs=g1[:, 0], inputs=point,
                                      grad_outputs=torch.ones_like(out[:, i]),
                                      create_graph=False, retain_graph=True)[0]
+
             grad2.append(g2.squeeze().detach().numpy())
         grad1 = np.array(grad1).T
         grad2 = np.array(grad2).T
+        # 当前区间的左边界和右边界的一阶导数，注意神经网络的输出维度是J_n
         grad_l = grad1[0, :]
         grad_r = grad1[-1, :]
-        # 微分算子，不过这里和公式不太对应，应该是加
+        # 类似微分算子，注意这里不等同于微分算子，因为这里的Lu对于一个单点x，其输出维度是J_n
+        # 这里代码可能有点问题，跟pinn.py一样的错误，把加写成了减，
         # 但是和下面f的计算（也是减）是对应的，将错就错还是说文档错误？
+        # 无伤大雅，因为都改为加，运行也是一样的收敛效果。
         Lu = grad2 - lamb * values
 
         # Lu = f condition
-        # 构造分块对角矩阵，每个块就是一个小区间（扣除尾部）对应的方阵
+        # 构造分块对角矩阵，每个块Q行，J_n列，每个块就是一个小区间（扣除区间右端点）对应的方阵
         A_I[n * Q:(n + 1) * Q, n * J_n:(n + 1) * J_n] = Lu[:Q, :]
+        # 真解构造f，因为方程中认为f是已知的，这里也是一个小区间（扣除区间右端点）对应的向量
         f[n * Q:(n + 1) * Q, :] = F(points[n], lamb).reshape([-1, 1])[:Q]
 
         # boundary conditions
-        # 用分块对角阵表示边值
+        # 整个定义域区间的左边界和右边界的输出，注意神经网络的输出维度是J_n
+        # 构造的也是分块对角矩阵
+        # 注意边界的输出不需要经过微分算子运算，因为是比对标签值
         if n == 0:
             A_B[0, :J_n] = value_l
         if n == M_p - 1:
             A_B[1, -J_n:] = value_r
 
         # smoothness conditions
-        # 这里需要再细看，请教老师
+        # 光滑性处理，当划分为多个区间时，区间连接的地方做光滑处理，就要连接点的左导数=右导数
         if M_p > 1:
             if n == 0:
                 A_C_0[0, :J_n] = -value_r
@@ -172,6 +185,8 @@ def assemble_matrix(models, points, M_p, J_n, Q, lamb):
                 A_C_1[n - 1, n * J_n:(n + 1) * J_n] = grad_l
                 A_C_0[n, n * J_n:(n + 1) * J_n] = -value_r
                 A_C_1[n, n * J_n:(n + 1) * J_n] = -grad_r
+    # 遍历每个区间 =========== end
+
     if M_p > 1:
         A = np.concatenate((A_I, A_B, A_C_0, A_C_1), axis=0)
     else:
@@ -273,15 +288,15 @@ if __name__ == '__main__':
     lamb = 4
     R_m = 3
     # 每个区间对应的神经网络的隐层的维度
-    J_n = 50  # the number of basis functions per PoU region
+    J_n = 5  # the number of basis functions per PoU region
     # 每个区域配点的个数
-    Q = 50  # the number of collocation points per PoU region
-    main(2, J_n, Q, lamb)
-    # RFM_Error = np.zeros([5, 3])
-    # for i in range(5):  # the number of PoU regions
-    #     # 划分的区间数
-    #     M_p = 2 * (2 ** i)
-    #     RFM_Error[i, 0] = int(M_p * J_n)
-    #     RFM_Error[i, 1], RFM_Error[i, 2] = main(M_p, J_n, Q, lamb)
-    # error_plot([RFM_Error])
-    # time_plot([RFM_Error])
+    Q = 5  # the number of collocation points per PoU region
+    # main(2, J_n, Q, lamb)
+    RFM_Error = np.zeros([5, 3])
+    for i in range(5):  # the number of PoU regions
+        # 划分的区间数
+        M_p = 2 * (2 ** i)
+        RFM_Error[i, 0] = int(M_p * J_n)
+        RFM_Error[i, 1], RFM_Error[i, 2] = main(M_p, J_n, Q, lamb)
+    error_plot([RFM_Error])
+    time_plot([RFM_Error])
