@@ -175,6 +175,9 @@ def assemble_matrix(models, points, M_p, J_n, Q, lamb):
         # 光滑性处理，当划分为多个区间时，区间连接的地方做光滑处理：
         # 每一行对应一个连接点，所以共M_p-1个，
         # 每行的数据由两部分组成：当前连接点作为左边区间的右端点负值和作为右边区间的左端点值
+        # 最好的约束条件是：左边区间的右端点负值=作为右边区间的左端点值，但是这个条件不太好构建，
+        # 所以构造一个弱约束：左边区间的右端点负值（经过外层聚合） + 右边区间的左端点值（经过外层聚合）= 0
+        # 即想构造A=B，用A+B=0代替
         if M_p > 1:
             if n == 0:
                 print("n == 0")
@@ -200,8 +203,6 @@ def assemble_matrix(models, points, M_p, J_n, Q, lamb):
     # boundary conditions
     f[M_p * Q, :] = u(0.)
     f[M_p * Q + 1, :] = u(8.)
-
-    # 为什么f不赋光滑条件，还是说光滑条件就是0？？？
 
     return A, f
 
@@ -270,7 +271,7 @@ def test(models, M_p, J_n, Q, w, plot=False):
     epsilon = []
     true_values = []
     numerical_values = []
-    # 测试的时候，每个单位分解区间里面的配点数，这里故意设置的不一样。
+    # 测试的时候，把网格变细，网格大小为配点的一半3
     test_Q = 2 * Q
     for n in range(M_p):
         # 这里的命名最好改为和之前的一致point，表示一个单位分解区间里面的配点
@@ -302,15 +303,15 @@ if __name__ == '__main__':
     lamb = 4
     R_m = 3
     # 每个区间对应的神经网络的隐层的维度
-    J_n = 5  # the number of basis functions per PoU region
+    J_n = 50  # the number of basis functions per PoU region
     # 每个区域配点的个数
-    Q = 5  # the number of collocation points per PoU region
-    main(4, J_n, Q, lamb)
-    # RFM_Error = np.zeros([5, 3])
-    # for i in range(5):  # the number of PoU regions
-    #     # 划分的区间数
-    #     M_p = 2 * (2 ** i)
-    #     RFM_Error[i, 0] = int(M_p * J_n)
-    #     RFM_Error[i, 1], RFM_Error[i, 2] = main(M_p, J_n, Q, lamb)
-    # error_plot([RFM_Error])
-    # time_plot([RFM_Error])
+    Q = 50  # the number of collocation points per PoU region
+    # main(4, J_n, Q, lamb)
+    RFM_Error = np.zeros([5, 3])
+    for i in range(5):  # the number of PoU regions
+        # 划分的区间数
+        M_p = 2 * (2 ** i)
+        RFM_Error[i, 0] = int(M_p * J_n)
+        RFM_Error[i, 1], RFM_Error[i, 2] = main(M_p, J_n, Q, lamb)
+    error_plot([RFM_Error])
+    time_plot([RFM_Error])
