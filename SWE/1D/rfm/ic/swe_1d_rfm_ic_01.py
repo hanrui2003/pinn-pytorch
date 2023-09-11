@@ -13,6 +13,10 @@ T_min = 0.0
 T_max = 1.0
 
 
+def ic_func(x):
+    return 0.1 + 0.1 * np.exp(-64 * (x - 0.25) ** 2)
+
+
 # random initialization for parameters
 def weights_init(m):
     if isinstance(m, (nn.Conv2d, nn.Linear)):
@@ -132,16 +136,28 @@ def assemble_matrix(models, points, M_p, J_n, Q):
     Q：每个小区间取配点的个数(每个维度)，实际为Q+1
     J_n：线性层的输出维度
     """
-    # 所有普通条件，因为方程个数是2，所以用配点数乘2
-    A_I = np.zeros([2 * M_p * M_p * Q * Q, M_p * M_p * J_n])  # PDE term
-    # 边界点
-    A_B = np.zeros([4 * M_p * (Q + 1), M_p * M_p * J_n])  # boundary condition
+    # 所有PDE条件，因为方程个数是2，所以用配点数乘2
+    A_P = np.zeros([2 * M_p * M_p * Q * Q, M_p * M_p * J_n])  # PDE term
+    # 初值条件
+    A_I_h = np.zeros([M_p * (Q + 1), M_p * M_p * J_n])
+    A_I_v = np.zeros([M_p * (Q + 1), M_p * M_p * J_n])
+    # 边界条件
+    A_B = np.zeros([2 * M_p * (Q + 1), M_p * M_p * J_n])  # boundary condition
     # 0阶连续性条件
-    A_C_0 = np.zeros([M_p - 1, M_p * M_p * J_n])  # 0-order smoothness condition
+    A_C_0 = np.zeros([2 * (M_p - 1) * M_p * (Q + 1), M_p * M_p * J_n])  # 0-order smoothness condition
+
+    # 去掉右边界和上边界后剩的点的索引，后面用到，这些点是用来算PDE的
+    pde_idx_filter = [m * (Q + 1) + n for m in range(Q) for n in range(Q)]
+
+    # 边值条件的计数，后面用到
+    bc_idx_filter1 = [m * (Q + 1) for m in range(Q + 1)]
+    bc_idx_filter2 = [(m + 1) * (Q + 1) - 1 for m in range(Q + 1)]
+    bc_count = 0
 
     # 遍历每个区间，区间数M_p =========== start
     for i in range(M_p):
         for j in range(M_p):
+            print("i=", i, ", j=", j)
             # 当前区间的配点
             point_for_h = torch.tensor(points[i][j], requires_grad=True)
             point_for_v = torch.tensor(points[i][j], requires_grad=True)
@@ -189,24 +205,30 @@ def assemble_matrix(models, points, M_p, J_n, Q):
             Lu2 = h_values * grad_v_t + v_values * grad_h_t + 2 * h_values * v_values * grad_v_x + (
                     v_values ** 2 + h_values) * grad_h_x
 
-            # 去掉右边界和上边界后剩的点的索引
-            idx_filter = [m * (Q + 1) + n for m in range(Q) for n in range(Q)]
-
             # Lu = f condition
             # 构造分块对角矩阵，每个块Q行，J_n列，每个块就是一个小区间（扣除区间右端点）对应的方阵
             # i * M_p + j 表示当前是第几个区间
             # Q * Q * 2 该区间中用于计算的条件数，Q * Q 是配点数，因为是两个方程，所以条件数乘2
-            A_I[(i * M_p + j) * Q * Q * 2:(i * M_p + j + 1) * Q * Q * 2, (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] \
-                = np.vstack((Lu1[idx_filter], Lu2[idx_filter]))
+            A_P[(i * M_p + j) * Q * Q * 2:(i * M_p + j + 1) * Q * Q * 2, (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] \
+                = np.vstack((Lu1[pde_idx_filter], Lu2[pde_idx_filter]))
 
-            # boundary conditions
-            # 整个定义域区间的左边界和右边界的输出，注意神经网络的输出维度是J_n
-            # 构造的也是分块对角矩阵
+            # 初值条件
+            if j == 0:
+                A_I_h[i * (Q + 1):(i + 1) * (Q + 1), (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = h_values[:Q + 1]
+                ic_h = ic_func(points[i][j][:Q + 1][:, [0]])
+                A_I_v[i * (Q + 1):(i + 1) * (Q + 1), (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = v_values[:Q + 1]
+
+            # 边界条件，对于浅水波，就x=0和x=1处，v=0
             # 注意边界的输出不需要经过微分算子运算，因为是比对标签值
-            # if i == 0:
-            #     A_B[0, :J_n] = value_l
-            # if i == M_p - 1:
-            #     A_B[1, -J_n:] = value_r
+            if i == 0:
+                A_B[bc_count * (Q + 1):(bc_count + 1) * (Q + 1), (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] \
+                    = v_values[bc_idx_filter1]
+                bc_count += 1
+
+            if i == M_p - 1:
+                A_B[bc_count * (Q + 1):(bc_count + 1) * (Q + 1), (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] \
+                    = v_values[bc_idx_filter2]
+                bc_count += 1
 
             # smoothness conditions
             # 光滑性处理，当划分为多个区间时，区间连接的地方做光滑处理：
@@ -227,17 +249,18 @@ def assemble_matrix(models, points, M_p, J_n, Q):
             #         A_C_0[i - 1, i * J_n:(i + 1) * J_n] = value_l
             #         A_C_0[i, i * J_n:(i + 1) * J_n] = -value_r
     # 遍历每个区间 =========== end
+    print("+++++++++++")
 
-    if M_p > 1:
-        A = np.concatenate((A_I, A_B, A_C_0, A_C_1), axis=0)
-    else:
-        A = np.concatenate((A_I, A_B), axis=0)
-
-    # boundary conditions
-    f[M_p * Q, :] = u(0.)
-    f[M_p * Q + 1, :] = u(8.)
-
-    return A, f
+    # if M_p > 1:
+    #     A = np.concatenate((A_P, A_B, A_C_0, A_C_1), axis=0)
+    # else:
+    #     A = np.concatenate((A_P, A_B), axis=0)
+    #
+    # # boundary conditions
+    # f[M_p * Q, :] = u(0.)
+    # f[M_p * Q + 1, :] = u(8.)
+    #
+    # return A, f
 
 
 def main(M_p, J_n, Q):
@@ -348,5 +371,5 @@ if __name__ == '__main__':
     # 超参数：每个区域配点的个数，其实配点个数是Q+1,这里的Q是每个单位分解区间的等分的区间数，注意这里针对的是每个维度
     Q = 3  # the number of collocation points per PoU region
     # 超参数：单位分解的区间数，注意这里指的是每个维度都划分为M_p个区间
-    M_p = 2
+    M_p = 3
     main(M_p, J_n, Q)

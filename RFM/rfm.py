@@ -307,7 +307,7 @@ if __name__ == '__main__':
     J_n = 5  # the number of basis functions per PoU region
     # 超参数：每个区域配点的个数，其实配点个数是Q+1,这里的Q是每个单位分解区间的等分的区间数
     Q = 5  # the number of collocation points per PoU region
-    main(2, J_n, Q, lamb)
+    main(4, J_n, Q, lamb)
     # RFM_Error = np.zeros([5, 3])
     # for i in range(5):  # the number of PoU regions
     #     # 划分的区间数
