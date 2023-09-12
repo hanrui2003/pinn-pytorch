@@ -144,7 +144,14 @@ def assemble_matrix(models, points, M_p, J_n, Q):
     # 边界条件
     A_B = np.zeros([2 * M_p * (Q + 1), M_p * M_p * J_n])  # boundary condition
     # 0阶连续性条件
-    A_C_0 = np.zeros([2 * (M_p - 1) * M_p * (Q + 1), M_p * M_p * J_n])  # 0-order smoothness condition
+    A_C_h_up_down = np.zeros([M_p * (M_p - 1) * (Q + 1), M_p * M_p * J_n])
+    A_C_h_left_right = np.zeros([M_p * (M_p - 1) * (Q + 1), M_p * M_p * J_n])
+    A_C_v_up_down = np.zeros([M_p * (M_p - 1) * (Q + 1), M_p * M_p * J_n])
+    A_C_v_left_right = np.zeros([M_p * (M_p - 1) * (Q + 1), M_p * M_p * J_n])
+
+    # 右端项，对于潜水方程，在组件矩阵和右端向量的时候，先构建初值，因为其他条件都是0，好处理
+    f_h = np.zeros((len(A_I_h) + len(A_P) + len(A_C_h_up_down) + len(A_C_h_left_right), 1))
+    f_v = np.zeros((len(A_I_v) + len(A_P) + len(A_C_v_up_down) + len(A_C_v_left_right) + len(A_B), 1))
 
     # 去掉右边界和上边界后剩的点的索引，后面用到，这些点是用来算PDE的
     pde_idx_filter = [m * (Q + 1) + n for m in range(Q) for n in range(Q)]
@@ -153,6 +160,10 @@ def assemble_matrix(models, points, M_p, J_n, Q):
     bc_idx_filter1 = [m * (Q + 1) for m in range(Q + 1)]
     bc_idx_filter2 = [(m + 1) * (Q + 1) - 1 for m in range(Q + 1)]
     bc_count = 0
+
+    # 光滑性条件的索引，后面用到
+    smooth_idx_filter1 = [m * (Q + 1) for m in range(Q + 1)]
+    smooth_idx_filter2 = [(m + 1) * (Q + 1) - 1 for m in range(Q + 1)]
 
     # 遍历每个区间，区间数M_p =========== start
     for i in range(M_p):
@@ -167,9 +178,6 @@ def assemble_matrix(models, points, M_p, J_n, Q):
             v_out = models[i][j][1](point_for_v)
             v_values = v_out.detach().numpy()
 
-            # values = out.detach().numpy()
-            # 当前区间的左边界和右边界的输出，注意神经网络的输出维度是J_n
-            # value_l, value_r = values[0, :], values[-1, :]
             # 记录一阶导
             grad_h_x = []
             grad_h_t = []
@@ -216,6 +224,7 @@ def assemble_matrix(models, points, M_p, J_n, Q):
             if j == 0:
                 A_I_h[i * (Q + 1):(i + 1) * (Q + 1), (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = h_values[:Q + 1]
                 ic_h = ic_func(points[i][j][:Q + 1][:, [0]])
+                f_h[i * (Q + 1):(i + 1) * (Q + 1)] = ic_h
                 A_I_v[i * (Q + 1):(i + 1) * (Q + 1), (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = v_values[:Q + 1]
 
             # 边界条件，对于浅水波，就x=0和x=1处，v=0
@@ -232,35 +241,71 @@ def assemble_matrix(models, points, M_p, J_n, Q):
 
             # smoothness conditions
             # 光滑性处理，当划分为多个区间时，区间连接的地方做光滑处理：
-            # 每一行对应一个连接点，所以共M_p-1个，
-            # 每行的数据由两部分组成：当前连接点作为左边区间的右端点负值和作为右边区间的左端点值
-            # 最好的约束条件是：左边区间的右端点负值=作为右边区间的左端点值，但是这个条件不太好构建，
-            # 所以构造一个弱约束：左边区间的右端点负值（经过外层聚合） + 右边区间的左端点值（经过外层聚合）= 0
-            # 即想构造A=B，用A+B=0代替
-            # if M_p > 1:
-            #     if i == 0:
-            #         print("n == 0")
-            #         A_C_0[0, :J_n] = -value_r
-            #     elif i == M_p - 1:
-            #         print("n == M_p - 1")
-            #         A_C_0[M_p - 2, -J_n:] = value_l
-            #     else:
-            #         print("0 < n < M_p - 1")
-            #         A_C_0[i - 1, i * J_n:(i + 1) * J_n] = value_l
-            #         A_C_0[i, i * J_n:(i + 1) * J_n] = -value_r
-    # 遍历每个区间 =========== end
-    print("+++++++++++")
+            # 看上下接触点
+            if j == 0:
+                # 当前子区间的上面，取负值
+                A_C_h_up_down[(i * (M_p - 1) + j) * (Q + 1):(i * (M_p - 1) + j + 1) * (Q + 1),
+                (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = -h_values[-(Q + 1):]
 
-    # if M_p > 1:
-    #     A = np.concatenate((A_P, A_B, A_C_0, A_C_1), axis=0)
-    # else:
-    #     A = np.concatenate((A_P, A_B), axis=0)
-    #
-    # # boundary conditions
-    # f[M_p * Q, :] = u(0.)
-    # f[M_p * Q + 1, :] = u(8.)
-    #
-    # return A, f
+                A_C_v_up_down[(i * (M_p - 1) + j) * (Q + 1):(i * (M_p - 1) + j + 1) * (Q + 1),
+                (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = -v_values[-(Q + 1):]
+            elif j == M_p - 1:
+                # 当前子区间的下面，取正值
+                A_C_h_up_down[(i * (M_p - 1) + j - 1) * (Q + 1):(i * (M_p - 1) + j) * (Q + 1),
+                (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = h_values[:Q + 1]
+
+                A_C_v_up_down[(i * (M_p - 1) + j - 1) * (Q + 1):(i * (M_p - 1) + j) * (Q + 1),
+                (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = v_values[:Q + 1]
+            else:
+                # 当前子区间的上面，取负值
+                A_C_h_up_down[(i * (M_p - 1) + j) * (Q + 1):(i * (M_p - 1) + j + 1) * (Q + 1),
+                (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = -h_values[-(Q + 1):]
+
+                A_C_v_up_down[(i * (M_p - 1) + j) * (Q + 1):(i * (M_p - 1) + j + 1) * (Q + 1),
+                (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = -v_values[-(Q + 1):]
+
+                # 当前子区间的下面，取正值
+                A_C_h_up_down[(i * (M_p - 1) + j - 1) * (Q + 1):(i * (M_p - 1) + j) * (Q + 1),
+                (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = h_values[:Q + 1]
+
+                A_C_v_up_down[(i * (M_p - 1) + j - 1) * (Q + 1):(i * (M_p - 1) + j) * (Q + 1),
+                (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = v_values[:Q + 1]
+
+            # 看左右接触点
+            if i == 0:
+                # 当前子区间的右面，取负值
+                A_C_h_left_right[(j * (M_p - 1) + i) * (Q + 1):(j * (M_p - 1) + i + 1) * (Q + 1),
+                (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = -h_values[smooth_idx_filter2]
+
+                A_C_v_left_right[(j * (M_p - 1) + i) * (Q + 1):(j * (M_p - 1) + i + 1) * (Q + 1),
+                (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = -v_values[smooth_idx_filter2]
+            elif i == M_p - 1:
+                # 当前子区间的左面，取正值
+                A_C_h_left_right[(j * (M_p - 1) + i - 1) * (Q + 1):(j * (M_p - 1) + i) * (Q + 1),
+                (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = h_values[smooth_idx_filter1]
+
+                A_C_v_left_right[(j * (M_p - 1) + i - 1) * (Q + 1):(j * (M_p - 1) + i) * (Q + 1),
+                (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = v_values[smooth_idx_filter1]
+            else:
+                # 当前子区间的右面，取负值
+                A_C_h_left_right[(j * (M_p - 1) + i) * (Q + 1):(j * (M_p - 1) + i + 1) * (Q + 1),
+                (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = -h_values[smooth_idx_filter2]
+
+                A_C_v_left_right[(j * (M_p - 1) + i) * (Q + 1):(j * (M_p - 1) + i + 1) * (Q + 1),
+                (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = -v_values[smooth_idx_filter2]
+                # 当前子区间的左面，取正值
+                A_C_h_left_right[(j * (M_p - 1) + i - 1) * (Q + 1):(j * (M_p - 1) + i) * (Q + 1),
+                (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = h_values[smooth_idx_filter1]
+
+                A_C_v_left_right[(j * (M_p - 1) + i - 1) * (Q + 1):(j * (M_p - 1) + i) * (Q + 1),
+                (i * M_p + j) * J_n:(i * M_p + j + 1) * J_n] = v_values[smooth_idx_filter1]
+
+    # 遍历每个区间 =========== end
+    print("assemble A and f")
+    A_h = np.concatenate((A_I_h, A_P, A_C_h_up_down, A_C_h_left_right), axis=0)
+    A_v = np.concatenate((A_I_v, A_P, A_C_v_up_down, A_C_v_left_right, A_B), axis=0)
+
+    return A_h, f_h, A_v, f_v
 
 
 def main(M_p, J_n, Q):
@@ -293,22 +338,29 @@ def main(M_p, J_n, Q):
     models = pre_define(M_p, J_n)
 
     # matrix define (Au=f)
-    A, f = assemble_matrix(models, points, M_p, J_n, Q)
+    A_h, f_h, A_v, f_v = assemble_matrix(models, points, M_p, J_n, Q)
     print('***********************')
-    print('Matrix shape: N=%s,M=%s' % A.shape)
+    print('A_h shape: ', A_h.shape, 'f_h shape: ', f_h.shape)
+    print('A_v shape: ', A_v.shape, 'f_v shape: ', f_v.shape)
     # rescaling
     # 这个缩放因子，对于其他方程，该如何确定？？？
     c = 100.0
-    # 对每行按其最大值缩放
-    # 为什么不按照绝对值的最大值缩放？这样会映射到[-c,c]，岂不完美？看文档应该是绝对值，代码错误？
-    for i in range(len(A)):
-        ratio = c / A[i, :].max()
-        A[i, :] = A[i, :] * ratio
-        f[i] = f[i] * ratio
+    # 对每行按其绝对值最大值缩放
+    # 为什么不按照绝对值的最大值缩放？这样会映射到[-c,c]，岂不完美？看文档应该是绝对值，代码错误？还有就是最大值有极小的概率是0，也是个风险点。
+    for i in range(len(A_h)):
+        ratio = c / max(-A_h[i, :].min(), A_h[i, :].max())
+        A_h[i, :] = A_h[i, :] * ratio
+        f_h[i] = f_h[i] * ratio
+
+    for i in range(len(A_v)):
+        ratio = c / max(-A_v[i, :].min(), A_v[i, :].max())
+        A_v[i, :] = A_v[i, :] * ratio
+        f_v[i] = f_v[i] * ratio
 
     # solve
     # 求 Aw=f的最小二乘解，这里w就是外围参数，可以近似认为是神经网络的隐层到输出层的权重参数。
-    w = lstsq(A, f)[0]
+    w_h = lstsq(A_h, f_h)[0]
+    w_v = lstsq(A_v, f_v)[0]
 
     # test
     error = test(models, M_p, J_n, Q, w)
@@ -372,4 +424,5 @@ if __name__ == '__main__':
     Q = 3  # the number of collocation points per PoU region
     # 超参数：单位分解的区间数，注意这里指的是每个维度都划分为M_p个区间
     M_p = 3
+    assert M_p > 1
     main(M_p, J_n, Q)
