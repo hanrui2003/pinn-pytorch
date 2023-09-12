@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 import time
 import math
-from scipy.linalg import lstsq
+from scipy.linalg import lstsq, block_diag
 import matplotlib.pyplot as plt
 
 # computational domain，定义域的左右边界
@@ -304,8 +304,10 @@ def assemble_matrix(models, points, M_p, J_n, Q):
     print("assemble A and f")
     A_h = np.concatenate((A_I_h, A_P, A_C_h_up_down, A_C_h_left_right), axis=0)
     A_v = np.concatenate((A_I_v, A_P, A_C_v_up_down, A_C_v_left_right, A_B), axis=0)
+    A = block_diag(A_h, A_v)
+    f = np.concatenate((f_h, f_v), axis=0)
 
-    return A_h, f_h, A_v, f_v
+    return A, f
 
 
 def main(M_p, J_n, Q):
@@ -338,29 +340,22 @@ def main(M_p, J_n, Q):
     models = pre_define(M_p, J_n)
 
     # matrix define (Au=f)
-    A_h, f_h, A_v, f_v = assemble_matrix(models, points, M_p, J_n, Q)
+    A, f = assemble_matrix(models, points, M_p, J_n, Q)
     print('***********************')
-    print('A_h shape: ', A_h.shape, 'f_h shape: ', f_h.shape)
-    print('A_v shape: ', A_v.shape, 'f_v shape: ', f_v.shape)
+    print('A shape: ', A.shape, 'f shape: ', f.shape)
     # rescaling
     # 这个缩放因子，对于其他方程，该如何确定？？？
     c = 100.0
     # 对每行按其绝对值最大值缩放
     # 为什么不按照绝对值的最大值缩放？这样会映射到[-c,c]，岂不完美？看文档应该是绝对值，代码错误？还有就是最大值有极小的概率是0，也是个风险点。
-    for i in range(len(A_h)):
-        ratio = c / max(-A_h[i, :].min(), A_h[i, :].max())
-        A_h[i, :] = A_h[i, :] * ratio
-        f_h[i] = f_h[i] * ratio
-
-    for i in range(len(A_v)):
-        ratio = c / max(-A_v[i, :].min(), A_v[i, :].max())
-        A_v[i, :] = A_v[i, :] * ratio
-        f_v[i] = f_v[i] * ratio
+    for i in range(len(A)):
+        ratio = c / max(-A[i, :].min(), A[i, :].max())
+        A[i, :] = A[i, :] * ratio
+        f[i] = f[i] * ratio
 
     # solve
     # 求 Aw=f的最小二乘解，这里w就是外围参数，可以近似认为是神经网络的隐层到输出层的权重参数。
-    w_h = lstsq(A_h, f_h)[0]
-    w_v = lstsq(A_v, f_v)[0]
+    w = lstsq(A, f)[0]
 
     # test
     error = test(models, M_p, J_n, Q, w)
@@ -419,10 +414,10 @@ if __name__ == '__main__':
     # 超参数：随机特征（weight+bias）的均匀分布范围
     R_m = 3
     # 超参数：每个区间随机特征函数的个数，即每个区间对应的神经网络的隐层的维度
-    J_n = 5  # the number of basis functions per PoU region
+    J_n = 50  # the number of basis functions per PoU region
     # 超参数：每个区域配点的个数，其实配点个数是Q+1,这里的Q是每个单位分解区间的等分的区间数，注意这里针对的是每个维度
-    Q = 3  # the number of collocation points per PoU region
+    Q = 50  # the number of collocation points per PoU region
     # 超参数：单位分解的区间数，注意这里指的是每个维度都划分为M_p个区间
-    M_p = 3
+    M_p = 4
     assert M_p > 1
     main(M_p, J_n, Q)
