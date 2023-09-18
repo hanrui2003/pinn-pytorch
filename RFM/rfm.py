@@ -305,15 +305,15 @@ if __name__ == '__main__':
     # 超参数：随机特征（weight+bias）的均匀分布范围
     R_m = 3
     # 超参数：每个区间随机特征函数的个数，即每个区间对应的神经网络的隐层的维度
-    J_n = 5  # the number of basis functions per PoU region
+    J_n = 50  # the number of basis functions per PoU region
     # 超参数：每个区域配点的个数，其实配点个数是Q+1,这里的Q是每个单位分解区间的等分的区间数
-    Q = 5  # the number of collocation points per PoU region
-    main(4, J_n, Q, lamb)
-    # RFM_Error = np.zeros([5, 3])
-    # for i in range(5):  # the number of PoU regions
-    #     # 划分的区间数
-    #     M_p = 2 * (2 ** i)
-    #     RFM_Error[i, 0] = int(M_p * J_n)
-    #     RFM_Error[i, 1], RFM_Error[i, 2] = main(M_p, J_n, Q, lamb)
-    # error_plot([RFM_Error])
-    # time_plot([RFM_Error])
+    Q = 50  # the number of collocation points per PoU region
+    # main(4, J_n, Q, lamb)
+    RFM_Error = np.zeros([5, 3])
+    for i in range(5):  # the number of PoU regions
+        # 划分的区间数
+        M_p = 2 * (2 ** i)
+        RFM_Error[i, 0] = int(M_p * J_n)
+        RFM_Error[i, 1], RFM_Error[i, 2] = main(M_p, J_n, Q, lamb)
+    error_plot([RFM_Error])
+    time_plot([RFM_Error])

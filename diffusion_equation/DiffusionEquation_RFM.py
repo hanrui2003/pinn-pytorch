@@ -5,6 +5,7 @@ import time
 import math
 from scipy.linalg import lstsq, block_diag
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 # computational domain，定义域的左右边界
 X_min = -1.0
@@ -162,7 +163,6 @@ def assemble_matrix(models, points, M_p, J_n, Q):
     # 遍历每个区间，区间数M_p =========== start
     for i in range(M_p[0]):
         for j in range(M_p[1]):
-            print("i=", i, ", j=", j)
             # 当前区间的配点
             point = torch.tensor(points[i][j], requires_grad=True)
             # 当前单位分解区间的配点进入对应的神经网络
@@ -338,68 +338,104 @@ def main(M_p, J_n, Q):
 
     # solve
     # 求 Aw=f的最小二乘解，这里w就是外围参数，可以近似认为是神经网络的隐层到输出层的权重参数。
+    print(datetime.now(), "start least square")
     w = lstsq(A, f)[0]
 
     # test
+    print(datetime.now(), "test start :", time.time())
     error = test(models, M_p, J_n, Q, w)
-
-    time_end = time.time()
-    return error, time_end - time_begin
-
-
-# analytical solution parameters
-AA = 1
-aa = 2.0 * np.pi
-bb = 3.0 * np.pi
-lamb = 4
+    print(datetime.now(), "error :", error)
+    print(datetime.now(), "test end :", time.time())
+    return error
 
 
-def F(points, lamb):
+def f_real(x, t):
+    return np.exp(-t) * np.sin(np.pi * x)
+
+
+def plot(X1, T1, U1, X2, T2, U2):
     """
-    真解构造右端项f
+    同时绘制PDE的数值解和神经网络解，上面数值解，下面神经网络解。
     """
-    return
+    # 创建一个 Figure 对象，并设置子图布局
+    fig = plt.figure(figsize=(12, 8))
+    ax1 = fig.add_subplot(221)
+    ax2 = fig.add_subplot(222, projection='3d')
+    ax3 = fig.add_subplot(223)
+    ax4 = fig.add_subplot(224, projection='3d')
+
+    cp1 = ax1.contourf(T1, X1, U1, 20, cmap="rainbow")
+    fig.colorbar(cp1, ax=ax1)
+    ax1.set_title('u(x,t)')
+    ax1.set_xlabel('t')
+    ax1.set_ylabel('x')
+
+    ax2.plot_surface(T1, X1, U1, cmap="rainbow")
+    ax2.set_xlabel('t')
+    ax2.set_ylabel('x')
+    ax2.set_zlabel('u(x,t)')
+
+    cp3 = ax3.contourf(T2, X2, U2, 20, cmap="rainbow")
+    fig.colorbar(cp3, ax=ax3)
+    ax3.set_title('NN(x,t)')
+    ax3.set_xlabel('t')
+    ax3.set_ylabel('x')
+
+    ax4.plot_surface(T2, X2, U2, cmap="rainbow")
+    ax4.set_xlabel('t')
+    ax4.set_ylabel('x')
+    ax4.set_zlabel('RFM(x,t)')
+
+    plt.show()
 
 
 # calculate the l^{infinity}-norm and l^{2}-norm error for u
-def test(models, M_p, J_n, Q, w, plot=False):
-    epsilon = []
-    true_values = []
-    numerical_values = []
+def test(models, M_p, J_n, Q, w):
     # 测试的时候，把网格变细，网格大小为配点的一半3
     test_Q = 2 * Q
-    for n in range(M_p):
-        # 这里的命名最好改为和之前的一致point，表示一个单位分解区间里面的配点
-        points = torch.tensor(
-            np.linspace((X_max - X_min) / M_p * n + X_min, (X_max - X_min) / M_p * (n + 1) + X_min, test_Q + 1),
-            requires_grad=False).reshape([-1, 1])
-        out = models[n](points)
-        values = out.detach().numpy()
-        true_value = vanal_u(points.numpy()).reshape([-1, 1])
-        numerical_value = np.dot(values, w[n * J_n:(n + 1) * J_n, :])
-        true_values.extend(true_value)
-        numerical_values.extend(numerical_value)
-        epsilon.extend(true_value - numerical_value)
-    true_values = np.array(true_values)
-    numerical_values = np.array(numerical_values)
-    epsilon = np.array(epsilon)
-    epsilon = np.maximum(epsilon, -epsilon)
-    print('R_m=%s,M_p=%s,J_n=%s,Q=%s' % (R_m, M_p, J_n, Q))
-    print('L_infty error =', epsilon.max(), ', L_2 error =', math.sqrt(8 * sum(epsilon * epsilon) / len(epsilon)))
-    # 这行代码没用上，而且有问题，越界了
-    x = [((X_max - X_min) / M_p) * i / test_Q for i in range(M_p * (test_Q + 1))]
-    return math.sqrt((X_max - X_min) * sum(epsilon * epsilon) / len(epsilon))
+    U_numerical = np.zeros((M_p[1] * test_Q + 1, M_p[0] * test_Q + 1))
+    for i in range(M_p[0]):
+        # 单位分解子区间的左端(空间维度)
+        x_min = (X_max - X_min) / M_p[0] * i + X_min
+        # 单位分解子区间的右端(空间维度)
+        x_max = (X_max - X_min) / M_p[0] * (i + 1) + X_min
+        for j in range(M_p[1]):
+            # 单位分解子区间的左端(时间维度)
+            t_min = (T_max - T_min) / M_p[1] * j + T_min
+            # 单位分解子区间的右端(时间维度)
+            t_max = (T_max - T_min) / M_p[1] * (j + 1) + T_min
+            # 单位分解子区间的配点，Q表示每个单位分解子区间划分的子区间，所以算上端点，配点数为Q+1
+            x = np.linspace(x_min, x_max, test_Q + 1)
+            t = np.linspace(t_min, t_max, test_Q + 1)
+            X, T = np.meshgrid(x, t)
+            point = np.hstack((X.flatten()[:, None], T.flatten()[:, None]))
+            point = torch.tensor(point, requires_grad=False)
+            out = models[i][j](point)
+            values = out.detach().numpy()
+            numerical_value = np.dot(values, w[(i * M_p[1] + j) * J_n:(i * M_p[1] + j + 1) * J_n]).reshape(-1,
+                                                                                                           test_Q + 1)
+            U_numerical[j * test_Q:(j + 1) * test_Q + 1, i * test_Q:(i + 1) * test_Q + 1] = numerical_value
+
+    x = np.linspace(X_min, X_max, M_p[0] * test_Q + 1)
+    t = np.linspace(T_min, T_max, M_p[1] * test_Q + 1)
+    X, T = np.meshgrid(x, t)
+    U_true = f_real(X, T)
+    error = np.linalg.norm(U_true - U_numerical) / np.linalg.norm(U_true)
+    print(datetime.now(), "error: ", error)
+    plot(X, T, U_true, X, T, U_numerical)
+
+    return error
 
 
 if __name__ == '__main__':
     # 固定网络初始化参数，用于debug
-    torch.manual_seed(123)
+    # torch.manual_seed(123)
     # 超参数：随机特征（weight+bias）的均匀分布范围
-    R_m = 3
+    R_m = 1
     # 超参数：每个区间随机特征函数的个数，即每个区间对应的神经网络的隐层的维度
-    J_n = 3  # the number of basis functions per PoU region
+    J_n = 50  # the number of basis functions per PoU region
     # 超参数：每个区域配点的个数，其实配点个数是Q+1,这里的Q是每个单位分解区间的等分的区间数，注意这里针对的是每个维度
-    Q = 2  # the number of collocation points per PoU region
+    Q = 50  # the number of collocation points per PoU region
     # 超参数：单位分解的区间数，注意这里指的是每个维度都划分为M_p个区间
-    M_p = 4, 2
+    M_p = 2, 2
     main(M_p, J_n, Q)

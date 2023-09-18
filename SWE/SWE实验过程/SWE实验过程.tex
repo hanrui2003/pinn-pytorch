@@ -239,7 +239,16 @@ CFL条件：$c \cdot \Delta t < \Delta x$ \\
 		\phi_m(\boldsymbol{x}) &= \sigma(\boldsymbol{k}_m \cdot\boldsymbol{x} + b_m)
 	\end{aligned}
 \end{equation*}
-其中$\boldsymbol{k}_m, b_m$就是随机生成后固定的内层参数，而$\sigma$是非线性激活函数，为方程求解提供非线性的部分。
+其中$\boldsymbol{k}_m, b_m$就是随机生成后固定的内层参数，而$\sigma$是非线性激活函数，为方程求解提供非线性的部分。\\
+\begin{equation*}
+	\begin{aligned}
+		Lu=f, u = \sum_{m=1}^M u_m \phi_m(\boldsymbol{x}) \\
+		Lu = \sum_{m=1}^M u_m L\phi_m(\boldsymbol{x}) = f \\
+		\sum_{m=1}^M u_m L\phi_m(\boldsymbol{x_j}) = f_j \\
+		\boldsymbol{Au} = \boldsymbol{f}
+	\end{aligned}
+\end{equation*}
+问题就转换为了最小二乘问题，其中u就是最后待求解的外层权重参数，这个算法有潜在的问题，就是如果没有源项，即f=0，则求出来的u=0。
 
 \subsection{局部RFF与单位分解}
 上述随机特征函数是全局定义的，但微分方程的解常常有小尺度的局部变化，因此RFM考虑在多个局部构造局部随机特征函数，再用单位分解（partition of unity）技术将它们组合。\\
