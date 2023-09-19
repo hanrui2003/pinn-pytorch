@@ -431,11 +431,11 @@ if __name__ == '__main__':
     # 固定网络初始化参数，用于debug
     # torch.manual_seed(123)
     # 超参数：随机特征（weight+bias）的均匀分布范围
-    R_m = 1
+    R_m = 2
     # 超参数：每个区间随机特征函数的个数，即每个区间对应的神经网络的隐层的维度
-    J_n = 50  # the number of basis functions per PoU region
+    J_n = 100  # the number of basis functions per PoU region
     # 超参数：每个区域配点的个数，其实配点个数是Q+1,这里的Q是每个单位分解区间的等分的区间数，注意这里针对的是每个维度
     Q = 50  # the number of collocation points per PoU region
     # 超参数：单位分解的区间数，注意这里指的是每个维度都划分为M_p个区间
-    M_p = 2, 2
+    M_p = 4, 2
     main(M_p, J_n, Q)

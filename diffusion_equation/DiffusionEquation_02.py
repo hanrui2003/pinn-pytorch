@@ -217,6 +217,7 @@ t_feature = x_test[:, 1]
 x_matrix = X
 t_matrix = T
 y_matrix = y_predict.reshape(shape=[x_grid_count, t_grid_count]).detach().cpu()
+print("error: ", np.linalg.norm(y_matrix - y) / np.linalg.norm(y))
 # x_matrix = x_feature.reshape(shape=[11, 21]).detach().cpu()
 # t_matrix = t_feature.reshape(shape=[11, 21]).detach().cpu()
 # y_matrix = y_predict.reshape(shape=[11, 21]).detach().cpu()
