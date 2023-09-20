@@ -2,6 +2,7 @@ import numpy as np
 import math
 import time
 from numpy.linalg import solve
+import matplotlib.pyplot as plt
 
 # analytical solution parameters
 AA = 1
@@ -135,12 +136,20 @@ def main(N):
 
 
 if __name__ == '__main__':
-    FDM_Error = np.zeros([5, 3])
-    for i in range(5):
-        N = int(100 * 2 ** i)
-        print('***********************')
-        print("N = M =", N)
-        FDM_Error[i, 0] = N
-        FDM_Error[i, 1], FDM_Error[i, 2] = main(N)
-
-    error_plot([FDM_Error])
+    # 画图
+    fig = plt.figure()
+    ax = fig.add_subplot()
+    x = np.linspace(0, 8, 401)
+    y = u(x)
+    ax.plot(x, y, color='r', label='x')
+    ax.legend(loc='upper right')
+    plt.show()
+    # FDM_Error = np.zeros([5, 3])
+    # for i in range(5):
+    #     N = int(100 * 2 ** i)
+    #     print('***********************')
+    #     print("N = M =", N)
+    #     FDM_Error[i, 0] = N
+    #     FDM_Error[i, 1], FDM_Error[i, 2] = main(N)
+    #
+    # error_plot([FDM_Error])
