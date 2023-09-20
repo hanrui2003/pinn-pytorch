@@ -2,14 +2,43 @@ import torch
 import torch.nn as nn
 import numpy as np
 import time
-from fdm import u, d2u_dx2, error_plot, time_plot
+from fdm import error_plot, time_plot
 import math
 from scipy.linalg import lstsq
 import matplotlib.pyplot as plt
+from datetime import datetime
+import torch.autograd as autograd
 
 # computational domain，定义域的左右边界
 X_min = 0.0
 X_max = 8.0
+
+AA = 1
+aa = 2.0 * np.pi
+bb = 3.0 * np.pi
+lamb = 4
+
+
+def u_tensor(x):
+    """
+    设置一个真解
+    """
+    return AA * torch.sin(bb * (x + 0.05)) * torch.cos(aa * (x + 0.05)) + 2.0
+
+
+def d2u_dx2_tensor(x):
+    """
+    对u(x)的二阶导，就是拉普拉斯算子
+    """
+    return -AA * (aa * aa + bb * bb) * torch.sin(bb * (x + 0.05)) * torch.cos(aa * (x + 0.05)) \
+           - 2.0 * AA * aa * bb * torch.cos(bb * (x + 0.05)) * torch.sin(aa * (x + 0.05))
+
+
+def f_tensor(x):
+    """
+    逻辑与有限差分的一致，就是把变量换成tensor
+    """
+    return d2u_dx2_tensor(x) - lamb * u_tensor(x)
 
 
 # 类似于自定义激活函数，定义基函数phi
@@ -51,12 +80,13 @@ class RFM_rep_a(nn.Module):
 
 
 class RFM_Net(nn.Module):
-    def __init__(self, d, M_p, J_n, X_max, X_min):
+    def __init__(self, M_p, Q, J_n, X_max, X_min):
         super(RFM_Net, self).__init__()
-        self.d = d
         self.J_n = J_n
-
-        self.models = []
+        self.M_p = M_p
+        self.Q = Q
+        self.loss_func = nn.MSELoss(reduction='mean')
+        self.models = nn.ModuleList()
         for n in range(M_p):
             # 单位分解子区间的左端
             x_min = (X_max - X_min) / M_p * n + X_min
@@ -68,15 +98,25 @@ class RFM_Net(nn.Module):
             self.models.append(model)
 
     def forward(self, points):
-        for point in points:
-            pass
-        return points
+        output = torch.empty((0, 1))
+        for i in range(len(self.models)):
+            output = torch.vstack((output, self.models[i](points[i * (Q + 1):(i + 1) * (Q + 1)])))
+        return output
+
+    def loss(self, x_train):
+        x_train.requires_grad = True
+        u = self.forward(x_train)
+        u_x = autograd.grad(u, x_train, torch.ones_like(u), create_graph=True)[0]
+        u_xx = autograd.grad(u_x, x_train, torch.ones_like(u_x), create_graph=True)[0]
+        loss_pde = self.loss_func(u_xx - lamb * u, f_tensor(x_train))
+        loss_bc = self.loss_func(u_tensor(x_train[[0, -1]]), u[[0, -1]])
+        return loss_pde + loss_bc
 
 
 def main(M_p, J_n, Q, lamb):
     # prepare collocation points
     time_begin = time.time()
-    points = []
+    points = np.empty((0, 1))
     # 把定义域划分成多个子区间
     for n in range(M_p):
         # 单位分解子区间的左端
@@ -84,12 +124,42 @@ def main(M_p, J_n, Q, lamb):
         # 单位分解子区间的右端
         x_max = (X_max - X_min) / M_p * (n + 1) + X_min
         # 单位分解子区间的配点，Q表示每个单位分解子区间划分的子区间，所以算上端点，配点数为Q+1
-        points.append(np.linspace(x_min, x_max, Q + 1).reshape([-1, 1]))
+        points = np.vstack((points, np.linspace(x_min, x_max, Q + 1).reshape([-1, 1])))
 
+    x_train = torch.tensor(points)
     # prepare models
     # 一个单位分解子区间对应一个单隐层的全连接网络
-    model = RFM_NetM(M_p, J_n)
+    model = RFM_Net(M_p, Q, J_n, X_max, X_min)
 
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-2, amsgrad=False)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-6, mode='min', factor=0.5,
+                                                           patience=1000,
+                                                           verbose=True)
+
+    # 记录训练开始时间
+    start_time = datetime.now()
+    print("Training started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
+    epoch = 0
+    while True:
+        epoch += 1
+        loss = model.loss(x_train)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        scheduler.step(loss)
+        if epoch % 100 == 0:
+            print(datetime.now(), 'epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
+        if loss.item() < 1E-4:
+            print(datetime.now(), 'epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
+            break
+
+    torch.save(model, 'xxx-4.pt')
+
+    # 训练结束后记录结束时间并计算总时间
+    end_time = datetime.now()
+    elapsed_time = end_time - start_time
+    print("Training ended at:", end_time.strftime("%Y-%m-%d %H:%M:%S"))
+    print("Elapsed time: ", elapsed_time)
     # matrix define (Au=f)
     A, f = assemble_matrix(models, points, M_p, J_n, Q, lamb)
     print('***********************')
@@ -114,23 +184,6 @@ def main(M_p, J_n, Q, lamb):
 
     time_end = time.time()
     return error, time_end - time_begin
-
-
-# analytical solution parameters
-AA = 1
-aa = 2.0 * np.pi
-bb = 3.0 * np.pi
-lamb = 4
-
-vanal_u = np.vectorize(u)
-vanal_d2u_dx2 = np.vectorize(d2u_dx2)
-
-
-def F(points, lamb):
-    """
-    真解构造右端项f
-    """
-    return vanal_d2u_dx2(points) - lamb * vanal_u(points)
 
 
 # calculate the l^{infty}-norm and l^{2}-norm error for u
@@ -165,7 +218,7 @@ def test(models, M_p, J_n, Q, w, plot=False):
 
 if __name__ == '__main__':
     # 固定网络初始化参数，用于debug
-    torch.manual_seed(123)
+    # torch.manual_seed(123)
     # 公式中的lambda的平方
     lamb = 4
     # 超参数：随机特征（weight+bias）的均匀分布范围
