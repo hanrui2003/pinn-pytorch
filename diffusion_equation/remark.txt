@@ -1,0 +1,5 @@
+DiffusionEquation_RFM_a.py
+单位分解函数PoU使用Psi_a
+
+DiffusionEquation_RFM_b.py
+单位分解函数PoU使用Psi_b
