@@ -180,15 +180,12 @@ def assemble_matrix(models, points, M_p, J_n, Q, lamb):
         # 即好比用A+B=0代替A=B
         if M_p > 1:
             if n == 0:
-                print("n == 0")
                 A_C_0[0, :J_n] = -value_r
                 A_C_1[0, :J_n] = -grad_r
             elif n == M_p - 1:
-                print("n == M_p - 1")
                 A_C_0[M_p - 2, -J_n:] = value_l
                 A_C_1[M_p - 2, -J_n:] = grad_l
             else:
-                print("0 < n < M_p - 1")
                 A_C_0[n - 1, n * J_n:(n + 1) * J_n] = value_l
                 A_C_1[n - 1, n * J_n:(n + 1) * J_n] = grad_l
                 A_C_0[n, n * J_n:(n + 1) * J_n] = -value_r
@@ -299,7 +296,7 @@ def test(models, M_p, J_n, Q, w, plot=False):
 
 if __name__ == '__main__':
     # 固定网络初始化参数，用于debug
-    torch.manual_seed(123)
+    # torch.manual_seed(123)
     # 公式中的lambda的平方
     lamb = 4
     # 超参数：随机特征（weight+bias）的均匀分布范围
@@ -316,4 +313,4 @@ if __name__ == '__main__':
         RFM_Error[i, 0] = int(M_p * J_n)
         RFM_Error[i, 1], RFM_Error[i, 2] = main(M_p, J_n, Q, lamb)
     error_plot([RFM_Error])
-    time_plot([RFM_Error])
+    # time_plot([RFM_Error])
