@@ -91,12 +91,11 @@ def assemble_matrix(models, points, M_p, J_n, Q, lamb):
 
     # 边界点
     boundary = torch.tensor([[X_min], [X_max]], dtype=torch.float64)
+    point = torch.tensor(points, requires_grad=True)
 
     # 遍历每个区间，区间数M_p =========== start
     for n in range(M_p):
         # forward and grad
-        # 当前区间的配点
-        point = torch.tensor(points, requires_grad=True)
         # 当前单位分解区间的配点进入对应的神经网络
         pde_out = models[n](point)
         pde_values = pde_out.detach().numpy()
@@ -162,7 +161,7 @@ def main(M_p, J_n, Q, lamb):
     # 为什么不按照绝对值的最大值缩放？这样会映射到[-c,c]，岂不完美？
     # 看文档应该是绝对值，这里应该是代码错误，因为当最大值是0的时候，异常。确实也遇到了这种问题。
     for i in range(len(A)):
-        ratio = c / A[i, :].max()
+        ratio = c / max(-A[i, :].min(), A[i, :].max())
         A[i, :] = A[i, :] * ratio
         f[i] = f[i] * ratio
 

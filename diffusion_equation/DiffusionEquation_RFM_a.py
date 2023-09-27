@@ -14,10 +14,6 @@ T_min = 0.0
 T_max = 1.0
 
 
-def ic_func(x):
-    return 0.1 + 0.1 * np.exp(-64 * (x - 0.25) ** 2)
-
-
 # random initialization for parameters
 def weights_init(m):
     if isinstance(m, (nn.Conv2d, nn.Linear)):
@@ -421,7 +417,7 @@ def test(models, M_p, J_n, Q, w):
     X, T = np.meshgrid(x, t)
     U_true = f_real(X, T)
     error = np.linalg.norm(U_true - U_numerical) / np.linalg.norm(U_true)
-    print(datetime.now(), "error: ", error)
+    print(datetime.now(), "relative error: ", error)
     plot(X, T, U_true, X, T, U_numerical)
 
     return error
@@ -433,7 +429,7 @@ if __name__ == '__main__':
     # 超参数：随机特征（weight+bias）的均匀分布范围
     R_m = 2
     # 超参数：每个区间随机特征函数的个数，即每个区间对应的神经网络的隐层的维度
-    J_n = 100  # the number of basis functions per PoU region
+    J_n = 50  # the number of basis functions per PoU region
     # 超参数：每个区域配点的个数，其实配点个数是Q+1,这里的Q是每个单位分解区间的等分的区间数，注意这里针对的是每个维度
     Q = 50  # the number of collocation points per PoU region
     # 超参数：单位分解的区间数，注意这里指的是每个维度都划分为M_p个区间

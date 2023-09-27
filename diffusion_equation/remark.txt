@@ -2,4 +2,5 @@ DiffusionEquation_RFM_a.py
 单位分解函数PoU使用Psi_a
 
 DiffusionEquation_RFM_b.py
-单位分解函数PoU使用Psi_b
+单位分解函数PoU使用Psi_b ， 测试结果和使用Psi_a差不多，相对误差都在0.4左右，还是蛮大的，这主要由于本身函数值域范围小，波动对相对误差的贡献较大。
+注意的是，神经网络的训练结果的先对误差也是0.4左右，即使这个函数的性质很好，易于训练。
