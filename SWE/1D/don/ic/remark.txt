@@ -14,3 +14,8 @@ swe_1d_don_04.py
 相对于 swe_1d_don_03.py，更改训练区间为[0,1]*[0,0.5]，相应的物理点设为5000.其他不变
 swe_1d_don_04_5e-6.pt batch : 14743 lr : 0.0005 loss : 4.920952960674185e-06 Elapsed time:  0:25:25.527434
 swe_1d_don_04_e-6.pt  batch : 47022 lr : 0.00025 loss : 9.870293524727458e-07 Elapsed time:  1:21:03.859801
+
+swe_1d_don_tbc_ic_03.py
+逻辑和数据几乎和swe_1d_don_03.py 一致，区别即使把主干网和分支网的输入拼接，然后使用一个全连接网络。层数相同，单元数和分支网（或主干网相同）
+训练显存占用 773MiB
+swe_1d_don_tbc_ic_03_e-5.pt  Elapsed time:  0:21:13.706821 测试效果不太好，不过比swe_1d_don_03_e-5.pt 略好。

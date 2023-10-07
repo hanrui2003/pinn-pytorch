@@ -1,13 +1,18 @@
-import torch
-import numpy as np
+from scipy.optimize import minimize
 
-# 创建一个 NumPy 数组
-numpy_array = np.array([1.0, 2.0, 3.0])
+# 定义目标函数（示例：最小化函数 f(x) = (x - 2)^2）
+def objective_function(x):
+    return (x - 2)**2
 
-# 使用 torch.tensor 从 NumPy 数组创建一个张量
-point = torch.tensor(numpy_array)
+# 设置变量的初始猜测值
+x0 = [0.0]  # 初始值为 0.0
 
-# 修改 point 中的值，不会影响原始的 numpy_array
-point[0] = 10.0
-print(point)  # 输出 tensor([10.,  2.,  3.])
-print(numpy_array)  # 输出 [ 1.  2.  3.]
+# 定义边界约束，这里假设 x 取值范围为 [1.0, 3.0]
+bounds = [(1.0, 3.0)]
+
+# 使用 L-BFGS-B 方法进行优化
+result = minimize(objective_function, x0, method='L-BFGS-B', bounds=bounds)
+
+# 输出优化结果
+print("Optimal solution:", result.x)
+print("Optimal value:", result.fun)

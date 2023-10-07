@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from swe_1d_don_03 import SWENet
+from swe_1d_don_tbc_ic_03 import SWENet
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from scipy.integrate import solve_ivp
@@ -86,7 +86,7 @@ if "__main__" == __name__:
     torch.manual_seed(123)
     np.random.seed(123)
 
-    model = torch.load('swe_1d_don_03_e-5.pt', map_location=torch.device('cpu'))
+    model = torch.load('swe_1d_don_tbc_ic_03_e-5.pt', map_location=torch.device('cpu'))
     print("model", model)
 
     N_x = 201
@@ -112,14 +112,18 @@ if "__main__" == __name__:
     h0_nn = 0.1 + 0.1 * np.exp(-64 * (x_nn - mu) ** 2)
     v0_nn = np.zeros(N_x_nn)
     u0_nn = np.hstack((h0_nn, v0_nn))
-    u0_test = torch.from_numpy(u0_nn).float()
 
     X, T = np.meshgrid(x_nn, t_nn)
     x_test = X.flatten()[:, None]
     t_test = T.flatten()[:, None]
     y_test = np.hstack((x_test, t_test))
-    y_test = torch.from_numpy(y_test).float()
-    predict = model(u0_test, y_test).detach().numpy()
+
+    # 拼接输入
+    u0_nn = np.repeat(u0_nn[None, :], len(y_test), axis=0)
+    z_test = np.hstack((y_test, u0_nn))
+
+    z_test = torch.from_numpy(z_test).float()
+    predict = model(z_test).detach().numpy()
     h_hat = predict[:, 0].reshape(-1, N_x_nn)
 
     # 数值解
@@ -163,6 +167,6 @@ if "__main__" == __name__:
     # 保存动画
     mpeg_writer = animation.FFMpegWriter(fps=24, bitrate=10000,
                                          codec="libx264", extra_args=["-pix_fmt", "yuv420p"])
-    anim.save("{}.mp4".format("swe_1d_don_03"), writer=mpeg_writer)
+    anim.save("{}.mp4".format("swe_1d_don_tbc_ic_03"), writer=mpeg_writer)
 
     plt.show()
