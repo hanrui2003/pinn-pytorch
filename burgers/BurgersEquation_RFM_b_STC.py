@@ -3,10 +3,12 @@ import torch.nn as nn
 import numpy as np
 import time
 import math
+import scipy
 from scipy.linalg import lstsq, block_diag
+from scipy.optimize import minimize
+from scipy.optimize import root
 import matplotlib.pyplot as plt
 from datetime import datetime
-from scipy.optimize import minimize
 
 torch.set_default_dtype(torch.float64)
 
@@ -15,6 +17,7 @@ X_min = -1.0
 X_max = 1.0
 T_min = 0.0
 T_max = 1.0
+nu = 0.01 / np.pi
 
 
 # random initialization for parameters
@@ -119,7 +122,9 @@ def assemble_matrix(models, M_p, J_n, Q, pde_points, ic_points, bc_points):
     J_n：线性层的输出维度
     """
     # 所有PDE条件
-    A_P = np.zeros((len(pde_points), M_p[0] * M_p[1] * J_n))
+    A_P_1 = np.zeros((len(pde_points), M_p[0] * M_p[1] * J_n))
+    A_P_2 = np.zeros((len(pde_points), M_p[0] * M_p[1] * J_n))
+    A_P_3 = np.zeros((len(pde_points), M_p[0] * M_p[1] * J_n))
     # 初值条件
     A_I = np.zeros((len(ic_points), M_p[0] * M_p[1] * J_n))
     # 边界条件
@@ -143,6 +148,7 @@ def assemble_matrix(models, M_p, J_n, Q, pde_points, ic_points, bc_points):
             bc_values = bc_out.detach().numpy()
 
             # 记录一阶导
+            grad_u_x = []
             grad_u_t = []
             grad_u_xx = []
             # 当前区间的配点求导，由于torch的局限，不能多维函数（J_n维）一起求导，所以只能循环
@@ -155,20 +161,22 @@ def assemble_matrix(models, M_p, J_n, Q, pde_points, ic_points, bc_points):
                                               grad_outputs=torch.ones_like(u_x_t),
                                               create_graph=True, retain_graph=True)[0]
 
+                u_x = u_x_t[:, 0]
                 u_t = u_x_t[:, 1]
                 u_xx = u_xx_tt[:, 0]
 
+                grad_u_x.append(u_x.detach().numpy())
                 grad_u_t.append(u_t.detach().numpy())
                 grad_u_xx.append(u_xx.detach().numpy())
 
+            grad_u_x = np.array(grad_u_x).T
             grad_u_t = np.array(grad_u_t).T
             grad_u_xx = np.array(grad_u_xx).T
 
-            # 类似微分算子，注意这里不等同于微分算子，因为这里的Lu对于一个单点x，其输出维度是J_n
-            Lu = grad_u_xx - grad_u_t
-
             # Lu = f condition
-            A_P[:, (i * M_p[1] + j) * J_n:(i * M_p[1] + j + 1) * J_n] = Lu
+            A_P_1[:, (i * M_p[1] + j) * J_n:(i * M_p[1] + j + 1) * J_n] = grad_u_t - nu * grad_u_xx
+            A_P_2[:, (i * M_p[1] + j) * J_n:(i * M_p[1] + j + 1) * J_n] = pde_values
+            A_P_3[:, (i * M_p[1] + j) * J_n:(i * M_p[1] + j + 1) * J_n] = grad_u_x
 
             # 初值条件
             A_I[:, (i * M_p[1] + j) * J_n:(i * M_p[1] + j + 1) * J_n] = ic_values
@@ -177,21 +185,18 @@ def assemble_matrix(models, M_p, J_n, Q, pde_points, ic_points, bc_points):
             A_B[:, (i * M_p[1] + j) * J_n:(i * M_p[1] + j + 1) * J_n] = bc_values
 
     # 遍历每个区间 =========== end
-    print("assemble A and f")
-    A = np.concatenate((A_P, A_I, A_B), axis=0)
-    f_P = np.exp(-pde_points[:, [1]]) * (1 - np.pi ** 2) * np.sin(np.pi * pde_points[:, [0]])
-    f_I = np.sin(np.pi * ic_points[:, [0]])
-    f_B = np.zeros((len(bc_points), 1))
-    f = np.concatenate((f_P, f_I, f_B), axis=0)
 
-    return A, f
+    return A_P_1, A_P_2, A_P_3, A_I, A_B
 
 
 def main(M_p, J_n, Q):
     # prepare collocation points
     time_begin = time.time()
-    x = np.linspace(X_min, X_max, M_p[0] * Q + 1)
-    t = np.linspace(T_min, T_max, M_p[1] * Q + 1)
+    data = scipy.io.loadmat('./Data/Burgers.mat')
+    x = data['x']  # 256 points between -1 and 1 [256x1]
+    t = data['t']  # 100 time points between 0 and 1 [100x1]
+    usol = data['usol'].T  # solution of 256x100 grid points
+
     X, T = np.meshgrid(x, t)
     pde_points = np.hstack((X.flatten()[:, None], T.flatten()[:, None]))
     ic_points = np.hstack((X[0][:, None], T[0][:, None]))
@@ -199,42 +204,36 @@ def main(M_p, J_n, Q):
     right_bc_points = np.hstack((X[:, -1][:, None], T[:, -1][:, None]))
     bc_points = np.vstack((left_bc_points, right_bc_points))
 
+    # 初值、边值点对应的函数值
+    f_I = usol[0]
+    f_B = np.hstack((usol[:, 0], usol[:, -1]))
+    f_I_B = np.hstack((f_I, f_B))
+
     # prepare models
     # 一个单位分解子区间对应一个单隐层的全连接网络
     models = pre_define(M_p, J_n)
 
     # matrix define (Au=f)
-    A, f = assemble_matrix(models, M_p, J_n, Q, pde_points, ic_points, bc_points)
-    print('***********************')
-    print('A shape: ', A.shape, 'f shape: ', f.shape)
+    A_P_1, A_P_2, A_P_3, A_I, A_B = assemble_matrix(models, M_p, J_n, Q, pde_points, ic_points, bc_points)
+    A_I_B = np.vstack((A_I, A_B))
 
-    # rescaling
-    # 这个缩放因子，对于其他方程，该如何确定？？？
-    # c = 100.0
-    # # 对每行按其绝对值最大值缩放
-    # # 为什么不按照绝对值的最大值缩放？这样会映射到[-c,c]，岂不完美？看文档应该是绝对值，代码错误？还有就是最大值有极小的概率是0，也是个风险点。
-    # for i in range(len(A)):
-    #     ratio = c / max(-A[i, :].min(), A[i, :].max())
-    #     A[i, :] = A[i, :] * ratio
-    #     f[i] = f[i] * ratio
-    #
-    # # solve
-    # # 求 Aw=f的最小二乘解，这里w就是外围参数，可以近似认为是神经网络的隐层到输出层的权重参数。
-    # print(datetime.now(), "start least square")
-    # w = lstsq(A, f)[0]
+    # solve
+    # 求 Aw=f的最小二乘解，这里w就是外围参数，可以近似认为是神经网络的隐层到输出层的权重参数。
+    print(datetime.now(), "start least square")
 
     # 定义目标函数，即要最小化的函数
-    def objective_function(x, A, f):
-        equation1 = np.dot(A, x) - f
-        return np.linalg.norm(equation1)
+    def objective_function(x, A_P_1, A_P_2, A_P_3, A_I_B, f_I_B):
+        equation1 = np.dot(A_P_1, x) + np.dot(A_P_2, x) * np.dot(A_P_3, x)
+        equation2 = np.dot(A_I_B, x) - f_I_B
+        return np.linalg.norm(np.hstack((equation1, equation2)))
 
     # 定义初始猜测值
     w0 = np.random.uniform(low=-R_m, high=R_m, size=M_p[0] * M_p[1] * J_n)
 
-    result = minimize(objective_function, w0, args=(A, f.squeeze(1)),method='BFGS')
+    result = minimize(objective_function, w0, args=(A_P_1, A_P_2, A_P_3, A_I_B, f_I_B), method='SLSQP',
+                      constraints={'type': 'eq', 'fun': lambda x: 0})
 
     w = result.x[:, None]
-
     # test
     test(models, M_p, J_n, Q, w)
 

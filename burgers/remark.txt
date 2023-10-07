@@ -1,0 +1,3 @@
+BurgersEquation_RFM_b_STC.py
+使用rfm，psi_b,stc策略，加非线性方程的解法，如BFGS等，发现效果不好。
+注：后来对线性方程-扩散方程DiffusionEquation_RFM_b.py，也用非线性的解法，效果不如线性最小二乘。而且时间相比二乘法，很长。
