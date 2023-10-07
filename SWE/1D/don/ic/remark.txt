@@ -19,3 +19,4 @@ swe_1d_don_tbc_ic_03.py
 逻辑和数据几乎和swe_1d_don_03.py 一致，区别即使把主干网和分支网的输入拼接，然后使用一个全连接网络。层数相同，单元数和分支网（或主干网相同）
 训练显存占用 773MiB
 swe_1d_don_tbc_ic_03_e-5.pt  Elapsed time:  0:21:13.706821 测试效果不太好，不过比swe_1d_don_03_e-5.pt 略好。
+swe_1d_don_tbc_ic_03_e-6.pt  batch : 76888 lr : 0.0005 Elapsed time:  1:24:17.984987 效果比swe_1d_don_03_e-6.pt 略好。
