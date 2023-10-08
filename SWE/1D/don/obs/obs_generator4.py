@@ -149,5 +149,5 @@ if "__main__" == __name__:
     print("Sampling ended at:", end_time.strftime("%Y-%m-%d %H:%M:%S"))
     print("Elapsed time: ", elapsed_time)
 
-    np.save(r"swe_1d_rbf_sample_l=0.2.npy", u_sample_all)
+    np.save(r"swe_1d_rbf_sample_1000_l=0.2.npy", u_sample_all)
     print(datetime.now(), 'sample size(GB) :', sys.getsizeof(u_sample_all) / 1024 / 1024 / 1024)

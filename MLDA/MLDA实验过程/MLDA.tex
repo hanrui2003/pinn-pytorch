@@ -1,0 +1,163 @@
+\documentclass{article}
+\usepackage[a4paper,innermargin=1.2in,outermargin=1.2in,
+bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
+\usepackage{amsmath,amsthm,amssymb,enumerate}
+\usepackage{ctex}
+\usepackage{natbib}
+\usepackage{graphicx}
+\graphicspath{{images/}}
+\usepackage{float}
+\usepackage{subfigure}
+\usepackage{color}
+\usepackage{array}
+\title{基于RFM和DeepONet的数据同化研究}
+\author{MG21210021李庆春}
+%\date{2022.8.20}
+\linespread{1.25}
+\bibliographystyle{plain}
+
+
+
+\begin{document}
+\maketitle
+\section{绪论}
+文献\cite{st-rfm}提出了一种新型的微分方程数值解法，RFM的全称是The Random Feature Method，意为随机特征方法。目的是解决经典数值方法和机器学习方法的痛点，即经典的微分方程数值方法通常具有稳定的收敛阶，但依赖于网格离散的特性让它们难以处理复杂几何上的问题；而机器学习方法在这类复杂问题上具有优势，但求解误差不可控，且相比于经典方法需要很长的求解时间。作为一种新型的微分方程数值方法，融合了经典方法和机器学习方法的优势，是一种兼具稳定收敛性和简便性的新型微分方程数值方法。
+
+科学计算中最古老且研究最广泛的主题之一是用于解决偏微分方程（PDEs）的算法。已经提出并广泛研究了有限差分[13]、有限元[25]、谱方法[20]以及许多其他方法，并取得了巨大成功。与此同时，基于这些方法的各种科学软件已经被开发出来，并广泛应用于学术界和工业界。它们已经成为几乎所有工程应用中的标准资源。
+
+近年来，随着神经网络模型在各种人工智能（AI）任务中取得了巨大成功，将这些模型用于解决PDEs的想法变得非常流行[5, 7, 9, 18, 22, 24]。虽然早在90年代，就已经提出了在PDE求解器中使用神经网络作为测试或试验函数的想法[12]，但最近的提议通常具有一些非常重要的新变化。最显著的成功是解决高维度的PDEs和控制问题[5, 8, 9, 22]，这是传统算法无法处理的问题类别。事实上，基于深度学习的算法现在已经使得在数百维甚至更高维度中解决大类PDEs变得相当常见[6]，而这在几年前是不可能的。在另一个方向上，神经网络还可以用于参数化解决方案。
+
+尽管付出了大量努力并取得了巨大成功，但解决PDEs的情况甚至对于一些传统工程问题来说仍然不完全令人满意。以下是我们仍然遇到的一些困难的不完全列表：
+
+复杂几何问题。典型问题是多孔介质中的斯托克斯流[1]。原则上，有限元方法（FEM）非常适用于具有复杂几何形状的问题。但在实际中，找到一个合适的网格通常是一项非常复杂的任务，无论从人力投入还是实际计算成本的角度来看。基于机器学习的算法虽然容易编码，但在实际情况中尚未证明在与传统算法的竞争中具备可靠性。
+
+动力学方程。尽管其维度远低于上述高维问题，但动力学方程，如玻尔兹曼方程，传统上被视为高维问题，传统方法在处理这些问题时确实遇到了困难。基于稀疏网格的思想应该有所帮助[2, 21]，但目前解决动力学方程的最流行方法仍然是直接模拟蒙特卡洛算法（DSMC）[23]。DSMC的一个问题是其产生的解包含太多噪音。
+
+多尺度问题。示例包括涉及化学动力学的问题，通常涵盖了大范围的时间尺度；完全发展的湍流流动包含大范围的空间和时间尺度；以及复合材料的建模；参见[4]。
+
+本文的目标是提出一种解决通用PDEs的方法，该方法既具有传统方法的优点，又兼具基于机器学习的算法的优势。这一新类算法可以实现谱精度。同时，它们也是无网格的，因此即使在具有复杂几何形状的情况下，也易于使用。我们的出发点是基于一系列相当简单而众所周知的思想的组合：我们使用随机特征函数来表示近似解，用最小二乘法处理PDE以及边界条件，并采用重新缩放程序来平衡损失函数中来自PDE和边界条件的贡献。在实际实现中，我们汲取了机器学习文献中的一些灵感。
+
+经典数值方法：
+线性系统往往行列数相等（条件个数=自由度个数）
+通常具有稳定的收敛阶（在log-log误差图中误差线性下降）
+依赖网格，难以处理复杂的计算区域
+无法求解高维问题（存在维数灾难）
+无法求解反问题（不可微分框架）
+
+机器学习方法：
+线性系统行列数可以不相等（条件个数≠自由度个数）
+不依赖网格，在处理复杂区域时有显著优势
+能够求解极其高维的微分方程，甚至可以用于解算子的参数化
+可微分框架，能够在同一框架下求解反问题
+需要长时训练，方程求解时间长
+非凸优化导致方程数值解的精度有限，无法系统性优化
+边界罚项中罚参数的调整困难
+
+随机特征方法（RFM）：
+线性系统行列数可以不相等（条件个数≠自由度个数）
+具有谱精度（在semi-log误差图中误差线性下降）
+不依赖网格，在处理复杂区域时有显著优势
+线性最小二乘优化框架，求解精度高、效率高
+可微分框架，能够在同一框架下求解反问题
+边界罚项中罚参数的调整容易
+
+\section{基于RFM的数据同化}
+考虑如下数据同化问题：
+\begin{equation}
+	\begin{cases}
+		\mathcal{L}u(\boldsymbol{x}, t) = f(\boldsymbol{x}, t)  \quad \boldsymbol{x},t  \in \Omega \times [0, T] \\
+		\mathcal{B}u(\boldsymbol{x},t) = b(\boldsymbol{x},t)  \quad \boldsymbol{x},t \in \Omega \times [0,T]\\
+		\mathcal{I}u(\boldsymbol{x},0) = i(\boldsymbol{x})  \qquad \boldsymbol{x} \in \Omega\\
+		\mathcal{H}u(\boldsymbol{x},t) = h(\boldsymbol{x},t)  \quad \boldsymbol{x},t \in \Omega \times [0,T]\\
+	\end{cases}
+\end{equation}
+
+其中，$\Omega$是空间域，$[0, T]$是时间域，$\mathcal{L}$是线性微分算子，$\mathcal{B}$是边界算子，$\mathcal{I}$是初值算子，这三者构成动力系统。$\mathcal{H}$是观测算子，一般在空间的某些固定位置，进行连续或间断观测。接下来，本文基于随机特征方法，解决这一类数据同化问题。
+
+\subsection{随机特征函数}
+\cite{rfm} 随机特征函数（random feature function, RFF）就是特征向量随机生成的函数。对于机器学习方法来说，特征向量就是网络的权重和偏置，特征函数的随机生成就是网络权重和偏置的随机初始化步骤。因此从机器学习的框架下看，RFM就是利用 $M$ 个定义在 $\Omega$ 上的网络基函数 $\{\phi_m\}$ 的线性组合来表示数值解
+\begin{equation}\label{eqn:rfm}
+	u_M(\boldsymbol{x}) = \sum_{m=1}^M u_m \phi_m(\boldsymbol{x})
+\end{equation}
+$$
+\phi_m(\boldsymbol{x}) = \sigma(\boldsymbol{k}_m \cdot\boldsymbol{x} + b_m)
+$$
+其中 $\boldsymbol{k}_m, b_m$ 就是随机生成后固定的内层参数，而 $\sigma$ 是非线性激活函数，为方程求解提供非线性的部分。
+
+用于解决PDEs的随机特征方法（RFM），这是传统算法和基于机器学习的算法之间的自然桥梁。RFM基于以下几个众所周知的思想的组合：1. 使用随机特征函数表示近似解的方法；2. 用配置方法处理PDE；3. 用罚函数法处理边界条件，这使我们可以在相同的基础上处理边界条件和PDE。
+
+类似于神经网络的随机特征模型，选取随机特征函数作为基函数，构造一个内部参数固定的两层神经网络。在此基础上拼接一个线性输出层，
+
+\subsection{局部随机特征函数和单位分解}
+上述随机特征函数是全局定义的，但微分方程的解常常有小尺度的局部变化，因此RFM考虑在多个局部构造局部随机特征函数，再用单位分解（partition of unity）技术将它们组合。
+
+具体来说，首先取定单位分解函数的中心点 $\{\boldsymbol{x}_n\}_{n=1}^{M_p}\subset\Omega$，在这 $M_p$ 个局部构造仿射变换
+\begin{equation}
+	\tilde{\boldsymbol{x}}=\frac{1}{\boldsymbol{r}_{n}}(\boldsymbol{x}-\boldsymbol{x}_{n}), \quad n=1,\cdots, M_p,
+\end{equation}
+这个仿射变换将 $[x_{n1}-r_{n1},x_{n1}+r_{n1}]\times \cdots \times [x_{nd}-r_{nd},x_{nd}+r_{nd}]$ 的小局部映射到统一的区间 $[-1,1]^{d}$，以便实现局部特征的拟合。而单位分解函数的构造依赖于这个仿射变换，常取为
+\begin{equation*}
+	\psi_{n}^{a}(x)=\mathbb{I}_{-1 \leq \tilde{x} < 1},
+	\label{psi1}
+\end{equation*}
+或
+\begin{equation*}
+	\psi_{n}^{b}(x) =\mathbb{I}_{\left[-\frac{5}{4},-\frac{3}{4}\right]}(\tilde{x}) \frac{1+\sin (2 \pi \tilde{x})}{2}+\mathbb{I}_{\left[-\frac{3}{4}, \frac{3}{4}\right]}(\tilde{x})+\mathbb{I}_{\left[\frac{3}{4}, \frac{5}{4}\right]}(\tilde{x}) \frac{1-\sin (2 \pi \tilde{x})}{2}
+\end{equation*}
+
+这里放一张PoU的图。
+
+紧接着，在每个局部定义 $J_n$ 个随机特征函数
+\begin{equation}\label{eqn:basis0}
+	\phi_{nj}(\boldsymbol{x}) = \sigma(\boldsymbol{k}_{nj} \cdot \tilde{\boldsymbol{x}} + b_{nj}), \quad j=1, \cdots, J_n,
+\end{equation}
+
+则最终数值解就是将局部随机特征函数通过单位分解函数组合起来
+\begin{equation*}
+	u_M(\boldsymbol{x})=\sum_{n=1}^{M_p} \psi_n (\boldsymbol{x})   \sum_{j=1}^{J_n }u_{nj} \phi_{nj} (\boldsymbol{x})
+	\label{representation2}
+\end{equation*}
+
+\subsection{数值离散：线性系统构造}
+
+在RFM中，损失函数同样在配点上进行计算，和PINN的损失函数构造完全一致，以最小二乘形式计算方程项，并加上边界的罚项
+\begin{equation}
+	Loss = \sum_{\boldsymbol{x}_{i} \in C_{I}}\sum_{k=1}^{K_I}\lambda_{Ii}^{k}\|\mathcal{L}^{k}\boldsymbol{u}(\boldsymbol{x}_{i})-\boldsymbol{f}^{k}(\boldsymbol{x}_{i})\|_{l^{2}}^{2}+ \sum_{\boldsymbol{x}_{j} \in C_{B}}\sum_{\ell=1}^{K_B}\lambda_{Bj}^{\ell}\|\mathcal{B}^{\ell}\boldsymbol{u}(\boldsymbol{x}_{j})-\boldsymbol{g}^{\ell}(\boldsymbol{x}_{j})\|_{l^{2}}^{2}.
+	\label{loss2}
+\end{equation}
+
+虽然损失函数形式上看完全类似，但RFM与PINN构造的优化问题则完全不同，RFM求解的是内层参数固定、仅优化最外层线性参数的线性优化问题。从经典数值算法的角度来看，RFM构造的是线性最小二乘问题，该问题可以表为线性系统 $Au=f$ 的形式。因此罚参数 $\lambda_i$ 的调整可以直接基于矩阵 $A$ 的信息，对于每个配点、每个方程，RFM允许他们有不同的罚参数。
+
+对应于一维Helmholtz方程，RFM的损失函数可以写为
+$$
+L(u)=\sum_{i=1}^{N-1}\lambda_i((\Delta + \lambda^2) u(x_i) - f(x_i))^2+\lambda_0(u(x_0)-U(x_0))^2+\lambda_N(u(x_N)-U(x_N))^2
+$$
+
+在实际代码实现中，我们通过下述配点上的等式构造线性系统 $Au=f$ 来等价地求解该优化问题
+\begin{equation*}
+	\left\{\begin {aligned}
+	(\Delta + \lambda^2) u(x_i) &= f(x_i), \quad &&n=1,\cdots,N-1\\
+	u(x_{i})  &= U(x_{i}) \quad && n=0,N
+	\end {aligned}\right.
+	%\label{stokesflow}
+\end{equation*}
+
+*需要注意的是，在单位分解函数的连续性不满足方程解所需的连续性时，需要额外加入一组连续性条件。例如：在使用$\psi^{a}$求解二阶方程时，需要在不同单位分解计算区域的边缘加入零阶和一阶连续性条件*
+
+\subsection{优化问题}
+
+由于一些实际问题中物理参数变化较大，因此RFM基于矩阵 $A$ 的信息（将矩阵 $A$ 每行最大值rescaling到同一规模），使用如下自动调参方案来平衡损失函数中各项的贡献，其中罚参数设为
+\begin{align*}
+	&\lambda_{Ii}^{k} = \frac{c}{\underset{1\leq n\leq M_p}{\max}\underset{1\leq j'\leq J_n}{\max}\underset{1\leq k'\leq K_I}{\max}|\mathcal{L}^{k} (\phi^{k'}_{nj'}(\boldsymbol{x}_{i})\psi_{n}(\boldsymbol{x}_{i}))|}\quad \boldsymbol{x}_{i} \in C_{I}, \; k = 1,\cdots, K_I\\
+	&\lambda_{Bj}^{\ell} = \frac{c}{\underset{1\leq n\leq M_p}{\max}\underset{1\leq j'\leq J_n}{\max}\underset{1\leq \ell'\leq K_I}{\max}|\mathcal{B}^{\ell} (\phi^{\ell'}_{nj'}(\boldsymbol{x}_{j})\psi_{n}(\boldsymbol{x}_{j}))|}\quad \boldsymbol{x}_{j} \in C_{B}, \; \ell = 1,\cdots, K_B 
+\end{align*}
+
+对应于一维Helmholtz方程，这些罚参数可以写为
+\begin{align*}
+	&\lambda_{i} = \frac{100}{\underset{1\leq n\leq M_p}{\max}\underset{1\leq j'\leq J_n}{\max}|(\Delta + \lambda^2) (\phi_{nj'}(x_{i})\psi_{n}(x_{i}))|}\quad i = 1,\cdots, N-1\\
+	&\lambda_{i} = \frac{100}{\underset{1\leq n\leq M_p}{\max}\underset{1\leq j'\leq J_n}{\max}|\phi_{nj'}(x_{i})\psi_{n}(x_{i})|}\quad i = 0,N
+\end{align*}
+
+
+\bibliography{references}
+\end{document}

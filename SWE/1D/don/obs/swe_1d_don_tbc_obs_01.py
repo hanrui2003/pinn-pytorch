@@ -180,7 +180,7 @@ if "__main__" == __name__:
     print(device)
 
     # 前900个作为
-    train_data = np.load('swe_1d_rbf_sample_l=0.2.npy')[:900]
+    train_data = np.load('swe_1d_rbf_sample_1000_l=0.2.npy')[:900]
 
     # 观测位置选择x=0.5，对应的高度和速度的索引为
     # 遍历每个样本序列

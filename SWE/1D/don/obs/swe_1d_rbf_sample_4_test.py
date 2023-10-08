@@ -11,7 +11,7 @@ if "__main__" == __name__:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(device)
 
-    train_data = np.load('swe_1d_rbf_sample_l=0.2.npy')
+    train_data = np.load('swe_1d_rbf_sample_1000_l=0.2.npy')
 
     # 随机选择一个，绘图，测试下数据的有效性
     index = np.random.randint(1000)
