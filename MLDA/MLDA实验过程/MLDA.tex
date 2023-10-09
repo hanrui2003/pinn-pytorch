@@ -61,6 +61,40 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 可微分框架，能够在同一框架下求解反问题
 边界罚项中罚参数的调整容易
 
+\subsection{RFM介绍}
+随机特征方法（random feature metod, RFM）是\cite{rfm}提出的一种用于解偏微分方程组的方法，该方法是传统算法和基于机器学习的算法之间的自然桥梁，它吸取了二者的优点，将微分方程求解问题转换为线性最小二乘问题。RFM基于以下几个思想的组合：
+\begin{enumerate}
+	\item 使用随机特征函数表示近似解；
+	\item 用配点法处理偏微分方程的约束；
+	\item 用罚函数处理边界条件，这使得我们可以在相同的基础上处理边界条件和物理方程的约束；
+	\item 多尺度表示；
+	\item 损失函数中各项权重的重新缩放，以平衡各项对总损失的影响；
+\end{enumerate}
+
+考虑如下静态边值问题：
+\begin{equation}
+	\begin{cases}
+		\mathcal{L}u(\boldsymbol{x}) = f(\boldsymbol{x})  \quad \boldsymbol{x}  \in \Omega \\
+		\mathcal{B}u(\boldsymbol{x}) = g(\boldsymbol{x})  \quad \boldsymbol{x} \in \partial\Omega
+	\end{cases}
+\end{equation}
+
+其中，$f$和$g$是已知函数，$\boldsymbol{x}  \in \Omega \subset \mathbb{R}^{d_x}$，$\partial\Omega$是$\Omega$的边界，记$d_x \in \mathbb{N}^+$ 为$\boldsymbol{x}$的维度，$d_u \in \mathbb{N}^+$ 为输出的维度，$\mathcal{L}$是线性微分算子，$\mathcal{B}$是边界算子。
+
+\subsubsection{随机特征函数}
+随机特征函数（random feature function, RFF）就是特征向量随机生成的函数。参考神经网络的随机特征模型，选取随机特征函数作为基函数，构造一个内部参数固定的三层神经网络。{\color{red}如图}，输入层和隐藏层之间的权重参数和偏置参数固定，隐藏层和输出层之间的权重参数待训练。
+
+对于机器学习方法来说，特征向量就是网络的权重和偏置，特征函数的随机生成就是网络权重和偏置的随机初始化步骤。因此从机器学习的框架下看，RFM就是利用 $M$ 个定义在 $\Omega$ 上的网络基函数 $\{\phi_m\}$ 的线性组合来表示数值解：
+\begin{equation}
+	u_M(\boldsymbol{x}) = \sum_{m=1}^M u_m \phi_m(\boldsymbol{x})
+\end{equation}
+\begin{equation}
+	\phi_m(\boldsymbol{x}) = \sigma(\boldsymbol{k}_m \cdot\boldsymbol{x} + b_m)
+\end{equation}
+
+其中 $\boldsymbol{k}_m, b_m$ 就是随机生成后固定的内层参数，而 $\sigma$ 是非线性激活函数，为方程求解提供非线性的部分；$u_m$是外层待训练的参数。
+
+
 \section{基于RFM的数据同化}
 考虑如下数据同化问题：
 \begin{equation}
@@ -74,19 +108,6 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 
 其中，$\Omega$是空间域，$[0, T]$是时间域，$\mathcal{L}$是线性微分算子，$\mathcal{B}$是边界算子，$\mathcal{I}$是初值算子，这三者构成动力系统。$\mathcal{H}$是观测算子，一般在空间的某些固定位置，进行连续或间断观测。接下来，本文基于随机特征方法，解决这一类数据同化问题。
 
-\subsection{随机特征函数}
-\cite{rfm} 随机特征函数（random feature function, RFF）就是特征向量随机生成的函数。对于机器学习方法来说，特征向量就是网络的权重和偏置，特征函数的随机生成就是网络权重和偏置的随机初始化步骤。因此从机器学习的框架下看，RFM就是利用 $M$ 个定义在 $\Omega$ 上的网络基函数 $\{\phi_m\}$ 的线性组合来表示数值解
-\begin{equation}\label{eqn:rfm}
-	u_M(\boldsymbol{x}) = \sum_{m=1}^M u_m \phi_m(\boldsymbol{x})
-\end{equation}
-$$
-\phi_m(\boldsymbol{x}) = \sigma(\boldsymbol{k}_m \cdot\boldsymbol{x} + b_m)
-$$
-其中 $\boldsymbol{k}_m, b_m$ 就是随机生成后固定的内层参数，而 $\sigma$ 是非线性激活函数，为方程求解提供非线性的部分。
-
-用于解决PDEs的随机特征方法（RFM），这是传统算法和基于机器学习的算法之间的自然桥梁。RFM基于以下几个众所周知的思想的组合：1. 使用随机特征函数表示近似解的方法；2. 用配置方法处理PDE；3. 用罚函数法处理边界条件，这使我们可以在相同的基础上处理边界条件和PDE。
-
-类似于神经网络的随机特征模型，选取随机特征函数作为基函数，构造一个内部参数固定的两层神经网络。在此基础上拼接一个线性输出层，
 
 \subsection{局部随机特征函数和单位分解}
 上述随机特征函数是全局定义的，但微分方程的解常常有小尺度的局部变化，因此RFM考虑在多个局部构造局部随机特征函数，再用单位分解（partition of unity）技术将它们组合。
