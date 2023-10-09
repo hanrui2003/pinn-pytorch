@@ -94,6 +94,13 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 
 其中 $\boldsymbol{k}_m, b_m$ 就是随机生成后固定的内层参数，而 $\sigma$ 是非线性激活函数，为方程求解提供非线性的部分；$u_m$是外层待训练的参数。
 
+此时，对于$\forall\boldsymbol{x}  \in \Omega$，则有：
+\begin{equation*}
+	\begin{aligned}
+		\mathcal{L}u(\boldsymbol{x}) &= \mathcal{L}
+	\end{aligned}
+\end{equation*}
+
 
 \section{基于RFM的数据同化}
 考虑如下数据同化问题：
