@@ -79,7 +79,7 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	\end{cases}
 \end{equation}
 
-其中，$f$和$g$是已知函数，$\boldsymbol{x}  \in \Omega \subset \mathbb{R}^{d_x}$，$\partial\Omega$是$\Omega$的边界，记$d_x \in \mathbb{N}^+$ 为$\boldsymbol{x}$的维度，$d_u \in \mathbb{N}^+$ 为输出的维度，$\mathcal{L}$是线性微分算子，$\mathcal{B}$是边界算子。
+其中，$f$和$g$是已知函数，$\boldsymbol{x} = (x_1,x_2,\cdots,x_{d_x})^T  \in \Omega \subset \mathbb{R}^{d_x}$，$\partial\Omega$是$\Omega$的边界，记$d_x \in \mathbb{N}^+$ 为$\boldsymbol{x}$的维度，$d_u \in \mathbb{N}^+$ 为输出的维度，$\mathcal{L}$是线性微分算子，$\mathcal{B}$是边界算子。
 
 \subsubsection{随机特征函数}
 随机特征函数（random feature function, RFF）就是特征向量随机生成的函数。参考神经网络的随机特征模型，选取随机特征函数作为基函数，构造一个内部参数固定的三层神经网络。{\color{red}如图}，输入层和隐藏层之间的权重参数和偏置参数固定，隐藏层和输出层之间的权重参数待训练。
@@ -92,15 +92,131 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	\phi_m(\boldsymbol{x}) = \sigma(\boldsymbol{k}_m \cdot\boldsymbol{x} + b_m)
 \end{equation}
 
-其中 $\boldsymbol{k}_m, b_m$ 就是随机生成后固定的内层参数，而 $\sigma$ 是非线性激活函数，为方程求解提供非线性的部分；$u_m$是外层待训练的参数。
+其中 $\boldsymbol{k}_m, b_m$ 就是随机生成后固定的内层参数，而 $\sigma$ 是非线性激活函数（一般取双曲正切函数$tanh$即可），为方程求解提供非线性的部分；$u_m$是外层待训练的参数。
 
 此时，对于$\forall\boldsymbol{x}  \in \Omega$，则有：
+
 \begin{equation*}
 	\begin{aligned}
-		\mathcal{L}u(\boldsymbol{x}) &= \mathcal{L}
+		 f(\boldsymbol{x}) = \mathcal{L}u(\boldsymbol{x}) &\approx \mathcal{L}u_M(\boldsymbol{x}) \\
+		&= \mathcal{L}\sum_{m=1}^M u_m \phi_m(\boldsymbol{x}) \\
+		&=\sum_{m=1}^M u_m \mathcal{L}\phi_m(\boldsymbol{x}) \\
+		&=
+		\begin{bmatrix}
+			\mathcal{L}\phi_1(\boldsymbol{x}) & \mathcal{L}\phi_2(\boldsymbol{x})& \cdots & \mathcal{L}\phi_M(\boldsymbol{x})
+		\end{bmatrix}
+		\begin{bmatrix}
+			u_1 \\
+			u_2 \\
+			\vdots \\
+			u_M
+		\end{bmatrix}
 	\end{aligned}
 \end{equation*}
 
+所以，我们在$\Omega$上取一组配点$\boldsymbol{x}^{(1)}_P, \boldsymbol{x}^{(2)}_P, \cdots , \boldsymbol{x}^{(N_P)}_P$，则有
+
+\begin{equation}\label{rfm:pde-linear}
+	\begin{bmatrix}
+		\mathcal{L}\phi_1(\boldsymbol{x}^{(1)}_P) & \mathcal{L}\phi_2(\boldsymbol{x}^{(1)}_P)& \cdots & \mathcal{L}\phi_M(\boldsymbol{x}^{(1)}_P) \\
+		\mathcal{L}\phi_1(\boldsymbol{x}^{(2)}_P) & \mathcal{L}\phi_2(\boldsymbol{x}^{(2)}_P)& \cdots & \mathcal{L}\phi_M(\boldsymbol{x}^{(2)}_P) \\
+		\vdots & \vdots & \ddots & \vdots \\
+		\mathcal{L}\phi_1(\boldsymbol{x}^{(N_P)}_P) & \mathcal{L}\phi_2(\boldsymbol{x}^{(N_P)}_P)& \cdots & \mathcal{L}\phi_M(\boldsymbol{x}^{(N_P)}_P)
+	\end{bmatrix}
+	\begin{bmatrix}
+		u_1 \\
+		u_2 \\
+		\vdots \\
+		u_M
+	\end{bmatrix}
+	\approx
+	\begin{bmatrix}
+		f(\boldsymbol{x}^{(1)}_P) \\
+		f(\boldsymbol{x}^{(2)}_P) \\
+		\vdots \\
+		f(\boldsymbol{x}^{(N_P)}_P)
+	\end{bmatrix}
+\end{equation}
+
+同理，我们在$\partial\Omega$上取一组配点$\boldsymbol{x}^{(1)}_B, \boldsymbol{x}^{(2)}_B, \cdots , \boldsymbol{x}^{(N_B)}_B$，则有
+
+\begin{equation}\label{rfm:bc-linear}
+	\begin{bmatrix}
+		\phi_1(\boldsymbol{x}^{(1)}_B) & \phi_2(\boldsymbol{x}^{(1)}_B)& \cdots & \phi_M(\boldsymbol{x}^{(1)}_B) \\
+		\phi_1(\boldsymbol{x}^{(2)}_B) & \phi_2(\boldsymbol{x}^{(2)}_B)& \cdots & \phi_M(\boldsymbol{x}^{(2)}_B) \\
+		\vdots & \vdots & \ddots & \vdots \\
+		\phi_1(\boldsymbol{x}^{(N_B)}_B) & \phi_2(\boldsymbol{x}^{(N_B)}_B)& \cdots & \phi_M(\boldsymbol{x}^{(N_B)}_B)
+	\end{bmatrix}
+	\begin{bmatrix}
+		u_1 \\
+		u_2 \\
+		\vdots \\
+		u_M
+	\end{bmatrix}
+	\approx
+	\begin{bmatrix}
+		g(\boldsymbol{x}^{(1)}_B) \\
+		g(\boldsymbol{x}^{(2)}_B) \\
+		\vdots \\
+		g(\boldsymbol{x}^{(N_B)}_B)
+	\end{bmatrix}
+\end{equation}
+
+记：
+\begin{equation*}
+	P = 
+	\begin{bmatrix}
+		\mathcal{L}\phi_1(\boldsymbol{x}^{(1)}_P) & \mathcal{L}\phi_2(\boldsymbol{x}^{(1)}_P)& \cdots & \mathcal{L}\phi_M(\boldsymbol{x}^{(1)}_P) \\
+		\mathcal{L}\phi_1(\boldsymbol{x}^{(2)}_P) & \mathcal{L}\phi_2(\boldsymbol{x}^{(2)}_P)& \cdots & \mathcal{L}\phi_M(\boldsymbol{x}^{(2)}_P) \\
+		\vdots & \vdots & \ddots & \vdots \\
+		\mathcal{L}\phi_1(\boldsymbol{x}^{(N_P)}_P) & \mathcal{L}\phi_2(\boldsymbol{x}^{(N_P)}_P)& \cdots & \mathcal{L}\phi_M(\boldsymbol{x}^{(N_P)}_P)
+	\end{bmatrix}
+\end{equation*}
+
+\begin{equation*}
+	B = 
+	\begin{bmatrix}
+		\phi_1(\boldsymbol{x}^{(1)}_B) & \phi_2(\boldsymbol{x}^{(1)}_B)& \cdots & \phi_M(\boldsymbol{x}^{(1)}_B) \\
+		\phi_1(\boldsymbol{x}^{(2)}_B) & \phi_2(\boldsymbol{x}^{(2)}_B)& \cdots & \phi_M(\boldsymbol{x}^{(2)}_B) \\
+		\vdots & \vdots & \ddots & \vdots \\
+		\phi_1(\boldsymbol{x}^{(N_B)}_B) & \phi_2(\boldsymbol{x}^{(N_B)}_B)& \cdots & \phi_M(\boldsymbol{x}^{(N_B)})
+	\end{bmatrix}
+\end{equation*}
+
+\begin{equation*}
+	u = 
+	\begin{bmatrix}
+		u_1 \\
+		u_2 \\
+		\vdots \\
+		u_M
+	\end{bmatrix}
+	\quad , f = 
+	\begin{bmatrix}
+		f(\boldsymbol{x}^{(1)}_P) \\
+		f(\boldsymbol{x}^{(2)}_P) \\
+		\vdots \\
+		f(\boldsymbol{x}^{(N_P)}_P)\\
+		g(\boldsymbol{x}^{(1)}_B) \\
+		g(\boldsymbol{x}^{(2)}_B) \\
+		\vdots \\
+		g(\boldsymbol{x}^{(N_B)}_B)
+	\end{bmatrix}
+\end{equation*}
+
+将方程\ref{rfm:pde-linear}和\ref{rfm:bc-linear} 整合成一个线性方程组：
+
+\begin{equation}\label{rfm:linear}
+	\begin{bmatrix}
+		P & 0 \\
+		0 & B \\
+	\end{bmatrix}
+	u \approx f
+\end{equation}
+
+这样一来就把偏微分方程的求解问题转换成了形如 $Au = f$ 的线性最小二乘问题，其中$u$是待求解的参数。
+
+\subsubsection{局部特征模型和单位分解}
 
 \section{基于RFM的数据同化}
 考虑如下数据同化问题：

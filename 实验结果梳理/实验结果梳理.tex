@@ -1,0 +1,137 @@
+\documentclass{article}
+\usepackage[a4paper,innermargin=1.2in,outermargin=1.2in,
+bottom=1.5in,marginparwidth=1in,marginparsep
+=3mm]{geometry}
+\usepackage{amsmath,amsthm,amssymb,enumerate}
+\usepackage{ctex}
+\usepackage{natbib}
+\usepackage{graphicx}
+\graphicspath{{images/}}
+\usepackage{float}
+\usepackage{subfigure}
+\usepackage{color}
+\usepackage{array}
+\title{实验结果梳理}
+\author{MG21210021李庆春}
+%\date{2022.8.20}
+\linespread{1.25}
+\bibliographystyle{plain}
+
+\usepackage{listings}
+\lstset{
+	columns=fixed,       
+	numbers=left,                                        % 在左侧显示行号
+	numberstyle=\tiny\color{black},                       % 设定行号格式
+	frame=none,                                          % 不显示背景边框
+	backgroundcolor=\color[RGB]{245,245,244},            % 设定背景颜色
+	keywordstyle=\color[RGB]{40,40,255},                 % 设定关键字颜色
+	numberstyle=\footnotesize\color{black},           
+	commentstyle=\it\color[RGB]{0,96,96},                % 设置代码注释的格式
+	stringstyle=\rmfamily\slshape\color[RGB]{128,0,0},   % 设置字符串格式
+	showstringspaces=false,                              % 不显示字符串中的空格
+	language=python,                                        % 设置语言
+}
+
+
+\begin{document}
+\maketitle
+
+\section{反应扩散方程简述}
+\begin{equation}
+	\frac{\partial u}{\partial t}=D\frac{\partial^2 u}{\partial x^2}+ku^2 \qquad (x,t) \in (0,1] \times(0,1]
+\end{equation}
+其中，扩散系数D=0.01，反应速率k=0.01，边值为零函数；\\
+
+\subsection{DeepONet}
+考虑初值为方程参数的问题，即初值不确定，记为$u_0(x)$，由高斯径向基函数生成5000个初值函数：\\
+\begin{equation}
+	k(x,x') = \sigma^2 exp(-\frac{||x-x'||^2}{2l^2}) \label{eq:rbf}
+\end{equation}
+其中，$\sigma=1, l=0.2$ \\
+分支网络的结构为：[100, 64, 64, 64, 64, 64]，其输入由5000个初值函数构成；\\
+主干网络的结构为：[2, 64, 64, 64, 64, 64]，主干网络的输入训练点由三部分构成：
+\begin{enumerate}
+	\item 100个初值点；
+	\item 200个边值点，每个边100个；
+	\item 200个配置单，即物理信息点；
+\end{enumerate}
+训练结果为：相对误差大概在$10^{-3} \sim 10^{-2}$，图\ref{adr_ic_2d}和图\ref{adr_ic_3d}为一个测试样例：
+\begin{figure}[h]
+	\centering
+	\subfigure[数值解]{
+		\includegraphics[width=0.45\linewidth]{adr_ic_real_2d}
+	}
+	\subfigure[神经网络解]{
+		\includegraphics[width=0.45\linewidth]{adr_ic_nn_2d}
+	}
+	\caption{等高图}
+	\label{adr_ic_2d}
+\end{figure}
+\begin{figure}[h]
+	\centering
+	\subfigure[数值解]{
+		\includegraphics[width=0.45\linewidth]{adr_ic_real_3d}
+	}
+	\subfigure[神经网络解]{
+		\includegraphics[width=0.45\linewidth]{adr_ic_nn_3d}
+	}
+	\caption{三维图}
+	\label{adr_ic_3d}
+\end{figure}
+
+\section{1D浅水方程简述}
+\begin{equation}
+	\begin{cases}
+		\frac{\partial}{\partial t} h + \frac{\partial}{\partial x} hv = 0  \\
+		\frac{\partial}{\partial t} hv + \frac{\partial}{\partial x} (hv^2 + \frac{gh^2}{2}) = 0
+		\label{swe-1D}
+	\end{cases}
+\end{equation}
+或
+\begin{equation}
+	\begin{cases}
+		\frac{\partial h}{\partial t} = - h\frac{\partial v}{\partial x} - v\frac{\partial h}{\partial x} \\
+		h\frac{\partial v}{\partial t} + v\frac{\partial h}{\partial t} = - 2hv\frac{\partial v}{\partial x} - (v^2 + gh)\frac{\partial h}{\partial x}
+	\end{cases}
+\end{equation}
+
+\subsection{PINN}
+边值条件为$v=0$，初值为高斯径向基\ref*{eq:rbf}生成的随机函数，此时$\sigma=1, l=0.05$，观测值为$x=0.5, t=[.1, .2, .3, .4, .5, .6, .7, .8, .9, 1.]$上的数据，配置点（物理信息点）为10000个，网络架构为[2, 32, 32, 32, 32, 32, 32, 2]。训练结果的相对误差大概在$10^{-3}$，图\ref{swe_1d_pinn_obs}为两个时间片的数据，其中红色实线为神经网络解：
+\begin{figure}[h]
+	\centering
+	\subfigure[t=0.1]{
+		\includegraphics[width=0.45\linewidth]{swe_1d_pinn_obs_1}
+	}
+	\subfigure[t=0.8]{
+		\includegraphics[width=0.45\linewidth]{swe_1d_pinn_obs_2}
+	}
+	\caption{SWE-PINN}
+	\label{swe_1d_pinn_obs}
+\end{figure}
+
+\subsection{DeepONet}
+考虑初值为方程参数的问题，即初值不确定，记为$u_0(x)$，由高斯函数生成：\\
+\begin{equation}
+	u_0(x) = 0.1+0.1 \times \exp(-64(x-\mu)^2)
+\end{equation}
+其中，$\mu \in [0.0,0.1,0.2,\dots,0.9,1.0]$ \\
+分支网络的结构为：[132, 128, 64, 64, 64, 64]，其输入由上述高斯函数构成；\\
+主干网络的结构为：[2, 64, 64, 64, 64, 64]，主干网络的输入训练点由两部分构成：
+\begin{enumerate}
+	\item 100个初值点；
+	\item 5000个配置单，即物理信息点；
+\end{enumerate}
+训练结果的相对误差大概在$10^{-3}$，图\ref{swe_1d_don_obs}为两个时间片的数据，其中红色实线为神经网络解：
+\begin{figure}[h]
+	\centering
+	\subfigure[t=0.1]{
+		\includegraphics[width=0.45\linewidth]{swe_1d_don_obs_1}
+	}
+	\subfigure[t=0.5]{
+		\includegraphics[width=0.45\linewidth]{swe_1d_don_obs_2}
+	}
+	\caption{SWE-DeepONet}
+	\label{swe_1d_don_obs}
+\end{figure}
+
+\end{document}
