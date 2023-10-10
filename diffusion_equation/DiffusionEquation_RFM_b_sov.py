@@ -272,7 +272,7 @@ def plot_err(X1, T1, U1):
     误差分布
     """
     # 创建一个 Figure 对象，并设置子图布局
-    fig = plt.figure(figsize=(12, 8))
+    fig = plt.figure(figsize=(12, 6))
     ax1 = fig.add_subplot(121)
     ax2 = fig.add_subplot(122, projection='3d')
 

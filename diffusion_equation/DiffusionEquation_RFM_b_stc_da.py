@@ -110,7 +110,7 @@ def pre_define(M_p, J_n):
 
 
 # Assembling the matrix A,f in linear system 'Au=f'
-def assemble_matrix(models, M_p, J_n, Q, pde_points, ic_points, bc_points):
+def assemble_matrix(models, M_p, J_n, Q, pde_points, ic_points, bc_points, obs_points):
     """
     models：模型
     points：配点列表
@@ -118,16 +118,20 @@ def assemble_matrix(models, M_p, J_n, Q, pde_points, ic_points, bc_points):
     Q：每个小区间取配点的个数(每个维度)，实际为Q+1
     J_n：线性层的输出维度
     """
+    print(datetime.now(), "assemble matrix start")
     # 所有PDE条件
     A_P = np.zeros((len(pde_points), M_p[0] * M_p[1] * J_n))
     # 初值条件
     A_I = np.zeros((len(ic_points), M_p[0] * M_p[1] * J_n))
     # 边界条件
     A_B = np.zeros((len(bc_points), M_p[0] * M_p[1] * J_n))
+    # 观测条件
+    A_O = np.zeros((len(obs_points), M_p[0] * M_p[1] * J_n))
 
     pde_point = torch.tensor(pde_points, requires_grad=True)
     ic_point = torch.tensor(ic_points, requires_grad=True)
     bc_point = torch.tensor(bc_points, requires_grad=True)
+    obs_point = torch.tensor(obs_points, requires_grad=True)
 
     # 遍历每个区间，区间数M_p =========== start
     for i in range(M_p[0]):
@@ -141,6 +145,9 @@ def assemble_matrix(models, M_p, J_n, Q, pde_points, ic_points, bc_points):
 
             bc_out = models[i][j](bc_point)
             bc_values = bc_out.detach().numpy()
+
+            obs_out = models[i][j](obs_point)
+            obs_values = obs_out.detach().numpy()
 
             # 记录一阶导
             grad_u_t = []
@@ -176,13 +183,48 @@ def assemble_matrix(models, M_p, J_n, Q, pde_points, ic_points, bc_points):
             # 边界条件
             A_B[:, (i * M_p[1] + j) * J_n:(i * M_p[1] + j + 1) * J_n] = bc_values
 
+            # 观测条件
+            A_O[:, (i * M_p[1] + j) * J_n:(i * M_p[1] + j + 1) * J_n] = obs_values
+
     # 遍历每个区间 =========== end
-    print("assemble A and f")
-    A = np.concatenate((A_P, A_I, A_B), axis=0)
+
     f_P = np.exp(-pde_points[:, [1]]) * (1 - np.pi ** 2) * np.sin(np.pi * pde_points[:, [0]])
     f_I = np.sin(np.pi * ic_points[:, [0]])
     f_B = np.zeros((len(bc_points), 1))
-    f = np.concatenate((f_P, f_I, f_B), axis=0)
+    f_O = f_real(obs_points[:, [0]], obs_points[:, [1]])
+
+    # rescaling
+    # 这个缩放因子，对于其他方程，该如何确定？？？
+    c_p = 100.0
+    c_b = 100.0
+    c_i = 100.0
+    c_o = 400.0
+    # 对每行按其绝对值最大值缩放
+    # 为什么不按照绝对值的最大值缩放？这样会映射到[-c,c]，岂不完美？看文档应该是绝对值，代码错误？还有就是最大值有极小的概率是0，也是个风险点。
+    for i in range(len(A_P)):
+        ratio = c_p / max(-A_P[i, :].min(), A_P[i, :].max())
+        A_P[i, :] = A_P[i, :] * ratio
+        f_P[i] = f_P[i] * ratio
+
+    for i in range(len(A_I)):
+        ratio = c_i / max(-A_I[i, :].min(), A_I[i, :].max())
+        A_I[i, :] = A_I[i, :] * ratio
+        f_I[i] = f_I[i] * ratio
+
+    for i in range(len(A_B)):
+        ratio = c_b / max(-A_B[i, :].min(), A_B[i, :].max())
+        A_B[i, :] = A_B[i, :] * ratio
+        f_B[i] = f_B[i] * ratio
+
+    for i in range(len(A_O)):
+        ratio = c_o / max(-A_O[i, :].min(), A_O[i, :].max())
+        A_O[i, :] = A_O[i, :] * ratio
+        f_O[i] = f_O[i] * ratio
+
+    A = np.concatenate((A_P, A_I, A_B, A_O), axis=0)
+    f = np.concatenate((f_P, f_I, f_B, f_O), axis=0)
+
+    print(datetime.now(), "assemble matrix end")
 
     return A, f
 
@@ -199,24 +241,28 @@ def main(M_p, J_n, Q):
     right_bc_points = np.hstack((X[:, -1][:, None], T[:, -1][:, None]))
     bc_points = np.vstack((left_bc_points, right_bc_points))
 
+    t_obs = np.array([.1, .2, .3, .4, .5, .6, .7, .8, .9, 1.])[:, None]
+    # x_obs = np.zeros_like(t_obs)
+    # obs_points = np.hstack((x_obs, t_obs))
+
+    # t_obs = np.array([.05, .1, .15, .2, .25, .3, .35, .4, .45, .5, .55, .6, .65, .7, .75, .8, .85, .9, .95, 1.])[:,
+    #         None]
+    x_obs_1 = np.zeros_like(t_obs)
+    x_obs_2 = 0.6 * np.ones_like(t_obs)
+    x_obs_3 = -0.7 * np.ones_like(t_obs)
+    obs_points_1 = np.hstack((x_obs_1, t_obs))
+    obs_points_2 = np.hstack((x_obs_2, t_obs))
+    obs_points_3 = np.hstack((x_obs_3, t_obs))
+    obs_points = np.vstack((obs_points_1, obs_points_2, obs_points_3))
+
     # prepare models
     # 一个单位分解子区间对应一个单隐层的全连接网络
     models = pre_define(M_p, J_n)
 
     # matrix define (Au=f)
-    A, f = assemble_matrix(models, M_p, J_n, Q, pde_points, ic_points, bc_points)
+    A, f = assemble_matrix(models, M_p, J_n, Q, pde_points, ic_points, bc_points, obs_points)
     print('***********************')
     print('A shape: ', A.shape, 'f shape: ', f.shape)
-
-    # rescaling
-    # 这个缩放因子，对于其他方程，该如何确定？？？
-    c = 100.0
-    # 对每行按其绝对值最大值缩放
-    # 为什么不按照绝对值的最大值缩放？这样会映射到[-c,c]，岂不完美？看文档应该是绝对值，代码错误？还有就是最大值有极小的概率是0，也是个风险点。
-    for i in range(len(A)):
-        ratio = c / max(-A[i, :].min(), A[i, :].max())
-        A[i, :] = A[i, :] * ratio
-        f[i] = f[i] * ratio
 
     # solve
     # 求 Aw=f的最小二乘解，这里w就是外围参数，可以近似认为是神经网络的隐层到输出层的权重参数。
@@ -284,7 +330,7 @@ def plot_err(X1, T1, U1):
     误差分布
     """
     # 创建一个 Figure 对象，并设置子图布局
-    fig = plt.figure(figsize=(12, 8))
+    fig = plt.figure(figsize=(12, 6))
     ax1 = fig.add_subplot(121)
     ax2 = fig.add_subplot(122, projection='3d')
 
