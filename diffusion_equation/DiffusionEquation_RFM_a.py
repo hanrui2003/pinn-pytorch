@@ -385,6 +385,29 @@ def plot(X1, T1, U1, X2, T2, U2):
     plt.show()
 
 
+def plot_err(X1, T1, U1):
+    """
+    误差分布
+    """
+    # 创建一个 Figure 对象，并设置子图布局
+    fig = plt.figure(figsize=(12, 8))
+    ax1 = fig.add_subplot(121)
+    ax2 = fig.add_subplot(122, projection='3d')
+
+    cp1 = ax1.contourf(T1, X1, U1, 20, cmap="rainbow")
+    fig.colorbar(cp1, ax=ax1)
+    ax1.set_title('err')
+    ax1.set_xlabel('t')
+    ax1.set_ylabel('x')
+
+    ax2.plot_surface(T1, X1, U1, cmap="rainbow")
+    ax2.set_xlabel('t')
+    ax2.set_ylabel('x')
+    ax2.set_zlabel('err')
+
+    plt.show()
+
+
 # calculate the l^{infinity}-norm and l^{2}-norm error for u
 def test(models, M_p, J_n, Q, w):
     # 测试的时候，把网格变细，网格大小为配点的一半3
@@ -419,6 +442,7 @@ def test(models, M_p, J_n, Q, w):
     error = np.linalg.norm(U_true - U_numerical) / np.linalg.norm(U_true)
     print(datetime.now(), "relative error: ", error)
     plot(X, T, U_true, X, T, U_numerical)
+    plot_err(X, T, np.abs(U_true - U_numerical))
 
     return error
 

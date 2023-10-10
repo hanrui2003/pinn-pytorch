@@ -42,7 +42,7 @@ if "__main__" == __name__:
     z_test = np.hstack((y_test, o_test))
     z_test = torch.from_numpy(z_test).float()
 
-    model = torch.load('swe_1d_don_tbc_obs_01_e-5.pt', map_location=torch.device('cpu'))
+    model = torch.load('swe_1d_don_tbc_obs_01_5e-6.pt', map_location=torch.device('cpu'))
     print("model", model)
 
     predict = model(z_test).detach().numpy()

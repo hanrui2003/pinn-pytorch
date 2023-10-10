@@ -13,3 +13,6 @@ swe_1d_don_tbc_obs_01.py
 运行时占用显存 2951MiB
 swe_1d_don_tbc_obs_01_e-5.pt  2951MiB  batch : 100910 lr : 0.0005 Elapsed time:  5:49:16.963997
 测试效果勉强，波形基本吻合，相对误差<0.02
+swe_1d_don_tbc_obs_01_5e-6.pt 2951MiB  batch : 170004 lr : 0.0005 Elapsed time:  9:45:55.378846
+测试效果好一些了，相对误差<0.015
+swe_1d_don_tbc_obs_01_e-6.pt  2951MiB  等待结果
