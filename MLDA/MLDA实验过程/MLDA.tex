@@ -74,7 +74,7 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 考虑如下静态边值问题：
 \begin{equation}
 	\begin{cases}
-		\mathcal{L}u(\boldsymbol{x}) = f(\boldsymbol{x})  \quad \boldsymbol{x}  \in \Omega \\
+		\mathcal{L}u(\boldsymbol{x}) = f(\boldsymbol{x})  \quad \boldsymbol{x}  \in \Omega \\ \label{static-pde}
 		\mathcal{B}u(\boldsymbol{x}) = g(\boldsymbol{x})  \quad \boldsymbol{x} \in \partial\Omega
 	\end{cases}
 \end{equation}
@@ -273,9 +273,150 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 		u_M(\boldsymbol{x})=\sum_{n=1}^{M_p} \psi_n ( l_n(\boldsymbol{x}))   \sum_{j=1}^{J_n }u_{nj} \phi_{nj} ( l_n(\boldsymbol{x}))
 	\end{equation}
 	
-	需要注意的是，在单位分解函数的连续性不满足方程解所需的连续性时，需要额外加入一组连续性条件。例如：在使用$\psi^{a}$求解二阶方程时，需要在不同单位分解计算区域的接口处加入零阶和一阶连续性条件。而$\psi^{b}$是连续可微的，不需要添加额外条件。
-
+	需要注意的是，在单位分解函数的连续性不满足方程解所需的连续性时，需要额外加入一组连续性条件。例如：在使用$\psi^{a}$求解二阶方程时，需要在不同单位分解计算区域的接口处加入零阶和一阶连续性条件。而$\psi^{b}$是连续可微的，不需要添加额外条件。两种单位分解函数并无优劣之分，后文如无特殊说明，皆采用$\psi^{b}$作为默认的单位分解函数。
 \end{enumerate}
+
+仍以方程\ref{static-pde}为例，对其使用局部随机特征模型和单位分解技术进行离散化：此时，对于$\forall\boldsymbol{x}  \in \Omega$，则有：
+
+\begin{equation*}
+	\begin{aligned}
+		 \mathcal{L}u(\boldsymbol{x}) &\approx \mathcal{L}u_M(\boldsymbol{x}) \\
+		&= \mathcal{L}\sum_{n=1}^{M_p} \psi_n ( l_n(\boldsymbol{x}))   \sum_{j=1}^{J_n }u_{nj} \phi_{nj} ( l_n(\boldsymbol{x})) \\
+		&= \mathcal{L}\sum_{n=1}^{M_p} \sum_{j=1}^{J_n }u_{nj}  \psi_n ( l_n(\boldsymbol{x})) \phi_{nj} ( l_n(\boldsymbol{x})) \\
+		&= \sum_{n=1}^{M_p} \sum_{j=1}^{J_n }u_{nj} \mathcal{L} \psi_n ( l_n(\boldsymbol{x})) \phi_{nj} ( l_n(\boldsymbol{x})) \\
+		&= \sum_{n=1}^{M_p} \sum_{j=1}^{J_n }u_{nj} \mathcal{L} \Phi_{nj}(\boldsymbol{x}) \quad \left[\Phi_{nj}(\boldsymbol{x}) \triangleq \psi_n ( l_n(\boldsymbol{x})) \phi_{nj} ( l_n(\boldsymbol{x})))  \right] \\
+		&=
+		\begin{bmatrix}
+			\mathcal{L}\Phi_{11}(\boldsymbol{x}) & \cdots & \mathcal{L}\Phi_{1J_1}(\boldsymbol{x}) & \cdots & \mathcal{L}\Phi_{M_p1}(\boldsymbol{x}) & \cdots & \mathcal{L}\Phi_{M_pJ_{M_p}}(\boldsymbol{x})
+		\end{bmatrix}
+		\begin{bmatrix}
+			u_{11} \\
+			\vdots \\
+			u_{1J_1} \\
+			\vdots \\
+			u_{M_p1} \\
+			\vdots \\
+			u_{M_pJ_{M_p}}
+		\end{bmatrix}
+	\end{aligned}
+\end{equation*}
+
+所以，我们在$\Omega$上取一组配点$\boldsymbol{x}^{(1)}_P, \boldsymbol{x}^{(2)}_P, \cdots , \boldsymbol{x}^{(N_P)}_P$，则有
+
+\begin{equation}
+	\begin{bmatrix}
+		\mathcal{L}\Phi_{11}(\boldsymbol{x}^{(1)}_P) & \cdots & \mathcal{L}\Phi_{1J_1}(\boldsymbol{x}^{(1)}_P) & \cdots & \mathcal{L}\Phi_{M_p1}(\boldsymbol{x}^{(1)}_P) & \cdots & \mathcal{L}\Phi_{M_pJ_{M_p}}(\boldsymbol{x}^{(1)}_P) \\
+		\mathcal{L}\Phi_{11}(\boldsymbol{x}^{(2)}_P) & \cdots & \mathcal{L}\Phi_{1J_1}(\boldsymbol{x}^{(2)}_P) & \cdots & \mathcal{L}\Phi_{M_p1}(\boldsymbol{x}^{(2)}_P) & \cdots & \mathcal{L}\Phi_{M_pJ_{M_p}}(\boldsymbol{x}^{(2)}_P) \\
+		\vdots & \ddots & \vdots & \vdots & \vdots & \ddots & \vdots \\
+		\mathcal{L}\Phi_{11}(\boldsymbol{x}^{(N_P)}_P) & \cdots & \mathcal{L}\Phi_{1J_1}(\boldsymbol{x}^{(N_P)}_P) & \cdots & \mathcal{L}\Phi_{M_p1}(\boldsymbol{x}^{(N_P)}_P) & \cdots & \mathcal{L}\Phi_{M_pJ_{M_p}}(\boldsymbol{x}^{(N_P)}_P)
+	\end{bmatrix}
+	\begin{bmatrix}
+		u_{11} \\
+		\vdots \\
+		u_{1J_1} \\
+		\vdots \\
+		u_{M_p1} \\
+		\vdots \\
+		u_{M_pJ_{M_p}}
+	\end{bmatrix}
+	\approx
+	\begin{bmatrix}
+		f(\boldsymbol{x}^{(1)}_P) \\
+		f(\boldsymbol{x}^{(2)}_P) \\
+		\vdots \\
+		f(\boldsymbol{x}^{(N_P)}_P)
+	\end{bmatrix}
+\end{equation}
+
+同理，我们在$\partial\Omega$上取一组配点$\boldsymbol{x}^{(1)}_B, \boldsymbol{x}^{(2)}_B, \cdots , \boldsymbol{x}^{(N_B)}_B$，则有
+
+\begin{equation}
+	\begin{bmatrix}
+		\Phi_{11}(\boldsymbol{x}^{(1)}_B) & \cdots & \Phi_{1J_1}(\boldsymbol{x}^{(1)}_B) & \cdots & \Phi_{M_p1}(\boldsymbol{x}^{(1)}_B) & \cdots & \Phi_{M_pJ_{M_p}}(\boldsymbol{x}^{(1)}_B) \\
+		\Phi_{11}(\boldsymbol{x}^{(2)}_B) & \cdots & \Phi_{1J_1}(\boldsymbol{x}^{(2)}_B) & \cdots & \Phi_{M_p1}(\boldsymbol{x}^{(2)}_B) & \cdots & \Phi_{M_pJ_{M_p}}(\boldsymbol{x}^{(2)}_B) \\
+		\vdots & \ddots & \vdots & \vdots & \vdots & \ddots & \vdots \\
+		\Phi_{11}(\boldsymbol{x}^{(N_B)}_B) & \cdots & \Phi_{1J_1}(\boldsymbol{x}^{(N_B)}_B) & \cdots & \Phi_{M_p1}(\boldsymbol{x}^{(N_B)}_B) & \cdots & \Phi_{M_pJ_{M_p}}(\boldsymbol{x}^{(N_B)}_B)
+	\end{bmatrix}
+	\begin{bmatrix}
+		u_{11} \\
+		\vdots \\
+		u_{1J_1} \\
+		\vdots \\
+		u_{M_p1} \\
+		\vdots \\
+		u_{M_pJ_{M_p}}
+	\end{bmatrix}
+	\approx
+	\begin{bmatrix}
+		g(\boldsymbol{x}^{(1)}_B) \\
+		g(\boldsymbol{x}^{(2)}_B) \\
+		\vdots \\
+		g(\boldsymbol{x}^{(N_B)}_B)
+	\end{bmatrix}
+\end{equation}
+
+记：
+\begin{equation*}
+	P = 
+	\begin{bmatrix}
+		\mathcal{L}\Phi_{11}(\boldsymbol{x}^{(1)}_P) & \cdots & \mathcal{L}\Phi_{1J_1}(\boldsymbol{x}^{(1)}_P) & \cdots & \mathcal{L}\Phi_{M_p1}(\boldsymbol{x}^{(1)}_P) & \cdots & \mathcal{L}\Phi_{M_pJ_{M_p}}(\boldsymbol{x}^{(1)}_P) \\
+		\mathcal{L}\Phi_{11}(\boldsymbol{x}^{(2)}_P) & \cdots & \mathcal{L}\Phi_{1J_1}(\boldsymbol{x}^{(2)}_P) & \cdots & \mathcal{L}\Phi_{M_p1}(\boldsymbol{x}^{(2)}_P) & \cdots & \mathcal{L}\Phi_{M_pJ_{M_p}}(\boldsymbol{x}^{(2)}_P) \\
+		\vdots & \ddots & \vdots & \vdots & \vdots & \ddots & \vdots \\
+		\mathcal{L}\Phi_{11}(\boldsymbol{x}^{(N_P)}_P) & \cdots & \mathcal{L}\Phi_{1J_1}(\boldsymbol{x}^{(N_P)}_P) & \cdots & \mathcal{L}\Phi_{M_p1}(\boldsymbol{x}^{(N_P)}_P) & \cdots & \mathcal{L}\Phi_{M_pJ_{M_p}}(\boldsymbol{x}^{(N_P)}_P)
+	\end{bmatrix}
+\end{equation*}
+
+\begin{equation*}
+	B = 
+	\begin{bmatrix}
+		\Phi_{11}(\boldsymbol{x}^{(1)}_B) & \cdots & \Phi_{1J_1}(\boldsymbol{x}^{(1)}_B) & \cdots & \Phi_{M_p1}(\boldsymbol{x}^{(1)}_B) & \cdots & \Phi_{M_pJ_{M_p}}(\boldsymbol{x}^{(1)}_B) \\
+		\Phi_{11}(\boldsymbol{x}^{(2)}_B) & \cdots & \Phi_{1J_1}(\boldsymbol{x}^{(2)}_B) & \cdots & \Phi_{M_p1}(\boldsymbol{x}^{(2)}_B) & \cdots & \Phi_{M_pJ_{M_p}}(\boldsymbol{x}^{(2)}_B) \\
+		\vdots & \ddots & \vdots & \vdots & \vdots & \ddots & \vdots \\
+		\Phi_{11}(\boldsymbol{x}^{(N_B)}_B) & \cdots & \Phi_{1J_1}(\boldsymbol{x}^{(N_B)}_B) & \cdots & \Phi_{M_p1}(\boldsymbol{x}^{(N_B)}_B) & \cdots & \Phi_{M_pJ_{M_p}}(\boldsymbol{x}^{(N_B)}_B)
+	\end{bmatrix}
+\end{equation*}
+
+\begin{equation*}
+	u = 
+	\begin{bmatrix}
+		u_{11} \\
+		\vdots \\
+		u_{1J_1} \\
+		\vdots \\
+		u_{M_p1} \\
+		\vdots \\
+		u_{M_pJ_{M_p}}
+	\end{bmatrix}
+	\quad , f = 
+	\begin{bmatrix}
+		f(\boldsymbol{x}^{(1)}_P) \\
+		f(\boldsymbol{x}^{(2)}_P) \\
+		\vdots \\
+		f(\boldsymbol{x}^{(N_P)}_P)\\
+		g(\boldsymbol{x}^{(1)}_B) \\
+		g(\boldsymbol{x}^{(2)}_B) \\
+		\vdots \\
+		g(\boldsymbol{x}^{(N_B)}_B)
+	\end{bmatrix}
+\end{equation*}
+
+则偏微分方程的求解问题再次转换为线性方程组求解问题，自由度为$M = \sum_{n=1}^{M_p}J_n$：
+\begin{equation}
+	Au = f \quad , A = 
+	\begin{bmatrix}
+		P \\
+		B \\
+	\end{bmatrix}
+\end{equation}
+
+\subsubsection{损失函数及罚参数自动缩放}
+在RFM中，损失函数同样在配点上进行计算，和PINN的损失函数构造完全一致，使用强形式在配点上构造损失函数
+\begin{equation}
+	Loss = \sum_{\boldsymbol{x}_{i} \in \Omega}\lambda_{i}\|\mathcal{L}\boldsymbol{u_M}(\boldsymbol{x}_{i})-\boldsymbol{f}(\boldsymbol{x}_{i})\|_{2}^{2} + \sum_{\boldsymbol{x}_{j} \in \partial \Omega}\lambda_{j}\|\mathcal{B}\boldsymbol{u_M}(\boldsymbol{x}_{j})-\boldsymbol{g}(\boldsymbol{x}_{j})\|_{2}^{2}.
+	\label{loss2}
+\end{equation}
+
+虽然损失函数形式上看完全类似，但RFM与PINN构造的优化问题则完全不同，RFM求解的是内层参数固定、仅优化最外层线性参数的线性优化问题。从经典数值算法的角度来看，RFM构造的是线性最小二乘问题，该问题可以表为线性系统 $Au=f$ 的形式。因此罚参数 $\lambda_i$ 的调整可以直接基于矩阵 $A$ 的信息，对于每个配点、每个方程，RFM允许他们有不同的罚参数。
 
 ====================
 
@@ -323,29 +464,6 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	\label{representation2}
 \end{equation*}
 
-\subsection{数值离散：线性系统构造}
-
-在RFM中，损失函数同样在配点上进行计算，和PINN的损失函数构造完全一致，以最小二乘形式计算方程项，并加上边界的罚项
-\begin{equation}
-	Loss = \sum_{\boldsymbol{x}_{i} \in C_{I}}\sum_{k=1}^{K_I}\lambda_{Ii}^{k}\|\mathcal{L}^{k}\boldsymbol{u}(\boldsymbol{x}_{i})-\boldsymbol{f}^{k}(\boldsymbol{x}_{i})\|_{l^{2}}^{2}+ \sum_{\boldsymbol{x}_{j} \in C_{B}}\sum_{\ell=1}^{K_B}\lambda_{Bj}^{\ell}\|\mathcal{B}^{\ell}\boldsymbol{u}(\boldsymbol{x}_{j})-\boldsymbol{g}^{\ell}(\boldsymbol{x}_{j})\|_{l^{2}}^{2}.
-	\label{loss2}
-\end{equation}
-
-虽然损失函数形式上看完全类似，但RFM与PINN构造的优化问题则完全不同，RFM求解的是内层参数固定、仅优化最外层线性参数的线性优化问题。从经典数值算法的角度来看，RFM构造的是线性最小二乘问题，该问题可以表为线性系统 $Au=f$ 的形式。因此罚参数 $\lambda_i$ 的调整可以直接基于矩阵 $A$ 的信息，对于每个配点、每个方程，RFM允许他们有不同的罚参数。
-
-对应于一维Helmholtz方程，RFM的损失函数可以写为
-$$
-L(u)=\sum_{i=1}^{N-1}\lambda_i((\Delta + \lambda^2) u(x_i) - f(x_i))^2+\lambda_0(u(x_0)-U(x_0))^2+\lambda_N(u(x_N)-U(x_N))^2
-$$
-
-在实际代码实现中，我们通过下述配点上的等式构造线性系统 $Au=f$ 来等价地求解该优化问题
-\begin{equation*}
-	\left\{\begin {aligned}
-	(\Delta + \lambda^2) u(x_i) &= f(x_i), \quad &&n=1,\cdots,N-1\\
-	u(x_{i})  &= U(x_{i}) \quad && n=0,N
-	\end {aligned}\right.
-	%\label{stokesflow}
-\end{equation*}
 
 \subsection{优化问题}
 
