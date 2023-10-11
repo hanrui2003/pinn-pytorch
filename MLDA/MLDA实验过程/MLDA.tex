@@ -61,7 +61,7 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 可微分框架，能够在同一框架下求解反问题
 边界罚项中罚参数的调整容易
 
-\subsection{RFM介绍}
+\subsection{RFM解偏微分方程}
 随机特征方法（random feature metod, RFM）是\cite{rfm}提出的一种用于解偏微分方程组的方法，该方法是传统算法和基于机器学习的算法之间的自然桥梁，它吸取了二者的优点，将微分方程求解问题转换为线性最小二乘问题。RFM基于以下几个思想的组合：
 \begin{enumerate}
 	\item 使用随机特征函数表示近似解；
@@ -208,15 +208,76 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 
 \begin{equation}\label{rfm:linear}
 	\begin{bmatrix}
-		P & 0 \\
-		0 & B \\
+		P \\
+		B \\
 	\end{bmatrix}
 	u \approx f
 \end{equation}
 
-这样一来就把偏微分方程的求解问题转换成了形如 $Au = f$ 的线性最小二乘问题，其中$u$是待求解的参数。
+这样一来就把偏微分方程的求解问题转换成了形如 $Au = f$ 的线性方程组求解问题，其中$u$是待求解的参数。这种问题可以采用线性最小二乘方法，当前比较流行的科学计算库都有相应的API可以直接使用，如Numpy、Scipy等。
 
-\subsubsection{局部特征模型和单位分解}
+\subsubsection{局部随机特征模型和单位分解}
+上述随机特征函数是全局定义的，一般而言是无法较好地拟合偏微分方程的，因为微分方程的解常常有小尺度的局部变化。这一点从神经网络的角度去理解也是很显然的，用一个三层的神经网络去拟合一个较为复杂的偏微分方程，并且还是在内层参数固定，可训练参数只有一层的情况下，几乎是无法较好地拟合的。为了解决这一问题，可以将定义域划分为多个局部子区域，让每个局部子区域的范围足够小，并在每个局部子区域构造随机特征函数，使得每个局部随机特征函数能够很好地拟合对应范围内的偏微分方程。最后再用单位分解（partition of unity, PoU）技术将它们组合。
+
+具体来说，分为以下几个步骤：
+\begin{enumerate}
+	\item 将定义域$\Omega$划分为多个子区域$\{\Omega_n\}^{M_p}_{n=1}$，在没有先验知识的情况下，均匀划分即可。
+	
+	\item 计算所有子区域的的中心$\{\hat{\boldsymbol{x}}_n\}^{M_p}_{n=1}$和区域半径$\{\boldsymbol{r}_n\}^{M_p}_{n=1}$。
+	\begin{equation}
+		\begin{aligned}
+			\hat{\boldsymbol{x}}_n &= (\hat{x}_{n1}, \hat{x}_{n2}, \cdots ,\hat{x}_{nd_x})^T \\
+			&= (\frac{x_{n1\_max} +  x_{n1\_min}}{2}, \frac{x_{n2\_max} +  x_{n2\_min}}{2}, \cdots, \frac{x_{nd_x\_max} +  x_{nd_x\_min}}{2})^T
+		\end{aligned}
+	\end{equation}
+	
+	\begin{equation}
+		\begin{aligned}
+			\boldsymbol{r}_n &= (r_{n1}, r_{n2}, \cdots ,r_{nd_x})^T \\
+			&= (\frac{x_{n1\_max} -  x_{n1\_min}}{2}, \frac{x_{n2\_max} -  x_{n2\_min}}{2}, \cdots, \frac{x_{nd_x\_max} -  x_{nd_x\_min}}{2})^T
+		\end{aligned}
+	\end{equation}
+	其中，$x_{nj\_max}$和$x_{nj\_min}$是子区域$\Omega_n$在第$j$维的区间上限和区间下限。
+	
+	\item 在每个 $\Omega_n$ 上构造线性变换
+	\begin{equation}
+		l_n(\boldsymbol{x})=\frac{1}{\boldsymbol{r}_{n}}(\boldsymbol{x}-\hat{\boldsymbol{x}}_n), \quad n=1, 2, \cdots, M_p, \quad \boldsymbol{x} \in \Omega
+	\end{equation}
+	这个线性变换类似于神经网络的输入标准化，将 $[\hat{x}_{n1}-r_{n1}, \hat{x}_{n1}+r_{n1}] \times [\hat{x}_{n2}-r_{n2}, \hat{x}_{n2}+r_{n2}] \times \cdots \times[\hat{x}_{nd_x}-r_{nd_x}, \hat{x}_{nd_x}+r_{nd_x}]$ 的小局部映射到统一的区间 $[-1,1]^{d_x}$，以便实现局部特征的拟合。
+	
+	\item 对每个$\Omega_n$，通过一个两层的神经网络构造$J_n \in \mathbb{N}^+$个随机特征函数：
+	\begin{equation}\label{eqn:basis0}
+		\phi_{nj}(\boldsymbol{x}) = \sigma(\boldsymbol{k}_{nj} \boldsymbol{x} + b_{nj}), \quad j=1, \cdots, J_n.
+	\end{equation}
+	其中，非线性激活函数$\sigma$一般取为双曲正切函数$tanh$或三角函数$sin, cos$；$\boldsymbol{k}_{nj}$和$b_{nj}$独立同分布，都是均匀采样：$\boldsymbol{k}_{nj} \sim \mathbb{U}([-R_{nj}, R_{nj}]^{d_x})$ 和 $b_{nj} \sim \mathbb{U}([-R_{nj}, R_{nj}])$，一旦随机初始化完成，则固定不变。
+	
+	\item 以每个$\Omega_n$为支集，构造一个单位分解函数$\psi_n$，即$supp(\psi_n) = \Omega_n$。单位分解函数一般有两种取法，以下以$d_x = 1$，即一维输入的情形举例，函数图像{\color{red} 见图}：
+	\begin{subequations}
+		\begin{equation}
+			\psi_{n}^{a}(x)=\mathbb{I}_{[-1, 1]}(x)
+	\end{equation}
+		\begin{equation}
+			\psi_{n}^{b}(x) =
+			\begin{cases}
+				\frac{1+\sin (2 \pi x)}{2} \quad  -\frac{5}{4} \leq x < -\frac{3}{4},\\
+				1 \qquad \qquad -\frac{3}{4} \leq x < \frac{3}{4},\\
+				\frac{1-\sin (2 \pi x)}{2} \quad \frac{3}{4} \leq x < \frac{5}{4},\\
+				0 \qquad \qquad otherwise.
+			\end{cases}
+		\end{equation}
+	\end{subequations}
+	对于$d_x \ge 2$，即多维输入的情形。先对每个维度构造一维的单位分解函数，然后对这些一维单位分解函数进行张量积运算：$\psi_n(\boldsymbol{x}) = \prod^{d_x}_{i=1} \psi_n(x_i)$。
+	
+	则最终数值解就是将局部随机特征函数通过单位分解函数组合起来：
+	\begin{equation}
+		u_M(\boldsymbol{x})=\sum_{n=1}^{M_p} \psi_n ( l_n(\boldsymbol{x}))   \sum_{j=1}^{J_n }u_{nj} \phi_{nj} ( l_n(\boldsymbol{x}))
+	\end{equation}
+	
+	需要注意的是，在单位分解函数的连续性不满足方程解所需的连续性时，需要额外加入一组连续性条件。例如：在使用$\psi^{a}$求解二阶方程时，需要在不同单位分解计算区域的接口处加入零阶和一阶连续性条件。而$\psi^{b}$是连续可微的，不需要添加额外条件。
+
+\end{enumerate}
+
+====================
 
 \section{基于RFM的数据同化}
 考虑如下数据同化问题：
@@ -285,8 +346,6 @@ $$
 	\end {aligned}\right.
 	%\label{stokesflow}
 \end{equation*}
-
-*需要注意的是，在单位分解函数的连续性不满足方程解所需的连续性时，需要额外加入一组连续性条件。例如：在使用$\psi^{a}$求解二阶方程时，需要在不同单位分解计算区域的边缘加入零阶和一阶连续性条件*
 
 \subsection{优化问题}
 
