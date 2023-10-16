@@ -15,4 +15,11 @@ swe_1d_don_tbc_obs_01_e-5.pt  2951MiB  batch : 100910 lr : 0.0005 Elapsed time: 
 测试效果勉强，波形基本吻合，相对误差<0.02
 swe_1d_don_tbc_obs_01_5e-6.pt 2951MiB  batch : 170004 lr : 0.0005 Elapsed time:  9:45:55.378846
 测试效果好一些了，相对误差<0.015
-swe_1d_don_tbc_obs_01_e-6.pt  2951MiB  等待结果
+物理信息点选取10000个，
+swe_1d_don_tbc_obs_01_e-6.pt  5063MiB  等待结果
+
+swe_1d_don_tbc_obs_02.py
+主要改动是把训练的时间范围改为t=[0.0.5]
+使用数据集swe_1d_rbf_sample_l=0.2.npy，1000个样本序列，前900个作为训练样本，每个序列取t=[0,0.5],t=0为初值，初值只取高度，不要速度了，
+减少训练复杂度，t=0.1,0.2,...,0.6,x=0.5上的值为观测值；物理信息点选取的5000个，
+swe_1d_don_tbc_obs_02_5e-6.pt  2727MiB  等待结果

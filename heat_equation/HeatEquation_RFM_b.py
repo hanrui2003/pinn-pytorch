@@ -11,10 +11,11 @@ from scipy.optimize import minimize
 torch.set_default_dtype(torch.float64)
 
 # computational domain，定义域的左右边界
+alpha = np.pi / 2
 X_min = 0.0
-X_max = 1.0
-Y_min = 0.0
-Y_max = 1.0
+X_max = 12.0
+T_min = 0.0
+T_max = 10.0
 
 
 # random initialization for parameters
@@ -26,29 +27,29 @@ def weights_init(m):
 
 # random feature basis when using \psi^{b} as PoU function
 class RFM_rep_b(nn.Module):
-    def __init__(self, d, J_n, x_max, x_min, y_min, y_max, n_x, n_y, M_p):
+    def __init__(self, d, J_n, x_max, x_min, t_min, t_max, n_x, n_t, M_p):
         """
         :param n_x : 空间维度，第几个区间
-        :param n_y : 时间维度，第几个区间
+        :param n_t : 时间维度，第几个区间
         """
         super(RFM_rep_b, self).__init__()
         self.d = d
         self.J_n = J_n
         self.n_x = n_x
-        self.n_y = n_y
+        self.n_t = n_t
         self.M_p = M_p
         # 小区间半径，区间长度的一半
-        self.r = torch.tensor(((x_max - x_min) / 2.0, (y_max - y_min) / 2.0))
+        self.r = torch.tensor(((x_max - x_min) / 2.0, (t_max - t_min) / 2.0))
         # 小区间中心
-        self.z_c = torch.tensor(((x_max + x_min) / 2, (y_max + y_min) / 2))
+        self.y_c = torch.tensor(((x_max + x_min) / 2, (t_max + t_min) / 2))
         self.phi = nn.Sequential(nn.Linear(self.d, self.J_n, bias=True), nn.Tanh())
 
-    def forward(self, a):
+    def forward(self, y):
         # 标准化，使得取值在[-1,1]
-        a = (a - self.z_c) / self.r
-        z = self.phi(a)
-        x = a[:, [0]]
-        y = a[:, [1]]
+        y = (y - self.y_c) / self.r
+        z = self.phi(y)
+        x = y[:, [0]]
+        t = y[:, [1]]
         # 注意，默认情况psi会自动复制为0，所以分段函数不用写otherwise
         if self.n_x == 0:
             psi_x = ((x >= -1) & (x < 3 / 4)) * 1.0 + \
@@ -61,18 +62,18 @@ class RFM_rep_b(nn.Module):
                     ((x >= -3 / 4) & (x < 3 / 4)) * 1.0 + \
                     ((x >= 3 / 4) & (x < 5 / 4)) * (1 - torch.sin(2 * np.pi * x)) / 2
 
-        if self.n_y == 0:
-            psi_y = ((y >= -1) & (y < 3 / 4)) * 1.0 + \
-                    ((y >= 3 / 4) & (y < 5 / 4)) * (1 - torch.sin(2 * np.pi * y)) / 2
-        elif self.n_y == self.M_p[1] - 1:
-            psi_y = ((y >= -5 / 4) & (y < -3 / 4)) * (1 + torch.sin(2 * np.pi * y)) / 2 + \
-                    ((y >= -3 / 4) & (y <= 1)) * 1.0
+        if self.n_t == 0:
+            psi_t = ((t >= -1) & (t < 3 / 4)) * 1.0 + \
+                    ((t >= 3 / 4) & (t < 5 / 4)) * (1 - torch.sin(2 * np.pi * t)) / 2
+        elif self.n_t == self.M_p[1] - 1:
+            psi_t = ((t >= -5 / 4) & (t < -3 / 4)) * (1 + torch.sin(2 * np.pi * t)) / 2 + \
+                    ((t >= -3 / 4) & (t <= 1)) * 1.0
         else:
-            psi_y = ((y >= -5 / 4) & (y < -3 / 4)) * (1 + torch.sin(2 * np.pi * y)) / 2 + \
-                    ((y >= -3 / 4) & (y < 3 / 4)) * 1.0 + \
-                    ((y >= 3 / 4) & (y < 5 / 4)) * (1 - torch.sin(2 * np.pi * y)) / 2
+            psi_t = ((t >= -5 / 4) & (t < -3 / 4)) * (1 + torch.sin(2 * np.pi * t)) / 2 + \
+                    ((t >= -3 / 4) & (t < 3 / 4)) * 1.0 + \
+                    ((t >= 3 / 4) & (t < 5 / 4)) * (1 - torch.sin(2 * np.pi * t)) / 2
 
-        return psi_x * psi_y * z
+        return psi_x * psi_t * z
 
 
 # predefine the random feature functions in each PoU region
@@ -90,14 +91,14 @@ def pre_define(M_p, J_n):
         x_min = (X_max - X_min) / M_p[0] * i + X_min
         # 单位分解子区间的右端(空间维度)
         x_max = (X_max - X_min) / M_p[0] * (i + 1) + X_min
-        # 空间维度(y)
+        # 时间维度(t)
         for j in range(M_p[1]):
             # 单位分解子区间的左端(时间维度)
-            y_min = (Y_max - Y_min) / M_p[1] * j + Y_min
+            t_min = (T_max - T_min) / M_p[1] * j + T_min
             # 单位分解子区间的右端(时间维度)
-            y_max = (Y_max - Y_min) / M_p[1] * (j + 1) + Y_min
+            t_max = (T_max - T_min) / M_p[1] * (j + 1) + T_min
             # 每个单位分解区间对应一个FCN
-            model = RFM_rep_b(d=2, J_n=J_n, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max, n_x=i, n_y=j, M_p=M_p)
+            model = RFM_rep_b(d=2, J_n=J_n, x_min=x_min, x_max=x_max, t_min=t_min, t_max=t_max, n_x=i, n_t=j, M_p=M_p)
             model = model.apply(weights_init)
             # 内层参数固定，不需要反向传播更新，所以去除梯度跟踪
             for param in model.parameters():
@@ -110,20 +111,24 @@ def pre_define(M_p, J_n):
 
 
 # Assembling the matrix A,f in linear system 'Au=f'
-def assemble_matrix(models, M_p, J_n, Q, pde_points, bc_points):
+def assemble_matrix(models, M_p, J_n, Q, pde_points, ic_points, bc_points):
     """
     models：模型
     points：配点列表
     M_p:划分的区间数,M_p[0]*M_p[1]
+    Q：每个小区间取配点的个数(每个维度)，实际为Q+1
     J_n：线性层的输出维度
     """
-    print("assemble_matrix started at:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print(datetime.now(), "assemble_matrix start")
     # 所有PDE条件
     A_P = np.zeros((len(pde_points), M_p[0] * M_p[1] * J_n))
+    # 初值条件
+    A_I = np.zeros((len(ic_points), M_p[0] * M_p[1] * J_n))
     # 边界条件
     A_B = np.zeros((len(bc_points), M_p[0] * M_p[1] * J_n))
 
     pde_point = torch.tensor(pde_points, requires_grad=True)
+    ic_point = torch.tensor(ic_points, requires_grad=True)
     bc_point = torch.tensor(bc_points, requires_grad=True)
 
     # 遍历每个区间，区间数M_p =========== start
@@ -133,70 +138,77 @@ def assemble_matrix(models, M_p, J_n, Q, pde_points, bc_points):
             pde_out = models[i][j](pde_point)
             pde_values = pde_out.detach().numpy()
 
+            ic_out = models[i][j](ic_point)
+            ic_values = ic_out.detach().numpy()
+
             bc_out = models[i][j](bc_point)
             bc_values = bc_out.detach().numpy()
 
             # 记录一阶导
-            grad_u_yy = []
+            grad_u_t = []
             grad_u_xx = []
             # 当前区间的配点求导，由于torch的局限，不能多维函数（J_n维）一起求导，所以只能循环
             for k in range(J_n):
-                u_x_y = torch.autograd.grad(outputs=pde_out[:, k], inputs=pde_point,
+                u_x_t = torch.autograd.grad(outputs=pde_out[:, k], inputs=pde_point,
                                             grad_outputs=torch.ones_like(pde_out[:, k]),
                                             create_graph=True, retain_graph=True)[0]
 
-                u_xx_yy = torch.autograd.grad(outputs=u_x_y, inputs=pde_point,
-                                              grad_outputs=torch.ones_like(u_x_y),
+                u_xx_tt = torch.autograd.grad(outputs=u_x_t, inputs=pde_point,
+                                              grad_outputs=torch.ones_like(u_x_t),
                                               create_graph=True, retain_graph=True)[0]
 
-                u_xx = u_xx_yy[:, 0]
-                u_yy = u_xx_yy[:, 1]
+                u_t = u_x_t[:, 1]
+                u_xx = u_xx_tt[:, 0]
 
+                grad_u_t.append(u_t.detach().numpy())
                 grad_u_xx.append(u_xx.detach().numpy())
-                grad_u_yy.append(u_yy.detach().numpy())
 
+            grad_u_t = np.array(grad_u_t).T
             grad_u_xx = np.array(grad_u_xx).T
-            grad_u_yy = np.array(grad_u_yy).T
 
             # 类似微分算子，注意这里不等同于微分算子，因为这里的Lu对于一个单点x，其输出维度是J_n
-            Lu = grad_u_xx + grad_u_yy
+            Lu = (alpha ** 2) * grad_u_xx - grad_u_t
 
             # Lu = f condition
             A_P[:, (i * M_p[1] + j) * J_n:(i * M_p[1] + j + 1) * J_n] = Lu
+
+            # 初值条件
+            A_I[:, (i * M_p[1] + j) * J_n:(i * M_p[1] + j + 1) * J_n] = ic_values
 
             # 边界条件
             A_B[:, (i * M_p[1] + j) * J_n:(i * M_p[1] + j + 1) * J_n] = bc_values
 
     # 遍历每个区间 =========== end
     print("assemble A and f")
-    A = np.concatenate((A_P, A_B), axis=0)
-    f_P = f_real(pde_points[:, [0]], pde_points[:, [1]])
-    f_B = u_real(bc_points[:, [0]], bc_points[:, [1]])
-    f = np.concatenate((f_P, f_B), axis=0)
-    print("assemble_matrix ended at:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    A = np.concatenate((A_P, A_I, A_B), axis=0)
+    f_P = np.zeros((len(A_P), 1))
+    f_I = f_real(ic_points[:, [0]], ic_points[:, [1]])
+    f_B = f_real(bc_points[:, [0]], bc_points[:, [1]])
+    f = np.concatenate((f_P, f_I, f_B), axis=0)
+
+    print(datetime.now(), "assemble_matrix end")
+
     return A, f
 
 
 def main(M_p, J_n, Q):
-    print("main started at:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     # prepare collocation points
     time_begin = time.time()
-    x = np.linspace(X_min, X_max, M_p[0] * Q)
-    y = np.linspace(Y_min, Y_max, M_p[1] * Q)
-    X, Y = np.meshgrid(x, y)
-    pde_points = np.hstack((X.flatten()[:, None], Y.flatten()[:, None]))
-    top_points = np.hstack((X[0][:, None], Y[0][:, None]))
-    bottom_points = np.hstack((X[-1][:, None], Y[-1][:, None]))
-    left_points = np.hstack((X[:, 0][:, None], Y[:, 0][:, None]))
-    right_points = np.hstack((X[:, -1][:, None], Y[:, -1][:, None]))
-    bc_points = np.vstack((top_points, bottom_points, left_points, right_points))
+    x = np.linspace(X_min, X_max, M_p[0] * Q + 1)
+    t = np.linspace(T_min, T_max, M_p[1] * Q + 1)
+    X, T = np.meshgrid(x, t)
+    pde_points = np.hstack((X.flatten()[:, None], T.flatten()[:, None]))
+    ic_points = np.hstack((X[0][:, None], T[0][:, None]))
+    left_bc_points = np.hstack((X[:, 0][:, None], T[:, 0][:, None]))
+    right_bc_points = np.hstack((X[:, -1][:, None], T[:, -1][:, None]))
+    bc_points = np.vstack((left_bc_points, right_bc_points))
 
     # prepare models
     # 一个单位分解子区间对应一个单隐层的全连接网络
     models = pre_define(M_p, J_n)
 
     # matrix define (Au=f)
-    A, f = assemble_matrix(models, M_p, J_n, Q, pde_points, bc_points)
+    A, f = assemble_matrix(models, M_p, J_n, Q, pde_points, ic_points, bc_points)
     print('***********************')
     print('A shape: ', A.shape, 'f shape: ', f.shape)
 
@@ -215,24 +227,12 @@ def main(M_p, J_n, Q):
     print(datetime.now(), "start least square")
     w = lstsq(A, f)[0]
 
-    print("main ended at:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     # test
     test(models, M_p, J_n, Q, w)
 
 
-def u_real(x, y):
-    return -((3 / 2) * np.cos(np.pi * x + 2 * np.pi / 5) + 2 * np.cos(2 * np.pi * x - np.pi / 5)) \
-           * ((3 / 2) * np.cos(np.pi * y + 2 * np.pi / 5) + 2 * np.cos(2 * np.pi * y - np.pi / 5))
-
-
-def f_real(x, y):
-    u_xx = ((3 * np.pi ** 2 / 2) * np.cos(np.pi * x + 2 * np.pi / 5) + 8 * np.pi ** 2 * np.cos(
-        2 * np.pi * x - np.pi / 5)) \
-           * ((3 / 2) * np.cos(np.pi * y + 2 * np.pi / 5) + 2 * np.cos(2 * np.pi * y - np.pi / 5))
-    u_yy = ((3 / 2) * np.cos(np.pi * x + 2 * np.pi / 5) + 2 * np.cos(2 * np.pi * x - np.pi / 5)) \
-           * ((3 * np.pi ** 2 / 2) * np.cos(np.pi * y + 2 * np.pi / 5) + 8 * np.pi ** 2 * np.cos(
-        2 * np.pi * y - np.pi / 5))
-    return u_xx + u_yy
+def f_real(x, t):
+    return 2 * np.sin(alpha * x) * np.exp(-t)
 
 
 def plot(X1, T1, U1, X2, T2, U2):
@@ -296,12 +296,11 @@ def plot_err(X1, T1, U1):
 
 # calculate the l^{infinity}-norm and l^{2}-norm error for u
 def test(models, M_p, J_n, Q, w):
-    print("test started at:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     # 测试的时候，把网格变细，网格大小为配点的一半3
     test_Q = 2 * Q
     x = np.linspace(X_min, X_max, M_p[0] * test_Q + 1)
-    y = np.linspace(Y_min, Y_max, M_p[1] * test_Q + 1)
-    X, T = np.meshgrid(x, y)
+    t = np.linspace(T_min, T_max, M_p[1] * test_Q + 1)
+    X, T = np.meshgrid(x, t)
     points = np.hstack((X.flatten()[:, None], T.flatten()[:, None]))
     point = torch.tensor(points, requires_grad=False)
     A = np.zeros((len(point), M_p[0] * M_p[1] * J_n))
@@ -312,7 +311,7 @@ def test(models, M_p, J_n, Q, w):
             A[:, (i * M_p[1] + j) * J_n:(i * M_p[1] + j + 1) * J_n] = values
 
     numerical_values = np.dot(A, w)
-    true_values = u_real(points[:, [0]], points[:, [1]])
+    true_values = f_real(points[:, [0]], points[:, [1]])
     epsilon = true_values - numerical_values
     # 就是取绝对值操作
     epsilon = np.maximum(epsilon, -epsilon)
@@ -337,26 +336,19 @@ def test(models, M_p, J_n, Q, w):
 
     plot(X, T, U_true, X, T, U_numerical)
     plot_err(X, T, np.abs(U_true - U_numerical))
-    print("test ended at:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
     return L_2
 
 
 if __name__ == '__main__':
-    start_time = datetime.now()
-    print("MAIN started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
     # 固定网络初始化参数，用于debug
     # torch.manual_seed(123)
     # 超参数：随机特征（weight+bias）的均匀分布范围
-    R_m = 1
+    R_m = 2
     # 超参数：每个区间随机特征函数的个数，即每个区间对应的神经网络的隐层的维度
-    J_n = 400  # the number of basis functions per PoU region
+    J_n = 50  # the number of basis functions per PoU region
     # 超参数：每个区域配点的个数，其实配点个数是Q+1,这里的Q是每个单位分解区间的等分的区间数，注意这里针对的是每个维度
-    Q = 40  # the number of collocation points per PoU region
+    Q = 50  # the number of collocation points per PoU region
     # 超参数：单位分解的区间数，注意这里指的是每个维度都划分为M_p个区间
-    M_p = 2, 2
+    M_p = 48, 40
     main(M_p, J_n, Q)
-
-    end_time = datetime.now()
-    elapsed_time = end_time - start_time
-    print("MAIN ended at:", end_time.strftime("%Y-%m-%d %H:%M:%S"))
-    print("Elapsed time: ", elapsed_time)
