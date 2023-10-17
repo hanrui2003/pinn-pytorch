@@ -25,4 +25,5 @@ swe_1d_don_tbc_obs_02.py
 swe_1d_don_tbc_obs_02_5e-6_error_program.pt  2727MiB  batch : 138890 lr : 0.00025 Elapsed time:  7:43:39.680323
 代码写错了，物理点没有限制为t=[0,0.5],错写为t=[0,1]
 swe_1d_don_tbc_obs_02_5e-6.pt   2727MiB  batch : 124882 lr : 0.000125 Elapsed time:  7:07:08.946092
+测试效果跟时间[0,1]的情形差不多，相对误差<0.015，波形简单的时候<0.005
 swe_1d_don_tbc_obs_02_e-6.pt    2727MiB  等待结果

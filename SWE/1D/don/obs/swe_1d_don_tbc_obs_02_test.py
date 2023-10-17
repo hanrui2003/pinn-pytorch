@@ -2,8 +2,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from matplotlib import animation
-from scipy.integrate import solve_ivp
-from swe_1d_don_tbc_obs_01 import SWENet
+from swe_1d_don_tbc_obs_02 import SWENet
 
 if "__main__" == __name__:
     # torch.manual_seed(123)
@@ -24,13 +23,13 @@ if "__main__" == __name__:
     o_test = np.concatenate((ic[:101], obs_h, obs_v))
 
     # 这里先把数值解确定下
-    h_real = seq[:101, :101]
+    h_real = seq[:51, :101]
 
     N_x = 101
-    N_t = 101
+    N_t = 51
 
     x = np.linspace(0, 1, N_x)
-    t = np.linspace(0, 1, N_t)
+    t = np.linspace(0, 0.5, N_t)
 
     X, T = np.meshgrid(x, t)
     x_test = X.flatten()[:, None]
@@ -42,7 +41,7 @@ if "__main__" == __name__:
     z_test = np.hstack((y_test, o_test))
     z_test = torch.from_numpy(z_test).float()
 
-    model = torch.load('swe_1d_don_tbc_obs_01_5e-6.pt', map_location=torch.device('cpu'))
+    model = torch.load('swe_1d_don_tbc_obs_02_5e-6.pt', map_location=torch.device('cpu'))
     print("model", model)
 
     predict = model(z_test).detach().numpy()
@@ -74,6 +73,6 @@ if "__main__" == __name__:
     # 保存动画
     mpeg_writer = animation.FFMpegWriter(fps=24, bitrate=10000,
                                          codec="libx264", extra_args=["-pix_fmt", "yuv420p"])
-    anim.save("{}.mp4".format("swe_1d_don_tbc_obs_01"), writer=mpeg_writer)
+    anim.save("{}.mp4".format("swe_1d_don_tbc_obs_02"), writer=mpeg_writer)
 
     plt.show()
