@@ -5,8 +5,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import itertools
-from scipy.linalg import lstsq,pinv
-from scipy.fftpack import fftshift,fftn
+from scipy.linalg import lstsq, pinv
+from scipy.fftpack import fftshift, fftn
 
 from scipy.sparse.linalg import svds
 import matplotlib.pyplot as plt
@@ -14,14 +14,17 @@ import matplotlib.pyplot as plt
 import utils
 
 rand_mag = 1.0
+
+
 def weights_init(m):
     if isinstance(m, (nn.Conv2d, nn.Linear)):
         if m.weight is not None:
-            nn.init.uniform_(m.weight, a = 0, b = rand_mag)
+            nn.init.uniform_(m.weight, a=0, b=rand_mag)
         if m.bias is not None:
-            nn.init.uniform_(m.bias, a = -rand_mag, b = rand_mag)
-        #nn.init.normal_(m.weight, mean=0, std=1)
-        #nn.init.normal_(m.bias, mean=0, std=1)
+            nn.init.uniform_(m.bias, a=-rand_mag, b=rand_mag)
+        # nn.init.normal_(m.weight, mean=0, std=1)
+        # nn.init.normal_(m.bias, mean=0, std=1)
+
 
 class Ada_Rescale_W(object):
 
@@ -74,20 +77,19 @@ class CosAct(nn.Module):
 
 
 class ChebPoly(nn.Module):
-    def __init__(self, n : int) -> None:
+    def __init__(self, n: int) -> None:
         super().__init__()
 
         self.n = n
 
     def forward(self, x):
-
         v = torch.cos(self.n * torch.acos(x))
 
         return v
 
 
 class Poly(nn.Module):
-    def __init__(self, n, coefs = None) -> None:
+    def __init__(self, n, coefs=None) -> None:
         super().__init__()
 
         self.n = n
@@ -99,7 +101,7 @@ class Poly(nn.Module):
             self.coefs = [0] * self.n
 
     def forward(self, x):
-        
+
         y = torch.ones_like(x)
         u = 0
 
@@ -114,7 +116,7 @@ class Poly(nn.Module):
 
 
 class ChebBasis(nn.Module):
-    def __init__(self, n : int) -> None:
+    def __init__(self, n: int) -> None:
         super().__init__()
 
         assert n > 0
@@ -123,7 +125,7 @@ class ChebBasis(nn.Module):
         # self.basis = [ChebPoly(i) for i in range(n)]
         self.basis = [None for _ in range(n)]
 
-        self.basis[0] = Poly(n=1, coefs=[1,])
+        self.basis[0] = Poly(n=1, coefs=[1, ])
 
         if n > 1:
             self.basis[1] = Poly(n=2, coefs=[0, 1])
@@ -147,8 +149,7 @@ class ChebBasis(nn.Module):
         # for b in self.basis:
         #     print(b)
 
-
-    def forward(self, x : torch.Tensor):
+    def forward(self, x: torch.Tensor):
 
         v = [self.basis[i](x) for i in range(self.n)]
 
@@ -158,7 +159,7 @@ class ChebBasis(nn.Module):
 
 
 class MultiDChebBasis(nn.Module):
-    def __init__(self, n : int=1, ndim : int=1) -> None:
+    def __init__(self, n: int = 1, ndim: int = 1) -> None:
         super().__init__()
 
         self.n = n
@@ -197,7 +198,7 @@ class MultiDChebBasis(nn.Module):
 
 
 class ChebRandBasis(nn.Module):
-    def __init__(self, n : int) -> None:
+    def __init__(self, n: int) -> None:
         super().__init__()
 
         assert n > 0
@@ -206,9 +207,7 @@ class ChebRandBasis(nn.Module):
         self.cheb = ChebBasis(n=n)
         self.affine = nn.Linear(1, 1, bias=True)
 
-
     def forward(self, x):
-
         x = self.affine(x)
         v = self.cheb(x)
 
@@ -216,7 +215,7 @@ class ChebRandBasis(nn.Module):
 
 
 class LegendreBasis(nn.Module):
-    def __init__(self, n : int) -> None:
+    def __init__(self, n: int) -> None:
         super().__init__()
 
         assert n > 0
@@ -225,7 +224,7 @@ class LegendreBasis(nn.Module):
         # self.basis = [ChebPoly(i) for i in range(n)]
         self.basis = [None for _ in range(n)]
 
-        self.basis[0] = Poly(n=1, coefs=[1,])
+        self.basis[0] = Poly(n=1, coefs=[1, ])
 
         if n > 1:
             self.basis[1] = Poly(n=2, coefs=[0, 1])
@@ -249,7 +248,6 @@ class LegendreBasis(nn.Module):
         # for b in self.basis:
         #     print(b)
 
-
     def forward(self, x):
 
         v = [self.basis[i](x) for i in range(self.n)]
@@ -260,7 +258,7 @@ class LegendreBasis(nn.Module):
 
 
 class LegendreRandBasis(nn.Module):
-    def __init__(self, n : int) -> None:
+    def __init__(self, n: int) -> None:
         super().__init__()
 
         assert n > 0
@@ -269,13 +267,12 @@ class LegendreRandBasis(nn.Module):
         self.cheb = LegendreBasis(n=n)
         self.affine = nn.Linear(1, 1, bias=True)
 
-
     def forward(self, x):
-
         x = self.affine(x)
         v = self.cheb(x)
 
         return v
+
 
 class local_rep(nn.Module):
     def __init__(self, in_features, out_features, hidden_layers, M, x_max, x_min, t_max, t_min, type="elm-t"):
@@ -283,25 +280,25 @@ class local_rep(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
         self.hidden_features = M
-        self.hidden_layers  = hidden_layers
+        self.hidden_layers = hidden_layers
         self.M = M
-        self.a = torch.tensor([2.0/(x_max - x_min),2.0/(t_max - t_min)])
-        self.x_0 = torch.tensor([(x_max + x_min)/2,(t_max + t_min)/2])
+        self.a = torch.tensor([2.0 / (x_max - x_min), 2.0 / (t_max - t_min)])
+        self.x_0 = torch.tensor([(x_max + x_min) / 2, (t_max + t_min) / 2])
 
         if type == "elm-t":
-            self.hidden_layer = nn.Sequential(nn.Linear(self.in_features, self.hidden_features, bias=True),nn.Tanh())
+            self.hidden_layer = nn.Sequential(nn.Linear(self.in_features, self.hidden_features, bias=True), nn.Tanh())
         elif type == "elm-s":
-            self.hidden_layer = nn.Sequential(nn.Linear(self.in_features, self.hidden_features, bias=True),SinAct())
+            self.hidden_layer = nn.Sequential(nn.Linear(self.in_features, self.hidden_features, bias=True), SinAct())
         elif type == "cheb":
             self.hidden_layer = MultiDChebBasis(n=self.hidden_features, ndim=self.in_features)
 
-    def forward(self,x):
+    def forward(self, x):
         x = self.a * (x - self.x_0)
         x = self.hidden_layer(x)
         return x
 
 
-def pre_define_rfm(Nx,Nt,M,Qx,Qt,x0,x1,t0,t1,type="elm-t"):
+def pre_define_rfm(Nx, Nt, M, Qx, Qt, x0, x1, t0, t1, type="elm-t"):
     models = []
     points = []
     L = x1 - x0
@@ -309,25 +306,26 @@ def pre_define_rfm(Nx,Nt,M,Qx,Qt,x0,x1,t0,t1,type="elm-t"):
     for k in range(Nx):
         model_for_x = []
         point_for_x = []
-        x_min = L/Nx * k + x0
-        x_max = L/Nx * (k+1) + x0
+        x_min = L / Nx * k + x0
+        x_max = L / Nx * (k + 1) + x0
         x_devide = np.linspace(x_min, x_max, Qx + 1)
         for n in range(Nt):
-            t_min = tf/Nt * n + t0
-            t_max = tf/Nt * (n+1) + t0
-            model = local_rep(in_features = 2, out_features = 1, hidden_layers = 1, M = M, x_min = x_min, 
-                            x_max = x_max, t_min = t_min, t_max = t_max, type = type)
+            t_min = tf / Nt * n + t0
+            t_max = tf / Nt * (n + 1) + t0
+            model = local_rep(in_features=2, out_features=1, hidden_layers=1, M=M, x_min=x_min,
+                              x_max=x_max, t_min=t_min, t_max=t_max, type=type)
             model = model.apply(weights_init)
             model = model.double()
             for param in model.parameters():
                 param.requires_grad = False
             model_for_x.append(model)
             t_devide = np.linspace(t_min, t_max, Qt + 1)
-            grid = np.array(list(itertools.product(x_devide,t_devide))).reshape(Qx+1,Qt+1,2)
-            point_for_x.append(torch.tensor(grid,requires_grad=True))
+            # 对x和t做笛卡尔积，然后转成三维数组，本质就是这个区域的配点
+            grid = np.array(list(itertools.product(x_devide, t_devide))).reshape(Qx + 1, Qt + 1, 2)
+            point_for_x.append(torch.tensor(grid, requires_grad=True))
         models.append(model_for_x)
         points.append(point_for_x)
-    return(models,points)
+    return (models, points)
 
 
 class local_mul_rep(nn.Module):
@@ -336,7 +334,7 @@ class local_mul_rep(nn.Module):
         self.x_features = space_features
         self.out_features = out_features
         self.hidden_features = Mx
-        self.hidden_layers  = hidden_layers
+        self.hidden_layers = hidden_layers
         self.x_max = x_max
         self.x_min = x_min
         self.t_max = t_max
@@ -347,14 +345,13 @@ class local_mul_rep(nn.Module):
         self.a_t = 2.0 / (t_max - t_min)
         self.x_0 = (x_max + x_min) / 2.0
         self.t_0 = (t_max + t_min) / 2.0
-        self.hx = nn.Sequential(nn.Linear(self.x_features, self.hidden_features, bias=True),SinAct(),)#,nn.Tanh())
-        self.ht = nn.Sequential(nn.Linear(1, self.hidden_features * self.Mt, bias=True),SinAct(),)#,nn.Tanh())
-        #print([x_min,x_max],[t_min,t_max])
+        self.hx = nn.Sequential(nn.Linear(self.x_features, self.hidden_features, bias=True), SinAct(), )  # ,nn.Tanh())
+        self.ht = nn.Sequential(nn.Linear(1, self.hidden_features * self.Mt, bias=True), SinAct(), )  # ,nn.Tanh())
+        # print([x_min,x_max],[t_min,t_max])
 
-    def forward(self,x):
-
+    def forward(self, x):
         part = x.size()[:-1]
-        
+
         # x-axis
         y = self.a_x * (x[..., :self.x_features] - self.x_0)
         y_x = self.hx(y)
@@ -369,14 +366,16 @@ class local_mul_rep(nn.Module):
         y_t_pou = c0 * y0
 
         y_t = y_t_pou * y_t_rfm
-        
+
         y = y_x.view(*part, self.Mx, 1) * y_t.view(*part, -1, self.Mt)
         y = y.view(*part, -1)
-        
+
         return y
+
 
 def hook(m, gin, gout):
     print(gin[0].norm())
+
 
 class local_mul_nn(nn.Module):
     def __init__(self, space_features, out_features, hidden_layers, Mx, Mt, x_max, x_min, t_max, t_min):
@@ -384,7 +383,7 @@ class local_mul_nn(nn.Module):
         self.x_features = space_features
         self.out_features = out_features
         self.hidden_features = Mx
-        self.hidden_layers  = hidden_layers
+        self.hidden_layers = hidden_layers
         self.x_max = x_max
         self.x_min = x_min
         self.t_max = t_max
@@ -395,19 +394,18 @@ class local_mul_nn(nn.Module):
         self.a_t = 2.0 / (t_max - t_min)
         self.x_0 = (x_max + x_min) / 2.0
         self.t_0 = (t_max + t_min) / 2.0
-        self.hx = nn.Sequential(nn.Linear(self.x_features, self.hidden_features, bias=True),SinAct(),)#nn.Tanh())
-        self.ht = nn.Sequential(nn.Linear(1, self.hidden_features * self.Mt, bias=True),SinAct(),)#nn.Tanh())
+        self.hx = nn.Sequential(nn.Linear(self.x_features, self.hidden_features, bias=True), SinAct(), )  # nn.Tanh())
+        self.ht = nn.Sequential(nn.Linear(1, self.hidden_features * self.Mt, bias=True), SinAct(), )  # nn.Tanh())
         self.fc = nn.Linear(Mx, 1, bias=False)
-        #print([x_min,x_max],[t_min,t_max])
+        # print([x_min,x_max],[t_min,t_max])
 
         # self.hx[0].register_backward_hook(hook)
         # self.ht[0].register_backward_hook(hook)
         # self.fc.register_backward_hook(hook)
 
     def feature(self, x):
-
         part = x.size()[:-1]
-        
+
         # x-axis
         y = self.a_x * (x[..., :self.x_features] - self.x_0)
         y_x = self.hx(y)
@@ -422,18 +420,17 @@ class local_mul_nn(nn.Module):
         y_t_pou = c0 * y0
 
         y_t = y_t_pou * y_t_rfm
-        
+
         y = y_x.view(*part, self.Mx, 1) * y_t.view(*part, -1, self.Mt)
         y = y.view(*part, -1)
 
         return y
 
-    def forward(self,x):
-        
+    def forward(self, x):
         y = self.feature(x)
 
         y = self.fc(y)
-        
+
         return y
 
 
@@ -443,7 +440,7 @@ class local_mul_t_psib_rep(nn.Module):
         self.x_features = space_features
         self.out_features = out_features
         self.hidden_features = Mx
-        self.hidden_layers  = hidden_layers
+        self.hidden_layers = hidden_layers
         self.x_max = x_max
         self.x_min = x_min
         self.t_max = t_max
@@ -456,14 +453,14 @@ class local_mul_t_psib_rep(nn.Module):
         self.a_t = 2.0 / (t_max - t_min)
         self.x_0 = (x_max + x_min) / 2.0
         self.t_0 = (t_max + t_min) / 2.0
-        self.hx = nn.Sequential(nn.Linear(self.x_features, self.hidden_features, bias=True),nn.Sigmoid())
-        self.ht = nn.Sequential(nn.Linear(1, self.hidden_features * self.Mt, bias=True),nn.Sigmoid())
-        #print([x_min,x_max],[t_min,t_max])
+        self.hx = nn.Sequential(nn.Linear(self.x_features, self.hidden_features, bias=True), nn.Sigmoid())
+        self.ht = nn.Sequential(nn.Linear(1, self.hidden_features * self.Mt, bias=True), nn.Sigmoid())
+        # print([x_min,x_max],[t_min,t_max])
 
-    def forward(self,x):
+    def forward(self, x):
 
         part = x.size()[:-1]
-        
+
         # x-axis
         x_axis = self.a_x * (x[..., :self.x_features] - self.x_0)
         y_x = self.hx(x_axis)
@@ -472,7 +469,7 @@ class local_mul_t_psib_rep(nn.Module):
         t_axis = self.a_t * (x[..., self.x_features:] - self.t_0)
 
         y_rfm = self.ht(t_axis)
-        
+
         c0 = (t_axis > -5 / 4) & (t_axis <= -3 / 4)
         c1 = (t_axis > -3 / 4) & (t_axis <= 3 / 4)
         c2 = (t_axis > 3 / 4) & (t_axis <= 5 / 4)
@@ -481,26 +478,25 @@ class local_mul_t_psib_rep(nn.Module):
             y0 = 1.0
         else:
             y0 = (1 + torch.sin(2 * torch.pi * t_axis)) / 2
-        
+
         y1 = 1.0
-        
+
         if self.t_max == self.t1:
             y2 = 1.0
         else:
             y2 = (1 - torch.sin(2 * torch.pi * t_axis)) / 2
 
         y_pou = c0 * y0 + c1 * y1 + c2 * y2
-        
+
         y_t = y_pou * y_rfm
-        
+
         y = y_x.view(*part, self.Mx, 1) * y_t.view(*part, -1, self.Mt)
         y = y.view(*part, -1)
-        
+
         return y
 
 
 def generate_points(Nx: int, Nt: int, Qx: int, Qt: int, x0: float, x1: float, t0: float, t1: float):
-
     dx = (x1 - x0) / Nx
     dt = (t1 - t0) / Nt
 
@@ -510,11 +506,12 @@ def generate_points(Nx: int, Nt: int, Qx: int, Qt: int, x0: float, x1: float, t0
 
         points_x = list()
 
-        x = np.linspace(x0 + kx * dx, x0 + (kx + 1) * dx, num=Qx + 1, endpoint=True).reshape(Qx + 1, 1, 1).repeat(Qt + 1, axis=1)
+        x = np.linspace(x0 + kx * dx, x0 + (kx + 1) * dx, num=Qx + 1, endpoint=True).reshape(Qx + 1, 1, 1).repeat(
+            Qt + 1, axis=1)
 
         for kt in range(Nt):
-
-            t = np.linspace(t0 + kt * dt, t0 + (kt + 1) * dt, num=Qt + 1, endpoint=True).reshape(1, Qt + 1, 1).repeat(Qx + 1, axis=0)
+            t = np.linspace(t0 + kt * dt, t0 + (kt + 1) * dt, num=Qt + 1, endpoint=True).reshape(1, Qt + 1, 1).repeat(
+                Qx + 1, axis=0)
 
             xt = np.concatenate((x, t), axis=2)
             xt = torch.tensor(xt, requires_grad=True)
@@ -528,7 +525,7 @@ def generate_points(Nx: int, Nt: int, Qx: int, Qt: int, x0: float, x1: float, t0
     return points
 
 
-def pre_define_mul(Nx,Nt,Mx,Mt,Qx,Qt,x0,x1,t0,t1,mtype="psia"):
+def pre_define_mul(Nx, Nt, Mx, Mt, Qx, Qt, x0, x1, t0, t1, mtype="psia"):
     models = []
     points = []
     L = x1 - x0
@@ -538,20 +535,21 @@ def pre_define_mul(Nx,Nt,Mx,Mt,Qx,Qt,x0,x1,t0,t1,mtype="psia"):
     for k in range(Nx):
         model_for_x = []
         point_for_x = []
-        x_min = L/Nx * k + x0
-        x_max = L/Nx * (k+1) + x0
+        x_min = L / Nx * k + x0
+        x_max = L / Nx * (k + 1) + x0
         x_devide = np.linspace(x_min, x_max, Qx + 1)
         for n in range(Nt):
-            t_min = tf/Nt * n
-            t_max = tf/Nt * (n+1)
+            t_min = tf / Nt * n
+            t_max = tf / Nt * (n + 1)
             if mtype == "psia":
-                model = local_mul_rep(space_features = 1, out_features = 1, hidden_layers = 1, Mx = Mx, Mt = Mt, x_min = x_min, 
-                                      x_max = x_max, t_min = t_min, t_max = t_max)
+                model = local_mul_rep(space_features=1, out_features=1, hidden_layers=1, Mx=Mx, Mt=Mt, x_min=x_min,
+                                      x_max=x_max, t_min=t_min, t_max=t_max)
             elif mtype == "nn":
-                model = local_mul_nn(space_features = 1, out_features = 1, hidden_layers = 1, Mx = Mx, Mt = Mt, x_min = x_min, 
-                                      x_max = x_max, t_min = t_min, t_max = t_max)
+                model = local_mul_nn(space_features=1, out_features=1, hidden_layers=1, Mx=Mx, Mt=Mt, x_min=x_min,
+                                     x_max=x_max, t_min=t_min, t_max=t_max)
             elif mtype == "psib":
-                model = local_mul_t_psib_rep(space_features = 1, out_features = 1, hidden_layers = 1, Mx = Mx, Mt = Mt, x_min = x_min, x_max = x_max, t_min = t_min, t_max = t_max, t0=t0, t1=t1)
+                model = local_mul_t_psib_rep(space_features=1, out_features=1, hidden_layers=1, Mx=Mx, Mt=Mt,
+                                             x_min=x_min, x_max=x_max, t_min=t_min, t_max=t_max, t0=t0, t1=t1)
             else:
                 raise NotImplementedError
             model = model.apply(weights_init)
@@ -568,47 +566,49 @@ def pre_define_mul(Nx,Nt,Mx,Mt,Qx,Qt,x0,x1,t0,t1,mtype="psia"):
         models.append(model_for_x)
         # points.append(point_for_x)
         points = generate_points(Nx=Nx, Nt=Nt, Qx=Qx, Qt=Qt, x0=x0, x1=x1, t0=t0, t1=t1)
-    return(models,points)
+    return (models, points)
 
 
 def get_anal_u(vanal_u, points, Nx, Qx, nt=None, qt=None, tshift=0):
-
+    """
+    计算整个定义域的初值
+    """
     if nt is None:
         nt = 0
     if qt is None:
         qt = 0
 
+    # 计算初值点
     point = list()
-    
+
     for k in range(Nx):
         point.append(points[k][nt][:Qx, qt, :].detach().numpy().reshape((Qx, 2)))
     point = np.concatenate(point, axis=0)
-    
+
+    # 初值
     u_value = vanal_u(point[:, 0], point[:, 1] + tshift).reshape((Nx * Qx, 1))
 
     return u_value
 
 
 def get_anal_fx(vanal_f, points, Nx, Qx, nt=None, qt=None):
-
     if nt is None:
         nt = 0
     if qt is None:
         qt = 0
 
     point = list()
-    
+
     for k in range(Nx):
         point.append(points[k][nt][:Qx, qt, :].detach().numpy().reshape((Qx, 2)))
     point = np.concatenate(point, axis=0)
-    
+
     u_value = vanal_f(point[:, 0]).reshape((Nx * Qx, 1))
 
     return u_value
 
 
 def get_numsol_1d(models, points, w, Nx, Nt, M, Qx, Qt):
-    
     u_value_xt = list()
     u_value_x = list()
 
@@ -632,7 +632,6 @@ def get_numsol_1d(models, points, w, Nx, Nt, M, Qx, Qt):
 
 
 def get_num_values(models, points, w, Nx, Ny, M, Qx, Qy):
-    
     u_value = list()
 
     for kx in range(Nx):
@@ -649,12 +648,11 @@ def get_num_values(models, points, w, Nx, Ny, M, Qx, Qy):
 
 
 def get_num_u(models, points, w, Nx, Nt, M, Qx, Qt, nt=None, qt=None):
-    
     if nt is None:
         nt = Nt - 1
     if qt is None:
         qt = Qt
-    
+
     u_value = list()
 
     for k in range(Nx):
@@ -670,12 +668,11 @@ def get_num_u(models, points, w, Nx, Nt, M, Qx, Qt, nt=None, qt=None):
 
 
 def get_num_ut(models, points, w, Nx, Nt, M, Qx, Qt, nt=None, qt=None):
-
     if nt is None:
         nt = Nt - 1
     if qt is None:
         qt = Qt
-    
+
     ut_value = list()
 
     for k in range(Nx):
@@ -685,8 +682,8 @@ def get_num_ut(models, points, w, Nx, Nt, M, Qx, Qt, nt=None, qt=None):
         base_grads = list()
         for i in range(M):
             grad = torch.autograd.grad(outputs=base_values[:, i], inputs=point, \
-                grad_outputs=torch.ones_like(base_values[:,i]), \
-                create_graph = True, retain_graph = True)[0]
+                                       grad_outputs=torch.ones_like(base_values[:, i]), \
+                                       create_graph=True, retain_graph=True)[0]
             base_grads.append(grad.detach().numpy())
         base_grads = np.array(base_grads).swapaxes(0, 2)
         base_t_grads = base_grads[1, :, :]
@@ -699,7 +696,6 @@ def get_num_ut(models, points, w, Nx, Nt, M, Qx, Qt, nt=None, qt=None):
 
 
 def sget_num_values(models, points, w, Nx, Ny, M, Qx, Qy):
-    
     u_value = list()
 
     for kx in range(Nx):
@@ -719,12 +715,11 @@ def sget_num_values(models, points, w, Nx, Ny, M, Qx, Qy):
 
 
 def sget_num_u(models, points, w, Nx, Nt, M, Qx, Qt, nt=None, qt=None):
-    
     if nt is None:
         nt = Nt - 1
     if qt is None:
         qt = Qt
-    
+
     u_value = list()
 
     for k in range(Nx):
@@ -743,12 +738,11 @@ def sget_num_u(models, points, w, Nx, Nt, M, Qx, Qt, nt=None, qt=None):
 
 
 def sget_num_ut(models, points, w, Nx, Nt, M, Qx, Qt, nt=None, qt=None):
-
     if nt is None:
         nt = Nt - 1
     if qt is None:
         qt = Qt
-    
+
     ut_value = list()
 
     for k in range(Nx):
@@ -761,8 +755,8 @@ def sget_num_ut(models, points, w, Nx, Nt, M, Qx, Qt, nt=None, qt=None):
         base_grads = list()
         for i in range(M):
             grad = torch.autograd.grad(outputs=base_values[:, i], inputs=point, \
-                grad_outputs=torch.ones_like(base_values[:,i]), \
-                create_graph = True, retain_graph = True)[0]
+                                       grad_outputs=torch.ones_like(base_values[:, i]), \
+                                       create_graph=True, retain_graph=True)[0]
             base_grads.append(grad.detach().numpy())
         base_grads = np.array(base_grads).swapaxes(0, 2)
         base_t_grads = base_grads[1, :, :]
@@ -775,12 +769,11 @@ def sget_num_ut(models, points, w, Nx, Nt, M, Qx, Qt, nt=None, qt=None):
 
 
 def get_num_u_tpsib(models, points, w, Nx, Nt, M, Qx, Qt, nt=None, qt=None):
-    
     if nt is None:
         nt = Nt - 1
     if qt is None:
         qt = Qt
-    
+
     u_value = list()
 
     for k in range(Nx):
@@ -811,16 +804,15 @@ def get_num_u_tpsib(models, points, w, Nx, Nt, M, Qx, Qt, nt=None, qt=None):
 
 
 def get_num_ut_tpsib(models, points, w, Nx, Nt, M, Qx, Qt, nt=None, qt=None):
-
     if nt is None:
         nt = Nt - 1
     if qt is None:
         qt = Qt
-    
+
     ut_value = list()
 
     for k in range(Nx):
-        
+
         if nt > 0:
             n_0 = nt - 1
         else:
@@ -829,7 +821,7 @@ def get_num_ut_tpsib(models, points, w, Nx, Nt, M, Qx, Qt, nt=None, qt=None):
             n_1 = nt + 2
         else:
             n_1 = nt + 1
-        
+
         point = points[k][nt][:Qx, qt, :]
         ut_value_ = np.zeros((Qx, 1))
 
@@ -840,8 +832,8 @@ def get_num_ut_tpsib(models, points, w, Nx, Nt, M, Qx, Qt, nt=None, qt=None):
             base_grads = list()
             for i in range(M):
                 grad = torch.autograd.grad(outputs=base_values[:, i], inputs=point, \
-                    grad_outputs=torch.ones_like(base_values[:,i]), \
-                    create_graph = True, retain_graph = True)[0]
+                                           grad_outputs=torch.ones_like(base_values[:, i]), \
+                                           create_graph=True, retain_graph=True)[0]
                 base_grads.append(grad.detach().numpy())
             base_grads = np.array(base_grads).swapaxes(0, 2)
             base_t_grads = base_grads[1, :, :]
@@ -855,7 +847,6 @@ def get_num_ut_tpsib(models, points, w, Nx, Nt, M, Qx, Qt, nt=None, qt=None):
 
 
 def solve_lst_square(A, f, moore=False):
-
     # # rescaling
     # max_value = 10.0
     # for i in range(len(A)):
@@ -865,13 +856,13 @@ def solve_lst_square(A, f, moore=False):
     #     ratio = max_value/np.abs(A[i,:]).max()
     #     A[i,:] = A[i,:]*ratio
     #     f[i] = f[i]*ratio
-    
+
     # solve
     if moore:
         inv_coeff_mat = pinv(A)  # moore-penrose inverse, shape: (n_units,n_colloc+2)
         w = np.matmul(inv_coeff_mat, f)
     else:
-        w, res, rnk, s = lstsq(A,f, lapack_driver="gelss")
+        w, res, rnk, s = lstsq(A, f, lapack_driver="gelss")
         print(s[0], s[-1])
 
     print(np.linalg.norm(np.matmul(A, w) - f), np.linalg.norm(np.matmul(A, w) - f) / np.linalg.norm(f))
@@ -880,18 +871,17 @@ def solve_lst_square(A, f, moore=False):
 
 
 def solve_lst_square_lowrank(A, f, moore=False):
-
     # rescaling
     max_value = 10.0
     for i in range(A.shape[0]):
 
-        if np.abs(A[i,:]).max()==0:
-            print("error line : ",i)
+        if np.abs(A[i, :]).max() == 0:
+            print("error line : ", i)
             continue
-        ratio = max_value/np.abs(A[i,:]).max()
-        A[i,:] = A[i,:]*ratio
-        f[i] = f[i]*ratio
-    
+        ratio = max_value / np.abs(A[i, :]).max()
+        A[i, :] = A[i, :] * ratio
+        f[i] = f[i] * ratio
+
     # solve
 
     rs = list()
@@ -902,15 +892,14 @@ def solve_lst_square_lowrank(A, f, moore=False):
     rr_ref = np.linalg.norm(A @ w_ref - f) / np.linalg.norm(f)
 
     for i in range(10):
-
         q = A.shape[1] // 10 * (i + 1)
 
         print(A.shape, q)
 
-        u, s, vh = svds(A=A, k=q-1)
+        u, s, vh = svds(A=A, k=q - 1)
         # u, s, vh = svd(a=A.toarray())
 
-        quanzhong = ((u.T @ f) / s.reshape(-1, 1)) 
+        quanzhong = ((u.T @ f) / s.reshape(-1, 1))
 
         w = vh.T @ quanzhong
         w = w.reshape(-1, 1)
@@ -922,13 +911,13 @@ def solve_lst_square_lowrank(A, f, moore=False):
         rrs.append(rr)
 
         fig, ax = plt.subplots()
-        ax.plot(np.arange(q-1)+1, s[::-1], c="r")
+        ax.plot(np.arange(q - 1) + 1, s[::-1], c="r")
         ax.set_yscale("log")
         ax.set_ylabel("Singularity Values", fontsize=16)
         ax.set_xlabel("Singularity Index", fontsize=16)
 
         ax2 = ax.twinx()
-        ax2.plot(np.arange(q-1)+1, np.abs(quanzhong[::-1]), c="g")
+        ax2.plot(np.arange(q - 1) + 1, np.abs(quanzhong[::-1]), c="g")
         ax2.set_yscale("log")
         ax2.set_ylabel("Absolute Weights on Feature Vector", fontsize=16)
 
@@ -936,7 +925,9 @@ def solve_lst_square_lowrank(A, f, moore=False):
 
         fig.tight_layout()
         fig.savefig(f"singularities-{q:d}.png")
-        plt.clf(); plt.cla(); plt.close()
+        plt.clf();
+        plt.cla();
+        plt.close()
 
     fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
 
@@ -956,7 +947,9 @@ def solve_lst_square_lowrank(A, f, moore=False):
 
     fig.tight_layout()
     fig.savefig(f"sing.png")
-    plt.clf(); plt.cla(); plt.cla()
+    plt.clf();
+    plt.cla();
+    plt.cla()
 
     # u, s, vh = torch.svd_lowrank(A=torch.from_numpy(A).cuda(), q=q)
     # w = vh @ (u.T @ torch.from_numpy(f).cuda() / s.view(-1, 1))
@@ -967,11 +960,10 @@ def solve_lst_square_lowrank(A, f, moore=False):
     return w
 
 
-def solve_lst_square_richarderson(A : np.ndarray, f : np.ndarray, epochs=100):
-
+def solve_lst_square_richarderson(A: np.ndarray, f: np.ndarray, epochs=100):
     n_cond, n_param = A.shape
 
-    w = np.zeros((n_param, 1), dtype=np.float64)# * 1e4
+    w = np.zeros((n_param, 1), dtype=np.float64)  # * 1e4
 
     a = 1e-6
     AT = A.transpose()
@@ -979,7 +971,6 @@ def solve_lst_square_richarderson(A : np.ndarray, f : np.ndarray, epochs=100):
     residuals = list()
 
     for epoch in range(epochs):
-
         r = f - np.matmul(A, w)
         w = w + a * np.matmul(AT, r)
 
@@ -993,11 +984,10 @@ def solve_lst_square_richarderson(A : np.ndarray, f : np.ndarray, epochs=100):
     return w
 
 
-def solve_lst_square_jacob(A : np.ndarray, f : np.ndarray, epochs=100):
-
+def solve_lst_square_jacob(A: np.ndarray, f: np.ndarray, epochs=100):
     n_cond, n_param = A.shape
 
-    w = np.zeros((n_param, 1), dtype=np.float64)# * 1e4
+    w = np.zeros((n_param, 1), dtype=np.float64)  # * 1e4
 
     AT = A.transpose()
 
@@ -1005,13 +995,12 @@ def solve_lst_square_jacob(A : np.ndarray, f : np.ndarray, epochs=100):
 
     d = np.sum(np.power(A, 2.0), axis=0)
     # input(d[0])
-    iDA = np.diag(1/d)
+    iDA = np.diag(1 / d)
     m = np.matmul(iDA, AT)
 
     residuals = list()
 
     for epoch in range(epochs):
-
         r = f - np.matmul(A, w)
         w = w + np.matmul(m, r)
 
@@ -1025,22 +1014,20 @@ def solve_lst_square_jacob(A : np.ndarray, f : np.ndarray, epochs=100):
     return w
 
 
-def solve_lst_square_gauss_seidel(A : np.ndarray, f : np.ndarray, epochs=100):
-
+def solve_lst_square_gauss_seidel(A: np.ndarray, f: np.ndarray, epochs=100):
     n_cond, n_param = A.shape
 
-    w = np.zeros((n_param, 1), dtype=np.float64)# * 1e4
+    w = np.zeros((n_param, 1), dtype=np.float64)  # * 1e4
 
     AT = A.transpose()
 
     d = np.sum(np.power(A, 2.0), axis=0)
-    iDA = np.diag(1/d)
+    iDA = np.diag(1 / d)
     m = np.matmul(iDA, AT)
 
     residuals = list()
 
     for epoch in range(epochs):
-
         r = f - np.matmul(A, w)
         w = w + np.matmul(m, r)
 
@@ -1054,11 +1041,10 @@ def solve_lst_square_gauss_seidel(A : np.ndarray, f : np.ndarray, epochs=100):
     return w
 
 
-def solve_lst_square_CGLS(A : np.ndarray, f : np.ndarray, epochs=100):
-
+def solve_lst_square_CGLS(A: np.ndarray, f: np.ndarray, epochs=100):
     n_cond, n_param = A.shape
 
-    w = np.zeros((n_param, 1), dtype=np.float64)# * 1e4
+    w = np.zeros((n_param, 1), dtype=np.float64)  # * 1e4
 
     AT = A.transpose()
 
@@ -1070,7 +1056,6 @@ def solve_lst_square_CGLS(A : np.ndarray, f : np.ndarray, epochs=100):
     residuals = list()
 
     for epoch in range(epochs):
-
         q = np.matmul(A, p)
         al = gm / np.sum(np.power(q, 2.0))
         w = w + al * p
@@ -1092,8 +1077,7 @@ def solve_lst_square_CGLS(A : np.ndarray, f : np.ndarray, epochs=100):
     return w
 
 
-def solve_lst_square_SGD(A : np.ndarray, f : np.ndarray, batch_size = 64, epochs = 10, lr=1e-1, w0=None):
-
+def solve_lst_square_SGD(A: np.ndarray, f: np.ndarray, batch_size=64, epochs=10, lr=1e-1, w0=None):
     beta = 0.95
 
     n_cond, n_param = A.shape
@@ -1118,8 +1102,8 @@ def solve_lst_square_SGD(A : np.ndarray, f : np.ndarray, batch_size = 64, epochs
 
             end = min(st + batch_size, n_cond)
 
-            A_ = A[ind_cond[st : end], :]
-            f_ = f[ind_cond[st : end], :]
+            A_ = A[ind_cond[st: end], :]
+            f_ = f[ind_cond[st: end], :]
 
             dw = 2 * (np.matmul(np.matmul(A_.transpose(), A_), w) - np.matmul(A_.transpose(), f_))
             v = beta * v + (1 - beta) * dw
@@ -1134,8 +1118,8 @@ def solve_lst_square_SGD(A : np.ndarray, f : np.ndarray, batch_size = 64, epochs
         r = np.linalg.norm(np.matmul(A, w) - f)
         residuals.append(r)
 
-        print(f"Epoch {epoch+1:d}/{epochs:d} error: {np.linalg.norm(np.matmul(A, w) - f)}")
-        print(f"Epoch {epoch+1:d}/{epochs:d} end. ||v||={np.linalg.norm(v)}")
+        print(f"Epoch {epoch + 1:d}/{epochs:d} error: {np.linalg.norm(np.matmul(A, w) - f)}")
+        print(f"Epoch {epoch + 1:d}/{epochs:d} end. ||v||={np.linalg.norm(v)}")
 
     np.save("SGD.npy", np.array(residuals))
 
@@ -1143,7 +1127,6 @@ def solve_lst_square_SGD(A : np.ndarray, f : np.ndarray, batch_size = 64, epochs
 
 
 def test_multidim_chebyshevbasis():
-
     print("test_multidim_chebyshevbasis")
 
     n = 5
@@ -1158,7 +1141,6 @@ def test_multidim_chebyshevbasis():
     grid = torch.from_numpy(grid)
     out = basis(grid)
     print(grid.shape, out.shape)
-
 
 
 if __name__ == "__main__":
