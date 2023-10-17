@@ -98,7 +98,7 @@ class SWEPhysicsDataset(Dataset):
 
         o_train_nn = np.repeat(o_train, physics_train_count, axis=0)
 
-        y_physics = lhs(2, physics_train_count)
+        y_physics = (1, 0.5) * lhs(2, physics_train_count)
         y_train_nn = np.tile(y_physics, (o_train_count, 1))
 
         # 拼接输入
