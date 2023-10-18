@@ -81,6 +81,7 @@ def cal_matrix(models, points, Nx, Nt, M, Qx, Qt, initial=None, tshift=0):
                     vanal_u(in_[-1, :Qt, 0], in_[-1, :Qt, 1] + tshift).reshape((Qt, 1))
                 # print(in_[-1,:Qt,:])
 
+            # 转成二维点列，去除区域的右边界和上边界的点。然后计算方程的右端项f
             f_in = in_[:Qx, :Qt, :].reshape((-1, 2))
             f_1[k * Nt * Qx * Qt + n * Qx * Qt: k * Nt * Qx * Qt + n * Qx * Qt + Qx * Qt, :] = vanal_f(f_in[:, 0],
                                                                                                        f_in[:,
@@ -176,6 +177,7 @@ def main(Nx, Nt, M, Qx, Qt, tf=1.0, time_block=1, plot=False, moore=False, img_s
 
         w = rfm.solve_lst_square(A, f, moore=moore)
 
+        # 当前time block的终值
         final = rfm.get_num_u(models=models, points=points, w=w, Nx=Nx, Nt=Nt, M=M, Qx=Qx, Qt=Qt, nt=Nt - 1, qt=Qt)
         initial = final
         true_values_, numerical_values_, L_i, L_2 = utils.test(vanal_u=vanal_u, models=models, \
@@ -213,6 +215,7 @@ if __name__ == '__main__':
     else:
         n = 1
 
+    # time final
     if len(sys.argv) > 2:
         tf = float(sys.argv[2])
     else:
