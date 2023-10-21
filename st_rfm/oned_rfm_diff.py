@@ -222,17 +222,17 @@ if __name__ == '__main__':
         tf = 1.0
 
     # 以下是五组配置，每次训练只取一列
-    time_blocks = [1, 1, 1, 1, 1, ]
+    time_blocks = [ 1, ]
     # x维度划分的区间数
-    Nxs = [5, 5, 5, 5, 5, ]
+    Nxs = [ 5, ]
     # t维度划分的区间数
-    Nts = [1, 2, 3, 4, 5, ]
+    Nts = [ 5, ]
     # 每个局部局域的特征函数数量
-    Ms = [300, 300, 300, 300, 300, ]
+    Ms = [ 300, ]
     # x维度每个区间的配点数，Qx+1
-    Qxs = [30, 30, 30, 30, 30, ]
+    Qxs = [ 30, ]
     # t维度每个区间的配点数，Qt+1
-    Qts = [30, 30, 30, 30, 30, ]
+    Qts = [ 30, ]
 
     utils.record(main, eqn.name, recursive_times=n, tf=tf, time_blocks=time_blocks, Nxs=Nxs, Nts=Nts, Ms=Ms, Qxs=Qxs,
                  Qts=Qts, eqn=eqn.name, method="rfm")

@@ -218,5 +218,5 @@ if __name__ == '__main__':
     # M_p = 4 # the number of basis center points
     J_n = 50  # the number of basis functions per center points
     Q = 50  # the number of collocation pointss per basis functions support
-    for M_p in [4, 8, 16]:
+    for M_p in [4, 8, 16, 32]:
         main(M_p, J_n, Q, True, False)

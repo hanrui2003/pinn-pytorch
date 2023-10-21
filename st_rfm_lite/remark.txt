@@ -1,1 +1,10 @@
+这个包下的文件是对st_rfm包源码的精简处理。
+
 Nx=5,Nt=5时，L_inf: e-6~e-7, L2 : e-7~e-8
+
+
+oned_rfm_diff_no_psi.py
+尝试自己去实现，debug阶段，固定随机种子数，和oned_rfm_diff_a.py对比
+求导目前看，对比了两个子区域的点，每个子区域9个点（因为debug，所以取点少）
+一阶导没问题，两个文件的一阶导相同。 grads_t 和 grad_u_t 对应；
+二阶导没问题，两个文件的一阶导相同。 grads_2_xx 和 grad_u_xx 对应；
