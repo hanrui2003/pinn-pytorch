@@ -179,8 +179,6 @@ def main(Nx, Nt, M, Qx, Qt):
     label_points = np.vstack((ic_points, left_bc_points, right_bc_points))
 
     models = pre_define(Nx=Nx, Nt=Nt, M=M, X_min=X_min, X_max=X_max, T_min=T_min, T_max=T_max)
-    torch.save(models, 'oned_rfm_diff_no_psi.pt')
-
     true_values = list()
     numerical_values = list()
     L_is = list()
@@ -198,6 +196,9 @@ def main(Nx, Nt, M, Qx, Qt):
         f[i] = f[i] * ratio
     # 为什么选择gelss，默认的不行吗？
     w = lstsq(A, f, lapack_driver="gelss")[0]
+    print(datetime.now(), "main process end")
+
+    torch.save(models, 'oned_rfm_diff_no_psi.pt')
     np.savez('oned_rfm_diff_no_psi.npz', w=w,
              config=np.array([Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max], dtype=int))
 

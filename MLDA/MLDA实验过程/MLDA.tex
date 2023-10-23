@@ -10,7 +10,7 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 \usepackage{subfigure}
 \usepackage{color}
 \usepackage{array}
-\title{基于RFM和DeepONet的数据同化研究}
+\title{基于神经网络的数据同化研究}
 \author{MG21210021李庆春}
 %\date{2022.8.20}
 \linespread{1.25}
@@ -98,7 +98,7 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 
 \begin{equation*}
 	\begin{aligned}
-		 f(\boldsymbol{x}) = \mathcal{L}u(\boldsymbol{x}) &\approx \mathcal{L}u_M(\boldsymbol{x}) \\
+		 \mathcal{L}u(\boldsymbol{x}) &\approx \mathcal{L}u_M(\boldsymbol{x}) \\
 		&= \mathcal{L}\sum_{m=1}^M u_m \phi_m(\boldsymbol{x}) \\
 		&=\sum_{m=1}^M u_m \mathcal{L}\phi_m(\boldsymbol{x}) \\
 		&=
@@ -416,7 +416,23 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	\label{loss2}
 \end{equation}
 
-虽然损失函数形式上看完全类似，但RFM与PINN构造的优化问题则完全不同，RFM求解的是内层参数固定、仅优化最外层线性参数的线性优化问题。从经典数值算法的角度来看，RFM构造的是线性最小二乘问题，该问题可以表为线性系统 $Au=f$ 的形式。因此罚参数 $\lambda_i$ 的调整可以直接基于矩阵 $A$ 的信息，对于每个配点、每个方程，RFM允许他们有不同的罚参数。
+公式中，罚参数$\lambda_i$的确定是关键，往往决定着模型的收敛速度和收敛效果。为了平衡PDE损失项和边界条件损失项，一种简单而高效的策略就是通过缩放罚参数使得损失函数中每一项具有相同的数量级。在传统的PINN的训练过程中，罚参数的调整较为困难，往往依赖经验。
+
+但RFM的情况则完全不同，虽然损失函数形式上看完全类似，但RFM与PINN构造的优化问题则完全不同，RFM求解的是内层参数固定、仅优化最外层线性参数的线性优化问题。从经典数值算法的角度来看，RFM构造的是线性最小二乘问题，该问题可以表为线性系统 $Au=f$ 的形式。
+
+对于 方程$Au=f$，最小二乘解的目的就是求解向量 $u$使得误差$e = ||Au -f ||^2$达到最小，要使每一项损失$e_i = ||A_iu -f_i ||^2$具有相同的数量级，只需直接基于矩阵 $A$ 的信息，对矩阵的每一行元素$A_i$缩放到同一个数量级。
+
+\begin{equation}
+	\begin{cases}
+		\lambda_i = \frac{c_i}{max(A_i, -A_i)} \\
+		A_i = \lambda_i \times A_i \\
+		f_i = \lambda_i \times f_i
+	\end{cases}
+\end{equation}
+
+其中，$max(A_i, -A_i)$表示矩阵第$i$行的最大值，$c_i$表示要缩放到的数量级，在没有先验知识的情况下设置为统一常数即可，如100。
+
+\subsubsection{时空随机特征方法}
 
 ====================
 
