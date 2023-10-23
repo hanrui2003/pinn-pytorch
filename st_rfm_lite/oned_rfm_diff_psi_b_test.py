@@ -9,6 +9,67 @@ from oned_rfm_diff_psi_b import u_real, LocalNet
 
 from scipy.linalg import lstsq
 from datetime import datetime
+import matplotlib.pyplot as plt
+
+
+def plot(X1, T1, U1, X2, T2, U2):
+    """
+    同时绘制PDE的数值解和神经网络解，上面数值解，下面神经网络解。
+    """
+    # 创建一个 Figure 对象，并设置子图布局
+    fig = plt.figure(figsize=(12, 8))
+    ax1 = fig.add_subplot(221)
+    ax2 = fig.add_subplot(222, projection='3d')
+    ax3 = fig.add_subplot(223)
+    ax4 = fig.add_subplot(224, projection='3d')
+
+    cp1 = ax1.contourf(T1, X1, U1, 20, cmap="rainbow")
+    fig.colorbar(cp1, ax=ax1)
+    ax1.set_title('u(x,t)')
+    ax1.set_xlabel('t')
+    ax1.set_ylabel('x')
+
+    ax2.plot_surface(T1, X1, U1, cmap="rainbow")
+    ax2.set_xlabel('t')
+    ax2.set_ylabel('x')
+    ax2.set_zlabel('u(x,t)')
+
+    cp3 = ax3.contourf(T2, X2, U2, 20, cmap="rainbow")
+    fig.colorbar(cp3, ax=ax3)
+    ax3.set_title('NN(x,t)')
+    ax3.set_xlabel('t')
+    ax3.set_ylabel('x')
+
+    ax4.plot_surface(T2, X2, U2, cmap="rainbow")
+    ax4.set_xlabel('t')
+    ax4.set_ylabel('x')
+    ax4.set_zlabel('RFM(x,t)')
+
+    plt.show()
+
+
+def plot_err(X1, T1, U1):
+    """
+    误差分布
+    """
+    # 创建一个 Figure 对象，并设置子图布局
+    fig = plt.figure(figsize=(12, 6))
+    ax1 = fig.add_subplot(121)
+    ax2 = fig.add_subplot(122, projection='3d')
+
+    cp1 = ax1.contourf(T1, X1, U1, 20, cmap="rainbow")
+    fig.colorbar(cp1, ax=ax1)
+    ax1.set_title('err')
+    ax1.set_xlabel('t')
+    ax1.set_ylabel('x')
+
+    ax2.plot_surface(T1, X1, U1, cmap="rainbow")
+    ax2.set_xlabel('t')
+    ax2.set_ylabel('x')
+    ax2.set_zlabel('err')
+
+    plt.show()
+
 
 if __name__ == '__main__':
     print(datetime.now(), "Main start")
@@ -55,3 +116,9 @@ if __name__ == '__main__':
     print(datetime.now(), "test end")
 
     print(datetime.now(), "Main end")
+
+    U_true = true_values.reshape((X.shape[0], X.shape[1]))
+    U_numerical = numerical_values.reshape((X.shape[0], X.shape[1]))
+
+    plot(X, T, U_true, X, T, U_numerical)
+    plot_err(X, T, np.abs(U_true - U_numerical))

@@ -50,7 +50,7 @@ def weights_init(m):
     rand_mag = 1.0
     if isinstance(m, (nn.Conv2d, nn.Linear)):
         if m.weight is not None:
-            nn.init.uniform_(m.weight, a=0, b=rand_mag)
+            nn.init.uniform_(m.weight, a=-rand_mag, b=rand_mag)
         if m.bias is not None:
             nn.init.uniform_(m.bias, a=-rand_mag, b=rand_mag)
 
@@ -188,7 +188,14 @@ def main(Nx, Nt, M, Qx, Qt):
 
     # matrix define (Aw=b)
     A, f = cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, label_points)
-    # 矩阵的缩放不做也没关系？
+
+    c = 100.0
+    # 对每行按其绝对值最大值缩放
+    # 为什么不按照绝对值的最大值缩放？这样会映射到[-c,c]，岂不完美？看文档应该是绝对值，代码错误？还有就是最大值有极小的概率是0，也是个风险点。
+    for i in range(len(A)):
+        ratio = c / max(-A[i, :].min(), A[i, :].max())
+        A[i, :] = A[i, :] * ratio
+        f[i] = f[i] * ratio
     # 为什么选择gelss，默认的不行吗？
     w = lstsq(A, f, lapack_driver="gelss")[0]
     np.savez('oned_rfm_diff_no_psi.npz', w=w,
