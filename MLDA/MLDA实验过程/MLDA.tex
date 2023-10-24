@@ -433,6 +433,18 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 其中，$max(A_i, -A_i)$表示矩阵第$i$行的最大值，$c_i$表示要缩放到的数量级，在没有先验知识的情况下设置为统一常数即可，如100。
 
 \subsubsection{时空随机特征方法}
+考虑如下时空偏微分方程：
+\begin{equation}
+	\begin{cases}
+		\mathcal{L}u(\boldsymbol{x}, t) = f(\boldsymbol{x}, t)  \quad \boldsymbol{x}, t  \in \Omega \times [0, T] \\ \label{st-pde}
+		\mathcal{B}u(\boldsymbol{x}, t) = g(\boldsymbol{x}, t)  \quad \boldsymbol{x}, t \in \partial\Omega \times [0, T] \\
+		\mathcal{I}u(\boldsymbol{x}, t) = h(\boldsymbol{x})  \quad \boldsymbol{x}, t \in  \Omega
+	\end{cases}
+\end{equation}
+
+其中，$f$，$g$和$h$是已知函数，$\boldsymbol{x} = (x_1,x_2,\cdots,x_{d_x})^T  \in \Omega \subset \mathbb{R}^{d_x}$，$t \in [0, T]$，$\partial\Omega$是$\Omega$的边界，记$d_x \in \mathbb{N}^+$ 为$\boldsymbol{x}$的维度，$d_u \in \mathbb{N}^+$ 为输出的维度，$\mathcal{L}$是线性微分算子，$\mathcal{B}$是边界算子，$\mathcal{I}$是初值算子。
+
+类似于静态方程的RFM方法，构造$\Omega \times [0, T]$的一个划分。
 
 ====================
 

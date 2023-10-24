@@ -16,9 +16,7 @@ swe_1d_don_tbc_obs_01_e-5.pt  2951MiB  batch : 100910 lr : 0.0005 Elapsed time: 
 swe_1d_don_tbc_obs_01_5e-6.pt 2951MiB  batch : 170004 lr : 0.0005 Elapsed time:  9:45:55.378846
 测试效果好一些了，相对误差<0.015
 物理信息点选取10000个，
-swe_1d_don_tbc_obs_01_e-6.pt  5063MiB  几次训练无果
-物理信息点选取10000个，网络结构：[123, 128, 64, 64, 64, 64, 64, 64, 2]
-swe_1d_don_tbc_obs_01_e-6.pt  5015MiB  一直训练不到这个误差，所以中止条件改为3e-6
+swe_1d_don_tbc_obs_01_e-6.pt  5063MiB  几次训练无果，所以中止条件改为3e-6
 swe_1d_don_tbc_obs_01_3e-6.pt  等待结果
 
 swe_1d_don_tbc_obs_02.py
@@ -29,6 +27,5 @@ swe_1d_don_tbc_obs_02_5e-6_error_program.pt  2727MiB  batch : 138890 lr : 0.0002
 代码写错了，物理点没有限制为t=[0,0.5],错写为t=[0,1]
 swe_1d_don_tbc_obs_02_5e-6.pt   2727MiB  batch : 124882 lr : 0.000125 Elapsed time:  7:07:08.946092
 测试效果跟时间[0,1]的情形差不多，相对误差<0.015，波形简单的时候<0.005
-网络结构调整为：[123, 128, 64, 64, 64, 64, 64, 64, 2]
-swe_1d_don_tbc_obs_02_e-6.pt    2767MiB  一直训练不到这个误差，所以中止条件改为2e-6
+swe_1d_don_tbc_obs_02_e-6.pt    2727MiB  一直训练不到这个误差，所以中止条件改为2e-6
 swe_1d_don_tbc_obs_02_2e-6.pt  等待结果

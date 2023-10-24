@@ -176,7 +176,12 @@ def main(Nx, Nt, M, Qx, Qt):
     ic_points = np.hstack((X[0][:, None], T[0][:, None]))
     left_bc_points = np.hstack((X[:, 0][:, None], T[:, 0][:, None]))
     right_bc_points = np.hstack((X[:, -1][:, None], T[:, -1][:, None]))
-    label_points = np.vstack((ic_points, left_bc_points, right_bc_points))
+    # 观测点
+    t_obs = np.array([.1, .2, .3, .4, .5, .6, .7, .8, .9, 1.])[:, None]
+    x_obs_1 = 2.5 * np.ones_like(t_obs)
+    obs_points_1 = np.hstack((x_obs_1, t_obs))
+
+    label_points = np.vstack((ic_points, left_bc_points, right_bc_points, obs_points_1))
 
     models = pre_define(Nx=Nx, Nt=Nt, M=M, X_min=X_min, X_max=X_max, T_min=T_min, T_max=T_max)
     true_values = list()
@@ -198,8 +203,8 @@ def main(Nx, Nt, M, Qx, Qt):
     w = lstsq(A, f, lapack_driver="gelss")[0]
     print(datetime.now(), "main process end")
 
-    torch.save(models, 'oned_rfm_diff_no_psi_1.pt')
-    np.savez('oned_rfm_diff_no_psi_1.npz', w=w,
+    torch.save(models, 'oned_rfm_diff_no_psi_da_1.pt')
+    np.savez('oned_rfm_diff_no_psi_da_1.npz', w=w,
              config=np.array([Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max], dtype=int))
 
     print(datetime.now(), "main end")

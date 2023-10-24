@@ -33,7 +33,14 @@ L_inf=1.84e-08 L_2=1.59e-09 边值条件误差 6.19e-10 2.51e-09 初值、终值
 
 oned_rfm_diff_no_psi.py
 a=-rand_mag lapack_driver="gelss" loss缩放
-L_inf=5.32e-11 L_2=5.70e-12  耗时大约23m47s
+oned_rfm_diff_no_psi_1.npz/pt  L_inf=5.32e-11 L_2=5.70e-12  耗时大约23m47s 效果极好
+
+
+oned_rfm_diff_no_psi_da.py
+逻辑照搬oned_rfm_diff_no_psi.py，只是加上观测，
+oned_rfm_diff_no_psi_da_1.npz/pt L_inf=1.20e-10 L_2=3.23e-11，单从精度而言，很好。但是反而不如不加观测。
+oned_rfm_diff_no_psi_da_2.npz/pt L_inf=3.74e-11 L_2=5.27e-12  比没有观测略好
+是不是应该找一个不太好的方程，然后加观测，引起对比？怎么找呢？
 
 
 oned_rfm_diff_no_psi.py
