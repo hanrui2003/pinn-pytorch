@@ -10,6 +10,7 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 \usepackage{subfigure}
 \usepackage{color}
 \usepackage{array}
+\usepackage{multirow}
 \title{基于神经网络的数据同化研究}
 \author{MG21210021李庆春}
 %\date{2022.8.20}
@@ -492,7 +493,7 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	\end{aligned}
 \end{equation}
 
-其中，$\tilde{u}_{n_x,n_t,j} \triangleq \psi_{n_x,n_t}(\boldsymbol{x}, t) u_{n_x,n_t,j}$是待训练的参数，这一步是关键，经过这一步的转换，微分算子离散化的结果就不再包含单位分解函数了。虽然形式上看似变得简单了，但是在表现能力上却变得丰富了。因为经过这个改动，相当于把光滑性的构造也交给神经网络了，让神经网络自己去训练出最合适的单位分解函数。
+其中，$\tilde{u}_{n_x,n_t,j} \triangleq \psi_{n_x,n_t}(\boldsymbol{x}, t) u_{n_x,n_t,j}$是待训练的参数，这一步是关键，经过这一步的转换，微分算子离散化的结果就不再包含单位分解函数了。虽然形式上看似变得简单了，但是在表现能力上却变得丰富了。因为经过这个改动，相当于把光滑性的构造也交给神经网络了，让神经网络自己去训练出最合适的单位分解函数。此外，由于没有了单位分解函数的代码分支逻辑，使得RFM方法的运算速度更快。
 
 \subsubsection{数值算例验证}
 我们使用一维Helmholtz方程验证RFM，方程如下：
@@ -502,33 +503,68 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 		u(0) = c_1, \quad u(8) = c_2
 	\end{cases}
 \end{equation}
-我们取$\lambda = 4$，真解$u(x) = \sin(3\pi x + \frac{3\pi}{20}) \cos(2\pi x + \frac{\pi}{10}) + 2$，则$c_1, c_2$和$f(x)$可相应的计算出来。对方程使用RFM进行数值求解，单位分解函数的策略分别为：$\psi^a$、$\psi^b$和无$\psi$，结果见表格\ref{table:1}。{\color{red} 见图}
 
-\begin{table}[htb]   
-	\begin{center}   
-		\caption{三种单位分解策略的比较}  
-		\label{table:1} 
-		\begin{tabular}{|c|c|c|}   
-			\hline   \textbf{$\psi^a$} & \textbf{$\psi^b$} & \textbf{无$\psi$} \\   
-			\hline   algorithm 1 & high & low  \\ 
-			\hline   algorithm 2 & high & low  \\  
-			\hline   algorithm 3 & low & low  \\      
-			\hline   
-		\end{tabular}   
-	\end{center}   
+我们取$\lambda = 4$，真解$u(x) = \sin(3\pi x + \frac{3\pi}{20}) \cos(2\pi x + \frac{\pi}{10}) + 2$，则$c_1, c_2$和$f(x)$可相应的计算出来。对方程使用RFM进行数值求解，每个子区域的特征函数和配点的数量分别为$J_n=50$和$Q_n=50$，子区域划分的个数依次取$M_p =2, 4, 8, 16, 32 $，单位分解函数的策略分别为：$\psi^a$、$\psi^b$和无$\psi$，结果见表格\ref{tab:Helmholtz}。{\color{red} 见图}
+
+\begin{table}
+	\centering
+	\caption{一维Helmholtz方程三种单位分解策略的比较}
+	\label{tab:Helmholtz}
+	\begin{tabular}{|c|c|c|c|c|c|c|}
+		\hline
+		\multirow{2}{*}{$M_p$} & \multicolumn{2}{c|}{$\psi^a$} & \multicolumn{2}{c|}{$\psi^b$} & \multicolumn{2}{c|}{无$\psi$} \\
+		\cline{2-7}
+		& $L^\infty$ error & $L^2$ error & $L^\infty$ error & $L^2$ error & $L^\infty$ error & $L^2$ error\\
+		\hline
+		2 & 39.58 & 10.55 & 8.00 & 1.58 & 0.34 & 0.057\\
+		\hline
+		4 & 1.20E-2 & 3.09E-3  & 1.26E-4 & 1.51E-05 & 5.48E-08 & 1.11E-08\\
+		\hline
+		8 & 1.77E-05 & 4.50E-06  & 2.14E-07 & 3.68E-08 & 6.43E-10 & 1.04E-10\\
+		\hline
+		16 & 1.66E-08 & 4.75E-09  & 1.38E-09 & 2.22E-10 & 3.17E-13 & 1.46E-13\\
+		\hline
+		32 & 2.15E-09 & 8.69E-10  & 1.27E-10 & 2.64E-11 & 3.89E-14 & 1.31E-14\\
+		\hline
+	\end{tabular}
 \end{table}
 
-\begin{tabular}{| p{1.6cm}<{\centering} || p{1.6cm}<{\centering} | p{1.6cm}<{\centering} | p{1.6cm}<{\centering} | } \hline
-	t & x & y & z  \\ \hline \hline
-	0.0050 & 0.4947 &  -0.6466 &  20.5689 \\ \hline
-	0.2500 & -0.7559 &  -1.3882 &  10.706 \\ \hline
-	0.5000 & -7.8296 & -14.6883 &  11.2953 \\ \hline
-	0.7500 & -7.6905 &   1.1865 &  34.9326 \\ \hline
-	1.0000 & 1.0532 &   2.0665 &  17.3576 \\ \hline
-	1.2500 & 7.2898 &  12.7107 &  14.2827 \\ \hline
-	1.5000 & 9.4016 &   2.1509 &  35.2638 \\ \hline
-\end{tabular} \\
+由图和表格\ref{tab:Helmholtz}，可以看出在相同超参数使用RFM求解Helmholtz方程的情况下，无$\psi$策略相比于使用$\psi^a$和$\psi^b$作为单位分解函数，$L^\infty$误差和$L^2$误差降低了好几个阶。数值结果验证了改进后的RFM方法对于静态方程的有效性。
 
+我们使用一维扩散方程验证ST-RFM，方程如下：
+\begin{equation}\label{equ:Diffusion}
+	\begin{cases}
+		\frac{\partial u}{\partial t} - \nu \frac{\partial^2 u}{\partial x^2} = f(x, t)  \quad (x, t) \in [0, 5] \times [0, 1] \\
+		u(0, t) = g_1(t) \quad t \in [0, 1] \\
+		u(5, t) = g_2(t) \quad t \in [0, 1] \\
+		u(x, 0) = h(x) \quad x \in [0, 5] 
+	\end{cases}
+\end{equation}
+
+我们取$\nu=0.01$，真解$u(x, t) = [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})]$，则$f(x,t), g_x(t), g_2(t), h(x)$可相应的计算出来。对方程使用ST-RFM进行数值求解，每个子区域的特征函数的数量为$J_n=300$，每个子区域的空间维度的配点数量为$N_x = 30$，每个子区域的时间维度的配点数量为$N_t = 30$，所以每个子区域的配点数量为$Q_n = N_x \times N_t = 900$，空间维度的划分数量为$N_x = 5$，时间维度的划分数量依次取$N_t = 1, 2, 3, 4, 5$，单位分解函数的策略分别为：$\psi^a$、$\psi^b$和无$\psi$，结果见表格\ref{tab:Helmholtz}。{\color{red} 见图}
+
+\begin{table}
+	\centering
+	\caption{一维Diffusion方程三种单位分解策略的比较}
+	\label{tab:Diffusion}
+	\begin{tabular}{|c|c|c|c|c|c|c|}
+		\hline
+		\multirow{2}{*}{$N_t$} & \multicolumn{2}{c|}{$\psi^a$} & \multicolumn{2}{c|}{$\psi^b$} & \multicolumn{2}{c|}{无$\psi$} \\
+		\cline{2-7}
+		& $L^\infty$ error & $L^2$ error & $L^\infty$ error & $L^2$ error & $L^\infty$ error & $L^2$ error\\
+		\hline
+		1 &  &  & 1.11E+01 & 1.96E+00 & 1.64E-09 & 2.69E-10\\
+		\hline
+		2 &  &  & 1.50E-07 & 1.51E-08 & 1.75E-10 & 4.07E-11\\
+		\hline
+		3 &  &  &  &  & 7.19E-11 & 8.48E-12\\
+		\hline
+		4 & 1.08E-08 & 1.65E-09 &  &  & 1.10E-10 & 1.22E-11\\
+		\hline
+		5 & 1.26E-08 & 1.79E-09 & 7.86E-07 & 4.85E-08 & 5.32E-11 & 5.70E-12\\
+		\hline
+	\end{tabular}
+\end{table}
 
 考虑如下数据同化问题：
 \begin{equation}

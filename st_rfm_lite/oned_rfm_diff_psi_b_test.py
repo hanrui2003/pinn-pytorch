@@ -76,6 +76,7 @@ if __name__ == '__main__':
 
     data = np.load("oned_rfm_diff_psi_b.npz")
     Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max = data['config']
+    print('Nx=', Nx, ', Nt=', Nt, ', M=', M, ', Qx=', Qx, ', Qt=', Qt)
     w = data['w']
 
     models = torch.load('oned_rfm_diff_psi_b.pt')
@@ -120,5 +121,5 @@ if __name__ == '__main__':
     U_true = true_values.reshape((X.shape[0], X.shape[1]))
     U_numerical = numerical_values.reshape((X.shape[0], X.shape[1]))
 
-    plot(X, T, U_true, X, T, U_numerical)
-    plot_err(X, T, np.abs(U_true - U_numerical))
+    # plot(X, T, U_true, X, T, U_numerical)
+    # plot_err(X, T, np.abs(U_true - U_numerical))

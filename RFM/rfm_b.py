@@ -212,7 +212,7 @@ def test(models, M_p, J_n, Q, w):
     epsilon = np.maximum(epsilon, -epsilon)
 
     print('R_m=%s,M_p=%s,J_n=%s,Q=%s' % (R_m, M_p, J_n, Q))
-    print('L_infty error =', epsilon.max(), ', L_2 error =', math.sqrt(8 * sum(epsilon * epsilon) / len(epsilon)))
+    print('L_infty error =', epsilon.max(), ', L_2 error =', math.sqrt(sum(epsilon * epsilon) / len(epsilon)))
     return math.sqrt((X_max - X_min) * sum(epsilon * epsilon) / len(epsilon))
 
 

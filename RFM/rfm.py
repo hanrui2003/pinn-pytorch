@@ -288,7 +288,7 @@ def test(models, M_p, J_n, Q, w, plot=False):
     epsilon = np.array(epsilon)
     epsilon = np.maximum(epsilon, -epsilon)
     print('R_m=%s,M_p=%s,J_n=%s,Q=%s' % (R_m, M_p, J_n, Q))
-    print('L_infty error =', epsilon.max(), ', L_2 error =', math.sqrt(8 * sum(epsilon * epsilon) / len(epsilon)))
+    print('L_infty error =', epsilon.max(), ', L_2 error =', math.sqrt(sum(epsilon * epsilon) / len(epsilon)))
     # 这行代码没用上，而且有问题，越界了
     x = [((X_max - X_min) / M_p) * i / test_Q for i in range(M_p * (test_Q + 1))]
     return math.sqrt((X_max - X_min) * sum(epsilon * epsilon) / len(epsilon))

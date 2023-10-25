@@ -76,9 +76,10 @@ if __name__ == '__main__':
 
     data = np.load("oned_rfm_diff_no_psi_da_2.npz")
     Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max = data['config']
+    print('Nx=', Nx, ', Nt=', Nt, ', M=', M, ', Qx=', Qx, ', Qt=', Qt)
     w = data['w']
 
-    models = torch.load('oned_rfm_diff_no_psi_da.pt')
+    models = torch.load('oned_rfm_diff_no_psi_da_2.pt')
 
     print(datetime.now(), "test start")
     test_Qx = 2 * Qx

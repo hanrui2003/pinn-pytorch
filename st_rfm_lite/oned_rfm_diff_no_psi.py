@@ -198,8 +198,8 @@ def main(Nx, Nt, M, Qx, Qt):
     w = lstsq(A, f, lapack_driver="gelss")[0]
     print(datetime.now(), "main process end")
 
-    torch.save(models, 'oned_rfm_diff_no_psi_1.pt')
-    np.savez('oned_rfm_diff_no_psi_1.npz', w=w,
+    torch.save(models, 'oned_rfm_diff_no_psi.pt')
+    np.savez('oned_rfm_diff_no_psi.npz', w=w,
              config=np.array([Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max], dtype=int))
 
     print(datetime.now(), "main end")
@@ -219,7 +219,7 @@ if __name__ == '__main__':
     # x维度划分的区间数
     Nxs = [5, ]
     # t维度划分的区间数
-    Nts = [5, ]
+    Nts = [4, ]
     # 每个局部局域的特征函数数量
     Ms = [300, ]
     # x维度每个区间的配点数，Qx+1
