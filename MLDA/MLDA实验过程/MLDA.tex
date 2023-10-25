@@ -278,7 +278,7 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 
 仍以方程\ref{static-pde}为例，对其使用局部随机特征模型和单位分解技术进行离散化：此时，对于$\forall\boldsymbol{x}  \in \Omega$，则有：
 
-\begin{equation*}
+\begin{equation}\label{rfm-operator-discretization}
 	\begin{aligned}
 		 \mathcal{L}u(\boldsymbol{x}) &\approx \mathcal{L}u_M(\boldsymbol{x}) \\
 		&= \mathcal{L}\sum_{n=1}^{M_p} \psi_n ( l_n(\boldsymbol{x}))   \sum_{j=1}^{J_n }u_{nj} \phi_{nj} ( l_n(\boldsymbol{x})) \\
@@ -299,7 +299,7 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 			u_{M_pJ_{M_p}}
 		\end{bmatrix}
 	\end{aligned}
-\end{equation*}
+\end{equation}
 
 所以，我们在$\Omega$上取一组配点$\boldsymbol{x}^{(1)}_P, \boldsymbol{x}^{(2)}_P, \cdots , \boldsymbol{x}^{(N_P)}_P$，则有
 
@@ -444,11 +444,92 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 
 其中，$f$，$g$和$h$是已知函数，$\boldsymbol{x} = (x_1,x_2,\cdots,x_{d_x})^T  \in \Omega \subset \mathbb{R}^{d_x}$，$t \in [0, T]$，$\partial\Omega$是$\Omega$的边界，记$d_x \in \mathbb{N}^+$ 为$\boldsymbol{x}$的维度，$d_u \in \mathbb{N}^+$ 为输出的维度，$\mathcal{L}$是线性微分算子，$\mathcal{B}$是边界算子，$\mathcal{I}$是初值算子。
 
-类似于静态方程的RFM方法，构造$\Omega \times [0, T]$的一个划分。
+时空随机特征方法（Space-Time Random Feature Method, ST-RFM）是一种用于求解时间相关的偏微分方程的方法，其背后思想类似于静态方程的RFM方法，下面我们简要介绍算法逻辑：
+\begin{enumerate}
+	\item 将空间域$\Omega$划分为$N_x$个子域$\{\Omega_n\}^{N_x}_{n=1}$，每个子域$\Omega_n$的中心点记为$\hat{\boldsymbol{x}}_n$。
+	
+	\item 将时间域$[0, T]$划分为$N_t$个子域，即$[0, T] = [t_0, t_1) \cup [t_1, t_2) \cup \cdots \cup [t_{N_t-1}, t_{N_t}]$，每个子域的中心点$\hat{t}_n = \frac{t_{n-1} + t_n}{2}$。
+	
+	\item 构造时空单位分解函数，通过对空间单位分解函数和时间单位分解函数进行乘积运算：
+	\begin{equation}
+		\psi_{n_x,n_t}(\boldsymbol{x}, t) = \psi_{n_x}(l_{n_x}(\boldsymbol{x})) \cdot \psi_{n_t}(l_{n_t}(t))
+	\end{equation}
+	其中，$n_x$和$n_t$分别是空间子域和时间子域的索引。$ l_{n_x}(\boldsymbol{x})$和$ l_{n_t}(t)$是线性変换，其作用是分别把$\boldsymbol{x} \in \Omega_{n_x}$映射到$[-1, 1]^{d_x}$，把$t \in [t_{n_t-1}, t_{n_t}]$映射到$[-1, 1]$。
+	
+	\item 将空间随机特征函数推广到时空随机特征函数，这里有两种思路：
+	\subitem 时空拼接(concatenation of spatial and temporal, STC)，这种思路是空间随机特征函数的自然推广，相当于把空间变量$\boldsymbol{x}$和时间变量$t$拼接到一起，成为一个$d_x+1$维的输入变量。
+	\begin{equation}
+		\phi_{n_x,n_t,j}(\boldsymbol{x}, t) = \sigma(\boldsymbol{k}_{n_x,n_t,j} l_{n_x, n_t}(\boldsymbol{x}, t) + b_{n_x,n_t,j})
+	\end{equation}
+	其中，$\boldsymbol{k}_{n_x,n_t,j}$是时空输入的权重矩阵，$b_{n_x,n_t,j}$是偏置，$ l_{n_x, n_t}(\boldsymbol{x}, t)$是线性変换，其作用是把$(\boldsymbol{x}, t) \in \Omega_{n_x} \times [t_{n_t-1}, t_{n_t}]$映射到$[-1, 1]^{d_x+1}$。
+	
+	\subitem 变量分离(separation of variables, SoV)，为了模拟偏微分方程数值解法的一类经典方法：变量分离技术，把空间输入和时间输入对应到不同的随机特征函数，然后对结果做乘积：
+	\begin{equation}
+		\phi_{n_x,n_t,j}(\boldsymbol{x}, t) = \sigma(\boldsymbol{k}^x_{n_x,n_t,j} l_{n_x}(\boldsymbol{x}) + b^x_{n_x,n_t,j}) \cdot \sigma(k^t_{n_x,n_t,j} l_{n_t}(t) + b^t_{n_x,n_t,j})
+	\end{equation}
+	
+	以上两种随机特征函数的结构{\color{red}如图}，这两种构造策略均被证明能够有效地收敛到真解，并且在理论上和数值算例上并无谁优谁劣，后文如无特殊说明，皆采用STC作为默认策略。
+	
+	\item 将局部随机特征函数通过单位分解函数组合起来，得到最终的数值解：
+	\begin{equation}
+		u_M(\boldsymbol{x}, t)=\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t}\psi_{n_x,n_t}(\boldsymbol{x}, t) \sum_{j=1}^{J_n }u_{n_x,n_t,j} \phi_{n_x,n_t,j}(\boldsymbol{x}, t)
+	\end{equation}
+	
+	ST-RFM算法的其他部分诸如矩阵的构造、损失函数的罚参数缩放等，都与RFM高度相似，这里不做过多赘述。
+\end{enumerate}
 
-====================
+\section{基于ST-RFM的数据同化}
+\subsection{ST-RFM的改进}
+在RFM章节，公式\ref{rfm-operator-discretization}解释了微分算子离散化的过程，该过程展示了线性微分算子如何一步步转为矩阵和向量的线性运算，但该过程的结果还包含着单位分解函数，这显然并不完美。虽然文献\cite{rfm}提供了两种单位分解函数，并通过数值算例验证了其效能，但是单位分解函数的构造方式还可能有很多，无法确认哪一种才是最合适的。这里的合适有两层含义：一是能够促进数值解的收敛，在相同的参数下，尽可能达到更高的收敛阶；二是能够适合计算机的高效计算，结构不能太复杂，比如不能有太多的分支条件，否则不利于并行计算等。本文的一项工作就是对该过程做进一步的简化：
+\begin{equation}
+	\begin{aligned}
+		\mathcal{L}u(\boldsymbol{x}, t) &\approx \mathcal{L}u_M(\boldsymbol{x}, t) \\
+		&= \mathcal{L}\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t}\psi_{n_x,n_t}(\boldsymbol{x}, t) \sum_{j=1}^{J_n }u_{n_x,n_t,j} \phi_{n_x,n_t,j}(\boldsymbol{x}, t) \\
+		&= \mathcal{L}\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t} \sum_{j=1}^{J_n } \psi_{n_x,n_t}(\boldsymbol{x}, t) u_{n_x,n_t,j} \phi_{n_x,n_t,j}(\boldsymbol{x}, t) \\
+		&= \mathcal{L}\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t} \sum_{j=1}^{J_n } \tilde{u}_{n_x,n_t,j} \phi_{n_x,n_t,j}(\boldsymbol{x}, t) \quad \left[\tilde{u}_{n_x,n_t,j} \triangleq \psi_{n_x,n_t}(\boldsymbol{x}, t) u_{n_x,n_t,j} \right]\\
+		&=\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t} \sum_{j=1}^{J_n } \mathcal{L} \tilde{u}_{n_x,n_t,j} \phi_{n_x,n_t,j}(\boldsymbol{x}, t) \\
+		&=\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t} \sum_{j=1}^{J_n } \tilde{u}_{n_x,n_t,j}  \mathcal{L} \phi_{n_x,n_t,j}(\boldsymbol{x}, t)
+	\end{aligned}
+\end{equation}
 
-\section{基于RFM的数据同化}
+其中，$\tilde{u}_{n_x,n_t,j} \triangleq \psi_{n_x,n_t}(\boldsymbol{x}, t) u_{n_x,n_t,j}$是待训练的参数，这一步是关键，经过这一步的转换，微分算子离散化的结果就不再包含单位分解函数了。虽然形式上看似变得简单了，但是在表现能力上却变得丰富了。因为经过这个改动，相当于把光滑性的构造也交给神经网络了，让神经网络自己去训练出最合适的单位分解函数。
+
+\subsubsection{数值算例验证}
+我们使用一维Helmholtz方程验证RFM，方程如下：
+\begin{equation}\label{equ:Helmholtz}
+	\begin{cases}
+		\frac{d^2u(x)}{dx^2} - \lambda u(x) = f(x) \quad x \in [0, 8] \\
+		u(0) = c_1, \quad u(8) = c_2
+	\end{cases}
+\end{equation}
+我们取$\lambda = 4$，真解$u(x) = \sin(3\pi x + \frac{3\pi}{20}) \cos(2\pi x + \frac{\pi}{10}) + 2$，则$c_1, c_2$和$f(x)$可相应的计算出来。对方程使用RFM进行数值求解，单位分解函数的策略分别为：$\psi^a$、$\psi^b$和无$\psi$，结果见表格\ref{table:1}。{\color{red} 见图}
+
+\begin{table}[htb]   
+	\begin{center}   
+		\caption{三种单位分解策略的比较}  
+		\label{table:1} 
+		\begin{tabular}{|c|c|c|}   
+			\hline   \textbf{$\psi^a$} & \textbf{$\psi^b$} & \textbf{无$\psi$} \\   
+			\hline   algorithm 1 & high & low  \\ 
+			\hline   algorithm 2 & high & low  \\  
+			\hline   algorithm 3 & low & low  \\      
+			\hline   
+		\end{tabular}   
+	\end{center}   
+\end{table}
+
+\begin{tabular}{| p{1.6cm}<{\centering} || p{1.6cm}<{\centering} | p{1.6cm}<{\centering} | p{1.6cm}<{\centering} | } \hline
+	t & x & y & z  \\ \hline \hline
+	0.0050 & 0.4947 &  -0.6466 &  20.5689 \\ \hline
+	0.2500 & -0.7559 &  -1.3882 &  10.706 \\ \hline
+	0.5000 & -7.8296 & -14.6883 &  11.2953 \\ \hline
+	0.7500 & -7.6905 &   1.1865 &  34.9326 \\ \hline
+	1.0000 & 1.0532 &   2.0665 &  17.3576 \\ \hline
+	1.2500 & 7.2898 &  12.7107 &  14.2827 \\ \hline
+	1.5000 & 9.4016 &   2.1509 &  35.2638 \\ \hline
+\end{tabular} \\
+
+
 考虑如下数据同化问题：
 \begin{equation}
 	\begin{cases}
@@ -460,53 +541,6 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 \end{equation}
 
 其中，$\Omega$是空间域，$[0, T]$是时间域，$\mathcal{L}$是线性微分算子，$\mathcal{B}$是边界算子，$\mathcal{I}$是初值算子，这三者构成动力系统。$\mathcal{H}$是观测算子，一般在空间的某些固定位置，进行连续或间断观测。接下来，本文基于随机特征方法，解决这一类数据同化问题。
-
-
-\subsection{局部随机特征函数和单位分解}
-上述随机特征函数是全局定义的，但微分方程的解常常有小尺度的局部变化，因此RFM考虑在多个局部构造局部随机特征函数，再用单位分解（partition of unity）技术将它们组合。
-
-具体来说，首先取定单位分解函数的中心点 $\{\boldsymbol{x}_n\}_{n=1}^{M_p}\subset\Omega$，在这 $M_p$ 个局部构造仿射变换
-\begin{equation}
-	\tilde{\boldsymbol{x}}=\frac{1}{\boldsymbol{r}_{n}}(\boldsymbol{x}-\boldsymbol{x}_{n}), \quad n=1,\cdots, M_p,
-\end{equation}
-这个仿射变换将 $[x_{n1}-r_{n1},x_{n1}+r_{n1}]\times \cdots \times [x_{nd}-r_{nd},x_{nd}+r_{nd}]$ 的小局部映射到统一的区间 $[-1,1]^{d}$，以便实现局部特征的拟合。而单位分解函数的构造依赖于这个仿射变换，常取为
-\begin{equation*}
-	\psi_{n}^{a}(x)=\mathbb{I}_{-1 \leq \tilde{x} < 1},
-	\label{psi1}
-\end{equation*}
-或
-\begin{equation*}
-	\psi_{n}^{b}(x) =\mathbb{I}_{\left[-\frac{5}{4},-\frac{3}{4}\right]}(\tilde{x}) \frac{1+\sin (2 \pi \tilde{x})}{2}+\mathbb{I}_{\left[-\frac{3}{4}, \frac{3}{4}\right]}(\tilde{x})+\mathbb{I}_{\left[\frac{3}{4}, \frac{5}{4}\right]}(\tilde{x}) \frac{1-\sin (2 \pi \tilde{x})}{2}
-\end{equation*}
-
-这里放一张PoU的图。
-
-紧接着，在每个局部定义 $J_n$ 个随机特征函数
-\begin{equation}\label{eqn:basis0}
-	\phi_{nj}(\boldsymbol{x}) = \sigma(\boldsymbol{k}_{nj} \cdot \tilde{\boldsymbol{x}} + b_{nj}), \quad j=1, \cdots, J_n,
-\end{equation}
-
-则最终数值解就是将局部随机特征函数通过单位分解函数组合起来
-\begin{equation*}
-	u_M(\boldsymbol{x})=\sum_{n=1}^{M_p} \psi_n (\boldsymbol{x})   \sum_{j=1}^{J_n }u_{nj} \phi_{nj} (\boldsymbol{x})
-	\label{representation2}
-\end{equation*}
-
-
-\subsection{优化问题}
-
-由于一些实际问题中物理参数变化较大，因此RFM基于矩阵 $A$ 的信息（将矩阵 $A$ 每行最大值rescaling到同一规模），使用如下自动调参方案来平衡损失函数中各项的贡献，其中罚参数设为
-\begin{align*}
-	&\lambda_{Ii}^{k} = \frac{c}{\underset{1\leq n\leq M_p}{\max}\underset{1\leq j'\leq J_n}{\max}\underset{1\leq k'\leq K_I}{\max}|\mathcal{L}^{k} (\phi^{k'}_{nj'}(\boldsymbol{x}_{i})\psi_{n}(\boldsymbol{x}_{i}))|}\quad \boldsymbol{x}_{i} \in C_{I}, \; k = 1,\cdots, K_I\\
-	&\lambda_{Bj}^{\ell} = \frac{c}{\underset{1\leq n\leq M_p}{\max}\underset{1\leq j'\leq J_n}{\max}\underset{1\leq \ell'\leq K_I}{\max}|\mathcal{B}^{\ell} (\phi^{\ell'}_{nj'}(\boldsymbol{x}_{j})\psi_{n}(\boldsymbol{x}_{j}))|}\quad \boldsymbol{x}_{j} \in C_{B}, \; \ell = 1,\cdots, K_B 
-\end{align*}
-
-对应于一维Helmholtz方程，这些罚参数可以写为
-\begin{align*}
-	&\lambda_{i} = \frac{100}{\underset{1\leq n\leq M_p}{\max}\underset{1\leq j'\leq J_n}{\max}|(\Delta + \lambda^2) (\phi_{nj'}(x_{i})\psi_{n}(x_{i}))|}\quad i = 1,\cdots, N-1\\
-	&\lambda_{i} = \frac{100}{\underset{1\leq n\leq M_p}{\max}\underset{1\leq j'\leq J_n}{\max}|\phi_{nj'}(x_{i})\psi_{n}(x_{i})|}\quad i = 0,N
-\end{align*}
-
 
 \bibliography{references}
 \end{document}
