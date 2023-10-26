@@ -504,7 +504,18 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	\end{cases}
 \end{equation}
 
-我们取$\lambda = 4$，真解$u(x) = \sin(3\pi x + \frac{3\pi}{20}) \cos(2\pi x + \frac{\pi}{10}) + 2$，则$c_1, c_2$和$f(x)$可相应的计算出来。对方程使用RFM进行数值求解，每个子区域的特征函数和配点的数量分别为$J_n=50$和$Q_n=50$，子区域划分的个数依次取$M_p =2, 4, 8, 16, 32 $，单位分解函数的策略分别为：$\psi^a$、$\psi^b$和无$\psi$，结果见表格\ref{tab:Helmholtz}。{\color{red} 见图}
+我们取$\lambda = 4$，真解$u(x) = \sin(3\pi x + \frac{3\pi}{20}) \cos(2\pi x + \frac{\pi}{10}) + 2$，则$c_1, c_2$和$f(x)$可相应的计算出来。
+
+对方程使用RFM进行数值求解，超参数的设置如下：
+
+\begin{itemize}
+	\item 每个子区域的特征函数的数量为$J_n=50$；
+	\item 每个子区域的配点的数量为$Q_n=50$；
+	\item 子区域划分的个数依次取$M_p =2, 4, 8, 16, 32 $
+	\item 单位分解函数的策略分别为：$\psi^a$、$\psi^b$和无$\psi$；
+\end{itemize}
+
+计算结果见表格\ref{tab:Helmholtz}。{\color{red} 见图}，由图和表格\ref{tab:Helmholtz}，可以看出在相同超参数使用RFM求解Helmholtz方程的情况下，无$\psi$策略相比于使用$\psi^a$和$\psi^b$作为单位分解函数，收敛速度更快，并且$L^\infty$误差和$L^2$误差降低了好几个阶。数值结果验证了改进后的RFM方法对于静态方程的有效性。
 
 \begin{table}
 	\centering
@@ -529,8 +540,6 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	\end{tabular}
 \end{table}
 
-由图和表格\ref{tab:Helmholtz}，可以看出在相同超参数使用RFM求解Helmholtz方程的情况下，无$\psi$策略相比于使用$\psi^a$和$\psi^b$作为单位分解函数，$L^\infty$误差和$L^2$误差降低了好几个阶。数值结果验证了改进后的RFM方法对于静态方程的有效性。
-
 我们使用一维扩散方程验证ST-RFM，方程如下：
 \begin{equation}\label{equ:Diffusion}
 	\begin{cases}
@@ -541,7 +550,20 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	\end{cases}
 \end{equation}
 
-我们取$\nu=0.01$，真解$u(x, t) = [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})]$，则$f(x,t), g_x(t), g_2(t), h(x)$可相应的计算出来。对方程使用ST-RFM进行数值求解，每个子区域的特征函数的数量为$J_n=300$，每个子区域的空间维度的配点数量为$N_x = 30$，每个子区域的时间维度的配点数量为$N_t = 30$，所以每个子区域的配点数量为$Q_n = N_x \times N_t = 900$，空间维度的划分数量为$N_x = 5$，时间维度的划分数量依次取$N_t = 1, 2, 3, 4, 5$，单位分解函数的策略分别为：$\psi^a$、$\psi^b$和无$\psi$，结果见表格\ref{tab:Helmholtz}。{\color{red} 见图}
+我们取$\nu=0.01$，真解$u(x, t) = [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})]$，则$f(x,t), g_x(t), g_2(t), h(x)$可相应的计算出来。
+
+对方程使用ST-RFM进行数值求解，超参数的设置如下：
+
+\begin{itemize}
+	\item 空间维度的划分数量为$N_x = 5$；
+	\item 时间维度的划分数量为$N_t = 2$；
+	\item 每个子区域的空间维度的配点数量为$N_x = 30$；
+	\item 每个子区域的时间维度的配点数量为$N_t = 30$；
+	\item 每个子区域的特征函数的数量依次取$J_n=50, 100, 150, 200, 250$；
+	\item 单位分解函数的策略分别为：$\psi^a$、$\psi^b$和无$\psi$；
+\end{itemize}
+
+所以每个子区域的配点数量为$Q_n = N_x \times N_t = 900$，求解结果见表格\ref{tab:Diffusion}。{\color{red} 见图}，可见无$\psi$的策略下收敛速度更快，在同等超参数的情况下相较于$\psi^a$和$\psi^b$，误差小几个数量级。
 
 \begin{table}
 	\centering
@@ -549,19 +571,19 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	\label{tab:Diffusion}
 	\begin{tabular}{|c|c|c|c|c|c|c|}
 		\hline
-		\multirow{2}{*}{$N_t$} & \multicolumn{2}{c|}{$\psi^a$} & \multicolumn{2}{c|}{$\psi^b$} & \multicolumn{2}{c|}{无$\psi$} \\
+		\multirow{2}{*}{$J_n$} & \multicolumn{2}{c|}{$\psi^a$} & \multicolumn{2}{c|}{$\psi^b$} & \multicolumn{2}{c|}{无$\psi$} \\
 		\cline{2-7}
 		& $L^\infty$ error & $L^2$ error & $L^\infty$ error & $L^2$ error & $L^\infty$ error & $L^2$ error\\
 		\hline
-		1 &  &  & 1.11E+01 & 1.96E+00 & 1.64E-09 & 2.69E-10\\
+		50 & 6.60E-02 & 1.64E-02 & 7.82E-02 & 1.58E-02 & 2.37E-04 & 2.18E-05\\
 		\hline
-		2 &  &  & 1.50E-07 & 1.51E-08 & 1.75E-10 & 4.07E-11\\
+		100 & 5.70E-04 & 7.17E-05 & 4.83E-04 & 5.87E-05 & 1.26E-07 & 1.26E-08\\
 		\hline
-		3 &  &  &  &  & 7.19E-11 & 8.48E-12\\
+		150 &8.89E-06 & 9.73E-07 & 1.29E-05 & 1.77E-06 & 3.51E-09 & 2.78E-10\\
 		\hline
-		4 & 1.08E-08 & 1.65E-09 &  &  & 7.45E-11 & 1.11E-11\\
+		200 & 3.46E-07 & 3.93E-08 & 1.54E-06 & 2.03E-07 & 9.48E-10 & 8.54E-11\\
 		\hline
-		5 & 1.26E-08 & 1.79E-09 & 7.86E-07 & 4.85E-08 & 5.32E-11 & 5.70E-12\\
+		250 & 4.21E-08 & 6.46E-09 & 2.14E-07 & 2.97E-08 & 3.59E-10 & 6.41E-11\\
 		\hline
 	\end{tabular}
 \end{table}
