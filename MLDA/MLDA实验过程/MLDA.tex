@@ -504,7 +504,13 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	\end{cases}
 \end{equation}
 
-我们取$\lambda = 4$，真解$u(x) = \sin(3\pi x + \frac{3\pi}{20}) \cos(2\pi x + \frac{\pi}{10}) + 2$，则$c_1, c_2$和$f(x)$可相应的计算出来。
+我们取$\lambda = 4$，真解$u(x) = \sin(3\pi x + \frac{3\pi}{20}) \cos(2\pi x + \frac{\pi}{10}) + 2$，则$c_1, c_2$和$f(x)$可相应的计算出来：
+\begin{equation}
+	\begin{cases}
+		f(x) = -13\pi^2  \sin(3\pi x + \frac{3\pi}{20}) \cos(2\pi x + \frac{\pi}{10}) -12\pi^2 \cos(3\pi x + \frac{3\pi}{20}) \sin(2\pi x + \frac{\pi}{10}) \\
+		u(0) = u(8) = \sin\frac{3\pi}{20} \cos \frac{\pi}{10} + 2 
+	\end{cases}
+\end{equation}
 
 对方程使用RFM进行数值求解，超参数的设置如下：
 
@@ -550,7 +556,17 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	\end{cases}
 \end{equation}
 
-我们取$\nu=0.01$，真解$u(x, t) = [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})]$，则$f(x,t), g_x(t), g_2(t), h(x)$可相应的计算出来。
+我们取定真解为$u(x, t) = [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})]$，则$f(x,t), g_x(t), g_2(t), h(x)$可相应的计算出来：
+\begin{equation}
+	\begin{cases}
+		f(x, t) =& [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [-2\pi\sin(\pi t + \frac{\pi}{5}) -3\pi\sin(2\pi t - \frac{3\pi}{5}) ]\\
+		 & +\nu [2\pi^2 \cos(\pi x + \frac{\pi}{5}) + 6\pi^2 \cos(2\pi x -\frac{3\pi}{5})] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})]\\
+		u(0, t) =& [2\cos\frac{\pi}{5} + \frac{3}{2}\cos\frac{3\pi}{5}] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})] \\
+		u(5, t) =& [-2\cos\frac{\pi}{5} + \frac{3}{2}\cos\frac{3\pi}{5}] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})] \\
+		u(x, 0) =& [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos \frac{\pi}{5} + \frac{3}{2}\cos \frac{3\pi}{5}] 
+	\end{cases}
+\end{equation}
+其中，扩散系数取$\nu=0.01$。
 
 对方程使用ST-RFM进行数值求解，超参数的设置如下：
 
@@ -588,17 +604,32 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	\end{tabular}
 \end{table}
 
+\subsection{使用改进的ST-RFM做数据同化}
+由于改进后的ST-RFM具有更快的收敛速度和收敛阶，所以我们基于改进的ST-RFM做数据同化。
+
 考虑如下数据同化问题：
 \begin{equation}
 	\begin{cases}
 		\mathcal{L}u(\boldsymbol{x}, t) = f(\boldsymbol{x}, t)  \quad \boldsymbol{x},t  \in \Omega \times [0, T] \\
-		\mathcal{B}u(\boldsymbol{x},t) = b(\boldsymbol{x},t)  \quad \boldsymbol{x},t \in \Omega \times [0,T]\\
-		\mathcal{I}u(\boldsymbol{x},0) = i(\boldsymbol{x})  \qquad \boldsymbol{x} \in \Omega\\
-		\mathcal{H}u(\boldsymbol{x},t) = h(\boldsymbol{x},t)  \quad \boldsymbol{x},t \in \Omega \times [0,T]\\
+		\mathcal{B}u(\boldsymbol{x},t) = g(\boldsymbol{x},t)  \quad \boldsymbol{x},t \in \Omega \times [0,T]\\
+		\mathcal{I}u(\boldsymbol{x},0) = h(\boldsymbol{x})  \qquad \boldsymbol{x} \in \Omega\\
+		\mathcal{H}u(\boldsymbol{x},t) = s(\boldsymbol{x},t)  \quad \boldsymbol{x},t \in \Omega \times [0,T]\\
 	\end{cases}
 \end{equation}
 
 其中，$\Omega$是空间域，$[0, T]$是时间域，$\mathcal{L}$是线性微分算子，$\mathcal{B}$是边界算子，$\mathcal{I}$是初值算子，这三者构成动力系统。$\mathcal{H}$是观测算子，一般在空间的某些固定位置，进行连续或间断观测。接下来，本文基于随机特征方法，解决这一类数据同化问题。
+
+我们使用一维扩散方程验证ST-RFM，方程如下：
+\begin{equation}\label{equ:ConvectionDiffusion}
+	\begin{cases}
+		\frac{\partial u}{\partial t} + v \frac{\partial u}{\partial x} - \nu \frac{\partial^2 u}{\partial x^2} +Du = f(x, t)  \quad (x, t) \in [0, 5] \times [0, 1] \\
+		u(0, t) = g_1(t) \quad t \in [0, 1] \\
+		u(5, t) = g_2(t) \quad t \in [0, 1] \\
+		u(x, 0) = h(x) \quad x \in [0, 5] 
+	\end{cases}
+\end{equation}
+
+我们取扩散系数$\nu=0.01$，对流速度$v=0.01$，真解$u(x, t) = [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})]$，则$f(x,t), g_x(t), g_2(t), h(x)$可相应的计算出来。
 
 \bibliography{references}
 \end{document}

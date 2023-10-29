@@ -34,8 +34,8 @@ def wave_equation():
     t = np.linspace(0, T, 1000)
     X, T = np.meshgrid(x, t)
     U = np.cos(alpha * np.pi * T / l) * np.sin(np.pi * X / l) + (
-                np.cos(2 * alpha * np.pi * T / l) + np.sin(2 * alpha * np.pi * T / l) * l / (
-                    2 * alpha * np.pi)) * np.sin(2 * np.pi * X / l)
+            np.cos(2 * alpha * np.pi * T / l) + np.sin(2 * alpha * np.pi * T / l) * l / (
+            2 * alpha * np.pi)) * np.sin(2 * np.pi * X / l)
     plot(X, T, U)
 
 
@@ -51,6 +51,20 @@ def heat_equation():
     plot(X, T, U)
 
 
+def convection_diffusion_equation():
+    v = 0.01
+    D = 0.01
+    x0 = 0
+    x1 = 1
+    T = 1
+    x = np.linspace(x0, x1, 100)
+    t = np.linspace(0, T, 100)
+    X, T = np.meshgrid(x, t)
+    U = np.exp(-np.pi ** 2 * D * T) * np.sin(np.pi * X)
+    plot(X, T, U)
+
+
 if __name__ == '__main__':
-    heat_equation()
-    wave_equation()
+    # heat_equation()
+    # wave_equation()
+    convection_diffusion_equation()

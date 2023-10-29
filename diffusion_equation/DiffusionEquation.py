@@ -145,9 +145,9 @@ class FCN(nn.Module):
         g.requires_grad = True
         f = self.forward(g)
         f_x_t = autograd.grad(f, g, torch.ones([g.shape[0], 1]).to(device), retain_graph=True, create_graph=True)[0]
-        f_xx_tt = autograd.grad(f_x_t, g, torch.ones(g.shape).to(device), create_graph=True)[0]
+        f_xx_xt = autograd.grad(f_x_t[:, [0]], g, torch.ones_like(f_x_t[:, [0]]).to(device), create_graph=True)[0]
         f_t = f_x_t[:, [1]]
-        f_xx = f_xx_tt[:, [0]]
+        f_xx = f_xx_xt[:, [0]]
         f = f_t - f_xx + torch.exp(-g[:, 1:]) * torch.sin(np.pi * g[:, 0:1]) - np.pi ** 2 * torch.sin(np.pi * g[:, 0:1])
         return self.loss_function(f, f_hat)
 
