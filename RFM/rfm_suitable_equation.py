@@ -55,12 +55,13 @@ def convection_diffusion_equation():
     v = 0.01
     D = 0.01
     x0 = 0
-    x1 = 1
-    T = 1
-    x = np.linspace(x0, x1, 100)
-    t = np.linspace(0, T, 100)
+    x1 = 5
+    t0 = 0
+    t1 = 1
+    x = np.linspace(x0, x1, 500)
+    t = np.linspace(t0, t1, 100)
     X, T = np.meshgrid(x, t)
-    U = np.exp(-np.pi ** 2 * D * T) * np.sin(np.pi * X)
+    U = np.exp(-T) * np.sin(np.pi * (X + T + X * T))
     plot(X, T, U)
 
 
