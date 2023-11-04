@@ -6,6 +6,7 @@ from torch.utils.data import Dataset, DataLoader
 from datetime import datetime
 import sys
 from pyDOE import lhs
+import os
 
 
 class SWEICDataset(Dataset):
@@ -130,7 +131,7 @@ class SWEPhysicsDataset(Dataset):
     物理信息训练集
     """
 
-    def __init__(self, branch_train, physics_train_count=5000):
+    def __init__(self, branch_train, physics_train_count=2000):
         branch_train_count = len(branch_train)
         self.length = branch_train_count * physics_train_count
 
@@ -207,12 +208,12 @@ class SWENet(nn.Module):
 
         return self.loss_func(lhs_, rhs_)
 
-    def loss(self, ic_batch, obs_batch, bc_batch, physics_batch):
-        loss_ic = self.loss_ic(ic_batch)
-        loss_obs = self.loss_obs(obs_batch)
-        loss_bc = self.loss_bc(bc_batch)
-        loss_physics = self.loss_physics(physics_batch)
-        return 0.1 * loss_ic + loss_obs + loss_bc + loss_physics
+    # def loss(self, ic_batch, obs_batch, bc_batch, physics_batch):
+    #     loss_ic = self.loss_ic(ic_batch)
+    #     loss_obs = self.loss_obs(obs_batch)
+    #     loss_bc = self.loss_bc(bc_batch)
+    #     loss_physics = self.loss_physics(physics_batch)
+    #     return 0.1 * loss_ic + loss_obs + loss_bc + loss_physics
 
 
 if "__main__" == __name__:
@@ -233,7 +234,8 @@ if "__main__" == __name__:
     obs_index = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     branch_data = np.empty((0, 181))
     for idx, seq in enumerate(train_data):
-        ic = seq[0] + 0.2 * noise_data[idx][0]
+        # 噪声系数0.1，大致相当于10%的相对误差，波的值域是[0.1,0.2]，所以绝对误差在[0.01,0.02]，相对误差在[5%,20%]
+        ic = seq[0] + 0.1 * noise_data[idx][0]
         obs_h_1 = seq[obs_index, 20]
         obs_v_1 = seq[obs_index, 121]
         obs_h_2 = seq[obs_index, 40]
@@ -246,11 +248,20 @@ if "__main__" == __name__:
         branch_data = np.vstack((branch_data, obs))
 
     # 构建网络网络结构
-    layers = [183, 256, 256, 256, 2]
+    layers = [183, 128, 128, 128, 128, 2]
 
     model = SWENet(layers)
     model.to(device)
     print("model:\n", model)
+
+    old_model_weights_path = 'swe_1d_don_tbc_da_01_1e-3.pt'
+    new_model_weights_path = 'swe_1d_don_tbc_da_01_5e-5.pt'
+    save_threshold = 5e-5
+
+    if os.path.exists(old_model_weights_path):
+        # 如果权重文件存在，则加载权重
+        model.load_state_dict(torch.load(old_model_weights_path))
+        print(datetime.now(), "Loaded model weights from", old_model_weights_path)
 
     ic_ds = SWEICDataset(branch_data)
     obs_ds = SWEObsDataset(branch_data)
@@ -308,18 +319,27 @@ if "__main__" == __name__:
             physics_iter = iter(physics_loader)
             physics_batch = next(physics_iter)
 
-        loss = model.loss(ic_batch, obs_batch, bc_batch, physics_batch)
+        loss_ic = model.loss_ic(ic_batch)
+        loss_obs = model.loss_obs(obs_batch)
+        loss_bc = model.loss_bc(bc_batch)
+        loss_physics = model.loss_physics(physics_batch)
+        loss = 0.01 * loss_ic + loss_obs + loss_bc + loss_physics
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         scheduler.step(loss)
         if batch % 100 == 0:
-            print(datetime.now(), 'batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
-        if loss.item() < 5E-6:
-            print(datetime.now(), 'batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
+            print(datetime.now(), 'batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item(),
+                  'loss_ic :', loss_ic.item(), 'loss_obs :', loss_obs.item(), 'loss_bc :', loss_bc.item(),
+                  'loss_physics :', loss_physics.item())
+        if loss.item() < save_threshold:
+            print(datetime.now(), 'batch :', batch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item(),
+                  'loss_ic :', loss_ic.item(), 'loss_obs :', loss_obs.item(), 'loss_bc :', loss_bc.item(),
+                  'loss_physics :', loss_physics.item())
             break
 
-    torch.save(model, 'swe_1d_don_tbc_da_01.pt')
+    torch.save(model.state_dict(), new_model_weights_path)
 
     # 训练结束后记录结束时间并计算总时间
     end_time = datetime.now()
