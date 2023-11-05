@@ -9,7 +9,21 @@ swe_1d_don_tbc_da_01.py
 观测选取4个观测点x=[0.2,0.4,0.6,0.8],时间上每个0.1s取一个真解值做观测值。
 初值函数离散化的点数是101，网络层[183, 128, 128, 128, 128, 2]，物理配点选2000个，
 
-swe_1d_don_tbc_da_01_5e-5.pt  2267MiB  等待结果
+swe_1d_don_tbc_da_01_5e-5.pt  2267MiB
+obs dataset size (mb): 128.29995727539062
+obs dataset size (mb): 50.81201171875
+bc dataset size (mb): 255.212646484375
+physics dataset size (mb): 2513.1226806640625
+ic_ds count: 90900 obs_ds count: 36000 bc_ds count: 181800 physics_ds count: 1800000
+batch : 212864 lr : 0.00025 loss : 4.989212175132707e-05 loss_ic : 0.00018888253543991596
+loss_obs : 2.815675179590471e-05 loss_bc : 1.4744085774509585e-06 loss_physics : 1.837213676481042e-05
+Elapsed time:  17:09:18.743731
+
+swe_1d_don_tbc_da_01_1e-5.pt  2267MiB  等待结果
+
+
+
+===========================================
 
 swe_1d_don_tbc_da_02.py
 与swe_1d_don_tbc_da_01.py类似，选取前1000个样本序列，作为真解。
