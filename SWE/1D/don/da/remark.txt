@@ -1,5 +1,5 @@
 obs_generator.py
-逻辑和obs_generator3.py几乎一致，样本序列的个数为4000，时间为[0,1]，l=0.2振荡不激烈。
+逻辑和obs_generator3.py几乎一致，样本序列的个数为4000，波的高度在[0.1,0.2],时间为[0,1]，l=0.2振荡不激烈。
 生成的文件名：swe_1d_rbf_sample_4000_l_0.2_t_1.npy
 
 swe_1d_don_tbc_da_01.py
@@ -20,7 +20,7 @@ batch : 212864 lr : 0.00025 loss : 4.989212175132707e-05 loss_ic : 0.00018888253
 loss_obs : 2.815675179590471e-05 loss_bc : 1.4744085774509585e-06 loss_physics : 1.837213676481042e-05
 Elapsed time:  17:09:18.743731
 
-swe_1d_don_tbc_da_01_1e-5.pt  2267MiB  等待结果
+swe_1d_don_tbc_da_01_2.5e-5.pt  2267MiB  等待结果
 
 
 
