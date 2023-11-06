@@ -8,6 +8,10 @@ import sys
 from pyDOE import lhs
 import os
 
+torch.set_default_dtype(torch.float)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(device)
+
 
 class SWEICDataset(Dataset):
     """
@@ -219,10 +223,6 @@ class SWENet(nn.Module):
 if "__main__" == __name__:
     # torch.manual_seed(123)
     # np.random.seed(123)
-
-    torch.set_default_dtype(torch.float)
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(device)
 
     # 前900个作为
     total_data = np.load('swe_1d_rbf_sample_4000_l_0.2_t_1.npy')

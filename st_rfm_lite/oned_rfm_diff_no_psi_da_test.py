@@ -101,8 +101,6 @@ if __name__ == '__main__':
     numerical_values = np.dot(A, w)
     true_values = u_real(points[:, [0]], points[:, [1]])
     epsilon = np.abs(true_values - numerical_values)
-    # 就是取绝对值操作
-    epsilon = np.maximum(epsilon, -epsilon)
 
     L_inf = np.max(epsilon)
     L_2 = np.sqrt(np.sum(epsilon ** 2) / len(epsilon))

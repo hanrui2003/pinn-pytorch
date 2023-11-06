@@ -163,12 +163,10 @@ class FCN(nn.Module):
         # f_x_t = autograd.grad(f, g, torch.ones([g.shape[0], 1]).to(device), retain_graph=True, create_graph=True)[0]
         # f_xx_tt = autograd.grad(f_x_t, g, torch.ones(g.shape).to(device), create_graph=True)[0]
         f_x_t = autograd.grad(f, g, torch.ones_like(f).to(device), retain_graph=True, create_graph=True)[0]
-        f_xx_tt = autograd.grad(f_x_t, g, torch.ones_like(f_x_t).to(device), create_graph=True)[0]
-        # print(f_x_t)
-        # print(f_xx_tt)
-        # 用list作 索引，不会降维
+        f_x = f_x_t[:, [0]]
         f_t = f_x_t[:, [1]]
-        f_xx = f_xx_tt[:, [0]]
+        f_xx_xt = autograd.grad(f_x, g, torch.ones_like(f_x).to(device), create_graph=True)[0]
+        f_xx = f_xx_xt[:, [0]]
         # [:, 1:] 索引方式，不会降维
         f = f_t - f_xx + torch.exp(-g[:, 1:]) * (
                 torch.sin(np.pi * g[:, 0:1]) - np.pi ** 2 * torch.sin(np.pi * g[:, 0:1]))
@@ -197,13 +195,13 @@ optimizer = torch.optim.Adam(PINN.parameters(), lr=1e-2, amsgrad=False)
 x_test = x_test.to(device)
 y_test = y_test.to(device)
 
-for i in range(20000):
+for i in range(10000):
     loss = PINN.loss(X_train_Nu, Y_train_Nu, X_train_Nf)
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
 
-    if (i + 1) % 2000 == 0:
+    if (i + 1) % 1000 == 0:
         with torch.no_grad():
             test_loss = PINN.lossBC(x_test, y_test)
         print("train loss :", loss.item(), "/test loss :", test_loss.item())
