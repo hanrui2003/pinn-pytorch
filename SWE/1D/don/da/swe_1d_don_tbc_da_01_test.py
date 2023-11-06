@@ -11,7 +11,7 @@ def plot(X, T, U_true, U_numerical, U_nn):
     同时绘制PDE的数值解和神经网络解，上面数值解，下面神经网络解。
     """
     # 创建一个 Figure 对象，并设置子图布局
-    fig = plt.figure(figsize=(18, 8))
+    fig = plt.figure(figsize=(15, 8))
 
     ax1 = fig.add_subplot(231)
     ax2 = fig.add_subplot(232)
