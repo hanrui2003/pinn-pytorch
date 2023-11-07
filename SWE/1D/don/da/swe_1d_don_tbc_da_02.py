@@ -157,7 +157,6 @@ class SWEPhysicsDataset(Dataset):
 class SWENet(nn.Module):
     def __init__(self, layers):
         super().__init__()
-        self.g = torch.tensor(1.).float().to(device)
         self.activation = nn.Tanh()
         self.loss_func = nn.MSELoss(reduction='mean')
         self.linears = nn.ModuleList([nn.Linear(layers[i], layers[i + 1]) for i in range(len(layers) - 1)])
@@ -204,7 +203,7 @@ class SWENet(nn.Module):
 
         lhs_ = torch.hstack((h_t, h_hat * v_t + v_hat * h_t))
         rhs_ = torch.hstack(
-            (-h_hat * v_x - v_hat * h_x, -2 * h_hat * v_hat * v_x - (v_hat ** 2 + self.g * h_hat) * h_x))
+            (-h_hat * v_x - v_hat * h_x, -2 * h_hat * v_hat * v_x - (v_hat ** 2 + h_hat) * h_x))
 
         return self.loss_func(lhs_, rhs_)
 
