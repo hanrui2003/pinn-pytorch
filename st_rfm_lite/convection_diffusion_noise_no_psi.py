@@ -84,7 +84,7 @@ def pre_define(Nx, Nt, M, X_min, X_max, T_min, T_max):
     return models
 
 
-def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points, obs_points):
+def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points):
     print(datetime.now(), "cal_matrix start")
     # matrix define (Aw=b)
     # pde配点
@@ -96,13 +96,9 @@ def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points, obs_
     # 边界的配点
     A_B = np.zeros((len(bc_points), Nx * Nt * M))
 
-    # 观测点
-    A_O = np.zeros((len(obs_points), Nx * Nt * M))
-
     pde_point = torch.tensor(pde_points, requires_grad=True)
     ic_point = torch.tensor(ic_points, requires_grad=True)
     bc_point = torch.tensor(bc_points, requires_grad=True)
-    obs_point = torch.tensor(obs_points, requires_grad=True)
 
     for k in range(Nx):
         for n in range(Nt):
@@ -115,9 +111,6 @@ def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points, obs_
 
             ic_out = models[k][n](ic_point)
             ic_values = ic_out.detach().numpy()
-
-            obs_out = models[k][n](obs_point)
-            obs_values = obs_out.detach().numpy()
 
             grad_u_x = []
             grad_u_t = []
@@ -145,45 +138,24 @@ def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points, obs_
             A_P[:, M_begin: M_begin + M] = grad_u_t + v * grad_u_x - nu * grad_u_xx + D * pde_values
             A_I[:, M_begin: M_begin + M] = ic_values
             A_B[:, M_begin: M_begin + M] = bc_values
-            A_O[:, M_begin: M_begin + M] = obs_values
 
+    A = np.concatenate((A_P, A_I, A_B), axis=0)
     f_P = f_real(pde_points[:, [0]], pde_points[:, [1]])
+
     interp_point = np.load('convection_diffusion_interp.npz')
     x_interp = interp_point['x_interp']
     y_interp = interp_point['y_interp']
     y_noise = np.interp(ic_points[:, [0]], x_interp, y_interp)
     f_I = u_real(ic_points[:, [0]], ic_points[:, [1]]) + y_noise
     f_B = u_real(bc_points[:, [0]], bc_points[:, [1]])
-    f_O = u_real(obs_points[:, [0]], obs_points[:, [1]])
+    f = np.concatenate((f_P, f_I, f_B), axis=0)
 
-    c_p = 1.0
-    c_i = 0.0
-    c_b = 1.0
-    c_o = 1.0
+    c = 1.0
     # 对每行按其绝对值最大值缩放
-    for i in range(len(A_P)):
-        ratio = c_p / max(-A_P[i, :].min(), A_P[i, :].max())
-        A_P[i, :] = A_P[i, :] * ratio
-        f_P[i] = f_P[i] * ratio
-
-    for i in range(len(A_I)):
-        ratio = c_i / max(-A_I[i, :].min(), A_I[i, :].max())
-        A_I[i, :] = A_I[i, :] * ratio
-        f_I[i] = f_I[i] * ratio
-
-    for i in range(len(A_B)):
-        ratio = c_b / max(-A_B[i, :].min(), A_B[i, :].max())
-        A_B[i, :] = A_B[i, :] * ratio
-        f_B[i] = f_B[i] * ratio
-
-    for i in range(len(A_O)):
-        ratio = c_o / max(-A_O[i, :].min(), A_O[i, :].max())
-        A_O[i, :] = A_O[i, :] * ratio
-        f_O[i] = f_O[i] * ratio
-
-    A = np.concatenate((A_P, A_I, A_B, A_O), axis=0)
-    f = np.concatenate((f_P, f_I, f_B, f_O), axis=0)
-
+    for i in range(len(A)):
+        ratio = c / max(-A[i, :].min(), A[i, :].max())
+        A[i, :] = A[i, :] * ratio
+        f[i] = f[i] * ratio
     print(datetime.now(), "cal_matrix end")
     return A, f
 
@@ -201,21 +173,17 @@ def main(Nx, Nt, M, Qx, Qt):
     right_bc_points = np.hstack((X[:, -1][:, None], T[:, -1][:, None]))
     bc_points = np.vstack((left_bc_points, right_bc_points))
 
-    t_obs = np.linspace(T_min, T_max, 11)[1:]
-    x_obs = np.linspace(X_min, X_max, 51)[1:-1]
-    obs_points = np.array([(x, t) for x in x_obs for t in t_obs])
-
     models = pre_define(Nx=Nx, Nt=Nt, M=M, X_min=X_min, X_max=X_max, T_min=T_min, T_max=T_max)
 
     # matrix define (Aw=b)
-    A, f = cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points, obs_points)
+    A, f = cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points)
 
     # 为什么选择gelss，默认的不行吗？
     w = lstsq(A, f, lapack_driver="gelss")[0]
     print(datetime.now(), "main process end")
 
-    torch.save(models, 'convection_diffusion_da_no_psi.pt')
-    np.savez('convection_diffusion_da_no_psi.npz', w=w,
+    torch.save(models, 'convection_diffusion_noise_no_psi.pt')
+    np.savez('convection_diffusion_noise_no_psi.npz', w=w,
              config=np.array([Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max], dtype=int))
 
     print(datetime.now(), "main end")

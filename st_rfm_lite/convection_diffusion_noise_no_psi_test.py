@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.autograd as autograd
 import math
-from convection_diffusion_da_no_psi import u_real, LocalNet
+from convection_diffusion_noise_no_psi import u_real, LocalNet
 
 from scipy.linalg import lstsq
 from datetime import datetime
@@ -74,11 +74,11 @@ def plot_err(X1, T1, U1):
 if __name__ == '__main__':
     print(datetime.now(), "Main start")
 
-    data = np.load("convection_diffusion_da_no_psi.npz")
+    data = np.load("convection_diffusion_noise_no_psi.npz")
     Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max = data['config']
     w = data['w']
 
-    models = torch.load('convection_diffusion_da_no_psi.pt')
+    models = torch.load('convection_diffusion_noise_no_psi.pt')
 
     print(datetime.now(), "test start")
     test_Qx = 2 * Qx
@@ -117,5 +117,5 @@ if __name__ == '__main__':
     U_true = true_values.reshape((X.shape[0], X.shape[1]))
     U_numerical = numerical_values.reshape((X.shape[0], X.shape[1]))
 
-    plot(X, T, U_true, X, T, U_numerical)
-    plot_err(X, T, np.abs(U_true - U_numerical))
+    # plot(X, T, U_true, X, T, U_numerical)
+    # plot_err(X, T, np.abs(U_true - U_numerical))
