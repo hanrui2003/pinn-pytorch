@@ -157,9 +157,9 @@ def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points, obs_
     f_O = u_real(obs_points[:, [0]], obs_points[:, [1]])
 
     c_p = 1.0
-    c_i = 0.0
+    c_i = 1.0
     c_b = 1.0
-    c_o = 1.0
+    c_o = 100.0
     # 对每行按其绝对值最大值缩放
     for i in range(len(A_P)):
         ratio = c_p / max(-A_P[i, :].min(), A_P[i, :].max())
@@ -201,8 +201,8 @@ def main(Nx, Nt, M, Qx, Qt):
     right_bc_points = np.hstack((X[:, -1][:, None], T[:, -1][:, None]))
     bc_points = np.vstack((left_bc_points, right_bc_points))
 
-    t_obs = np.linspace(T_min, T_max, 11)[1:]
-    x_obs = np.linspace(X_min, X_max, 51)[1:-1]
+    t_obs = np.linspace(T_min, T_max, 41)[1:]
+    x_obs = np.linspace(X_min, X_max, 201)[1:-1]
     obs_points = np.array([(x, t) for x in x_obs for t in t_obs])
 
     models = pre_define(Nx=Nx, Nt=Nt, M=M, X_min=X_min, X_max=X_max, T_min=T_min, T_max=T_max)
@@ -239,9 +239,9 @@ if __name__ == '__main__':
     # 每个局部局域的特征函数数量
     Ms = [150, ]
     # x维度每个区间的配点数，Qx+1
-    Qxs = [30, ]
+    Qxs = [10, ]
     # t维度每个区间的配点数，Qt+1
-    Qts = [30, ]
+    Qts = [10, ]
 
     # # x维度划分的区间数
     # Nxs = [5, ]
