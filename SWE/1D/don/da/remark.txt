@@ -22,8 +22,16 @@ batch : 212864 lr : 0.00025 loss : 4.989212175132707e-05 loss_ic : 0.00018888253
 loss_obs : 2.815675179590471e-05 loss_bc : 1.4744085774509585e-06 loss_physics : 1.837213676481042e-05
 Elapsed time:  17:09:18.743731
 
-swe_1d_don_tbc_da_01_2.5e-5.pt  2267MiB  等待结果
-
+在swe_1d_don_tbc_da_01_5e-5.pt 继续训练
+swe_1d_don_tbc_da_01_2.5e-5.pt  2267MiB  测试效果稍微改善一点
+obs dataset size (mb): 128.29995727539062
+obs dataset size (mb): 50.81201171875
+bc dataset size (mb): 255.212646484375
+physics dataset size (mb): 2513.1226806640625
+ic_ds count: 90900 obs_ds count: 36000 bc_ds count: 181800 physics_ds count: 1800000
+batch : 473776 lr : 1e-07 loss : 2.498854519217275e-05 loss_ic : 0.00015868881018832326
+loss_obs : 1.0492390174476895e-05 loss_bc : 6.14016130384698e-07 loss_physics : 1.2295251508476213e-05
+Elapsed time:  1 day, 16:15:33.904053
 
 
 ===========================================
