@@ -152,13 +152,14 @@ def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points, obs_
     x_interp = interp_point['x_interp']
     y_interp = interp_point['y_interp']
     y_noise = np.interp(ic_points[:, [0]], x_interp, y_interp)
+    y_noise_bc = np.interp(bc_points[:, [1]], x_interp, y_interp)
     f_I = u_real(ic_points[:, [0]], ic_points[:, [1]]) + y_noise
-    f_B = u_real(bc_points[:, [0]], bc_points[:, [1]])
+    f_B = u_real(bc_points[:, [0]], bc_points[:, [1]]) + y_noise_bc
     f_O = u_real(obs_points[:, [0]], obs_points[:, [1]])
 
-    c_p = 1.0
-    c_i = 1.0
-    c_b = 1.0
+    c_p = 100.0
+    c_i = 1e-5
+    c_b = 1e-5
     c_o = 100.0
     # 对每行按其绝对值最大值缩放
     for i in range(len(A_P)):
@@ -201,8 +202,8 @@ def main(Nx, Nt, M, Qx, Qt):
     right_bc_points = np.hstack((X[:, -1][:, None], T[:, -1][:, None]))
     bc_points = np.vstack((left_bc_points, right_bc_points))
 
-    t_obs = np.linspace(T_min, T_max, 41)[1:]
-    x_obs = np.linspace(X_min, X_max, 201)[1:-1]
+    t_obs = np.linspace(T_min, T_max, 11)[1:]
+    x_obs = np.linspace(X_min, X_max, 51)[1:-1]
     obs_points = np.array([(x, t) for x in x_obs for t in t_obs])
 
     models = pre_define(Nx=Nx, Nt=Nt, M=M, X_min=X_min, X_max=X_max, T_min=T_min, T_max=T_max)

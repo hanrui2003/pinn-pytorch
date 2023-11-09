@@ -117,5 +117,5 @@ if __name__ == '__main__':
     U_true = true_values.reshape((X.shape[0], X.shape[1]))
     U_numerical = numerical_values.reshape((X.shape[0], X.shape[1]))
 
-    # plot(X, T, U_true, X, T, U_numerical)
-    # plot_err(X, T, np.abs(U_true - U_numerical))
+    plot(X, T, U_true, X, T, U_numerical)
+    plot_err(X, T, np.abs(U_true - U_numerical))
