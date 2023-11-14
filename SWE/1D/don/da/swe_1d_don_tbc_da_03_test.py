@@ -3,7 +3,7 @@ import torch
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from scipy.integrate import solve_ivp
-from swe_1d_resonet_da_01 import ResidualNetwork
+from swe_1d_don_tbc_da_03 import SWENet
 
 
 def plot(X, T, U_true, U_numerical, U_nn):
@@ -166,8 +166,9 @@ if "__main__" == __name__:
     z_test = torch.from_numpy(z_test).float()
 
     # 构建网络网络结构
-    model = ResidualNetwork(input_size=183, hidden_size=128, num_blocks=2, output_size=2)
-    model.load_state_dict(torch.load('swe_1d_resonet_da_01_5e-5.pt', map_location=torch.device('cpu')))
+    layers = [183, 128, 128, 128, 128, 128, 128, 2]
+    model = SWENet(layers)
+    model.load_state_dict(torch.load('swe_1d_don_tbc_da_03_5e-5.pt', map_location=torch.device('cpu')))
     model.eval()
     print("model", model)
 

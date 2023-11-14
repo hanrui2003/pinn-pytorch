@@ -3,7 +3,7 @@ import torch
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from scipy.integrate import solve_ivp
-from swe_1d_resonet_da_01 import ResidualNetwork
+from swe_1d_don_tbc_da_04 import SWENet
 
 
 def plot(X, T, U_true, U_numerical, U_nn):
@@ -122,6 +122,7 @@ if "__main__" == __name__:
     print("seq_idx :", seq_idx)
 
     obs_index = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    ic_index = [i * 2 for i in range(51)]
 
     seq = test_dataset[seq_idx]
     ic = seq[0] + 0.1 * noise_dataset[seq_idx][0]
@@ -133,7 +134,7 @@ if "__main__" == __name__:
     obs_v_3 = seq[obs_index, 161]
     obs_h_4 = seq[obs_index, 80]
     obs_v_4 = seq[obs_index, 181]
-    branch_test = np.concatenate((ic[:101], obs_h_1, obs_h_2, obs_h_3, obs_h_4, obs_v_1, obs_v_2, obs_v_3, obs_v_4))
+    branch_test = np.concatenate((ic[ic_index], obs_h_1, obs_h_2, obs_h_3, obs_h_4, obs_v_1, obs_v_2, obs_v_3, obs_v_4))
 
     # 真解
     U_true = seq[:, :101]
@@ -166,8 +167,9 @@ if "__main__" == __name__:
     z_test = torch.from_numpy(z_test).float()
 
     # 构建网络网络结构
-    model = ResidualNetwork(input_size=183, hidden_size=128, num_blocks=2, output_size=2)
-    model.load_state_dict(torch.load('swe_1d_resonet_da_01_5e-5.pt', map_location=torch.device('cpu')))
+    layers = [133, 128, 128, 128, 128, 128, 128, 2]
+    model = SWENet(layers)
+    model.load_state_dict(torch.load('swe_1d_don_tbc_da_04_5e-5.pt', map_location=torch.device('cpu')))
     model.eval()
     print("model", model)
 
