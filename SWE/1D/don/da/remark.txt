@@ -106,6 +106,17 @@ batch : 225776 lr : 6.25e-05 loss : 4.9869446229422465e-05 loss_ic : 0.000181037
 loss_bc : 8.679633083374938e-07 loss_physics : 1.7499274690635502e-05
 Elapsed time:  18:57:45.905170
 
+swe_1d_don_tbc_da_04_2e-5.pt  相对误差：0.01~0.03
+Loaded model weights from swe_1d_don_tbc_da_04_5e-5.pt
+obs dataset size (mb): 47.275787353515625
+obs dataset size (mb): 37.0791015625
+bc dataset size (mb): 185.8614501953125
+physics dataset size (mb): 1826.4771728515625
+ic_ds count: 45900 obs_ds count: 36000 bc_ds count: 181800 physics_ds count: 1800000
+batch : 180836 lr : 6.25e-05 loss : 1.9904378859791905e-05 loss_ic : 0.00014996409299783409 loss_obs : 7.580915280414047e-06
+loss_bc : 4.0111930843522714e-07 loss_physics : 1.0422703780932352e-05
+Elapsed time:  16:46:52.225728
+
 ===========================================
 swe_1d_resonet_da_01.py  2309MiB
 选取前1000个样本序列，作为真解。
