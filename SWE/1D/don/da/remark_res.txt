@@ -31,6 +31,16 @@ swe_1d_resonet_da_02.py  1863MiB
 由于初值带噪声，可信度不大，所以设置初值函数离散化的点数是51，
 整体输入维度133，残差块的单元数128，残差块数2，输出维度2，物理配点选2000个，
 
+swe_1d_resonet_da_02_5e-5.pt  相对误差：0.02~0.04
+obs dataset size (mb): 47.275787353515625
+obs dataset size (mb): 37.0791015625
+bc dataset size (mb): 185.8614501953125
+physics dataset size (mb): 1826.4771728515625
+ic_ds count: 45900 obs_ds count: 36000 bc_ds count: 181800 physics_ds count: 1800000
+batch : 96834 lr : 0.0005 loss : 4.99822708661668e-05 loss_ic : 0.00019075469754170626 loss_obs : 2.6801157218869776e-05
+loss_bc : 1.3698453358301776e-06 loss_physics : 1.9903722204617225e-05
+Elapsed time:  10:22:14.298688
+
 ===========================================
 swe_1d_resonet_da_03.py  2387MiB
 选取前1000个样本序列，作为真解。
@@ -59,3 +69,13 @@ swe_1d_resonet_da_04.py  1945MiB
 观测选取4个观测点x=[0.2,0.4,0.6,0.8],时间上每个0.1s取一个真解值做观测值。
 由于初值带噪声，可信度不大，所以设置初值函数离散化的点数是51，
 整体输入维度133，残差块的单元数128，残差块数3，输出维度2，物理配点选2000个，
+
+swe_1d_resonet_da_04_5e-5.pt  相对误差：0.02~0.04
+obs dataset size (mb): 47.275787353515625
+obs dataset size (mb): 37.0791015625
+bc dataset size (mb): 185.8614501953125
+physics dataset size (mb): 1826.4771728515625
+ic_ds count: 45900 obs_ds count: 36000 bc_ds count: 181800 physics_ds count: 1800000
+batch : 69180 lr : 0.0005 loss : 4.962716775480658e-05 loss_ic : 0.000193755142390728 loss_obs : 2.8574655516422354e-05
+loss_bc : 1.020935542328516e-06 loss_physics : 1.809402419894468e-05
+Elapsed time:  8:45:52.276156
