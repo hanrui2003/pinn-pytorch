@@ -168,7 +168,7 @@ if "__main__" == __name__:
 
     # 构建网络网络结构
     model = ResidualNetwork(input_size=133, hidden_size=256, num_blocks=2, output_size=2)
-    model.load_state_dict(torch.load('swe_1d_resonet_da_06_5e-5.pt', map_location=torch.device('cpu')))
+    model.load_state_dict(torch.load('swe_1d_resonet_da_06_2e-5.pt', map_location=torch.device('cpu')))
     model.eval()
     print("model", model)
 

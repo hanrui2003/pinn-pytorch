@@ -165,3 +165,14 @@ ic_ds count: 45900 obs_ds count: 36000 bc_ds count: 181800 physics_ds count: 180
 batch : 70275 lr : 0.00025 loss : 4.983523831469938e-05 loss_ic : 0.0001955320913111791 loss_obs : 2.892172778956592e-05
 loss_bc : 1.2533089375210693e-06 loss_physics : 1.77048805198865e-05
 Elapsed time:  6:58:05.705857
+
+swe_1d_don_tbc_da_06_2e-5.pt  相对误差：0.01~0.03
+Loaded model weights from swe_1d_don_tbc_da_06_5e-5.pt
+obs dataset size (mb): 47.275787353515625
+obs dataset size (mb): 37.0791015625
+bc dataset size (mb): 185.8614501953125
+physics dataset size (mb): 1826.4771728515625
+ic_ds count: 45900 obs_ds count: 36000 bc_ds count: 181800 physics_ds count: 1800000
+batch : 141423 lr : 3.125e-05 loss : 1.9974171664216556e-05 loss_ic : 0.00014686335634905845 loss_obs : 7.6167916631675325e-06
+loss_bc : 4.444957539817551e-07 loss_physics : 1.0444250619912054e-05
+Elapsed time:  14:25:42.698550

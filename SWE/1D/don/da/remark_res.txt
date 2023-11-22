@@ -118,3 +118,14 @@ ic_ds count: 45900 obs_ds count: 36000 bc_ds count: 181800 physics_ds count: 180
 batch : 88926 lr : 0.00025 loss : 4.9484307965030894e-05 loss_ic : 0.00018649944104254246 loss_obs : 2.8323784135864116e-05
 loss_bc : 1.0301474731022608e-06 loss_physics : 1.8265382095705718e-05
 Elapsed time:  8:32:45.531856
+
+swe_1d_resonet_da_06_2e-5.pt  相对误差：0.01~0.03
+Loaded model weights from swe_1d_resonet_da_06_5e-5.pt
+obs dataset size (mb): 47.275787353515625
+obs dataset size (mb): 37.0791015625
+bc dataset size (mb): 185.8614501953125
+physics dataset size (mb): 1826.4771728515625
+ic_ds count: 45900 obs_ds count: 36000 bc_ds count: 181800 physics_ds count: 1800000
+batch : 144111 lr : 0.000125 loss : 1.9918501493521035e-05 loss_ic : 0.00014509627362713218 loss_obs : 7.67200890550157e-06
+loss_bc : 4.506719619712385e-07 loss_physics : 1.0344857400923502e-05
+Elapsed time:  15:06:25.499314

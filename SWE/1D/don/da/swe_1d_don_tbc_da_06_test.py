@@ -169,7 +169,7 @@ if "__main__" == __name__:
     # 构建网络网络结构
     layers = [133, 256, 256, 256, 256, 2]
     model = SWENet(layers)
-    model.load_state_dict(torch.load('swe_1d_don_tbc_da_06_5e-5.pt', map_location=torch.device('cpu')))
+    model.load_state_dict(torch.load('swe_1d_don_tbc_da_06_2e-5.pt', map_location=torch.device('cpu')))
     model.eval()
     print("model", model)
 
