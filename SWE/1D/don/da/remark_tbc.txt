@@ -146,6 +146,16 @@ batch : 110032 lr : 0.00025 loss : 4.988592263543978e-05 loss_ic : 0.00018017570
 loss_bc : 1.2169973615527852e-06 loss_physics : 1.7739572285790928e-05
 Elapsed time:  10:25:57.846090
 
+swe_1d_don_tbc_da_05_2e-5.pt  相对误差：0.01~0.03
+Loaded model weights from swe_1d_don_tbc_da_05_5e-5.pt
+obs dataset size (mb): 128.29995727539062
+obs dataset size (mb): 50.81201171875
+bc dataset size (mb): 255.212646484375
+physics dataset size (mb): 2513.1226806640625
+ic_ds count: 90900 obs_ds count: 36000 bc_ds count: 181800 physics_ds count: 1800000
+batch : 213278 lr : 7.8125e-06 loss : 1.9930879716412164e-05 loss_ic : 0.00014861660019960254 loss_obs : 7.57767475079163e-06
+loss_bc : 3.76131936263846e-07 loss_physics : 1.0490907698113006e-05
+Elapsed time:  21:41:53.198288
 ===========================================
 swe_1d_don_tbc_da_06.py  2019MiB
 与swe_1d_don_tbc_da_01.py类似，选取前1000个样本序列，作为真解。
