@@ -208,11 +208,11 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 将方程\ref{rfm:pde-linear}和\ref{rfm:bc-linear} 整合成一个线性方程组：
 
 \begin{equation}\label{rfm:linear}
+	Au = f \quad , A = 
 	\begin{bmatrix}
 		P \\
 		B \\
 	\end{bmatrix}
-	u \approx f
 \end{equation}
 
 这样一来就把偏微分方程的求解问题转换成了形如 $Au = f$ 的线性方程组求解问题，其中$u$是待求解的参数。这种问题可以采用线性最小二乘方法，当前比较流行的科学计算库都有相应的API可以直接使用，如Numpy、Scipy等。
@@ -305,6 +305,7 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 所以，我们在$\Omega$上取一组配点$\boldsymbol{x}^{(1)}_P, \boldsymbol{x}^{(2)}_P, \cdots , \boldsymbol{x}^{(N_P)}_P$，则有
 
 \begin{equation}
+	\scalebox{0.8}{$
 	\begin{bmatrix}
 		\mathcal{L}\Phi_{11}(\boldsymbol{x}^{(1)}_P) & \cdots & \mathcal{L}\Phi_{1J_1}(\boldsymbol{x}^{(1)}_P) & \cdots & \mathcal{L}\Phi_{M_p1}(\boldsymbol{x}^{(1)}_P) & \cdots & \mathcal{L}\Phi_{M_pJ_{M_p}}(\boldsymbol{x}^{(1)}_P) \\
 		\mathcal{L}\Phi_{11}(\boldsymbol{x}^{(2)}_P) & \cdots & \mathcal{L}\Phi_{1J_1}(\boldsymbol{x}^{(2)}_P) & \cdots & \mathcal{L}\Phi_{M_p1}(\boldsymbol{x}^{(2)}_P) & \cdots & \mathcal{L}\Phi_{M_pJ_{M_p}}(\boldsymbol{x}^{(2)}_P) \\
@@ -327,11 +328,13 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 		\vdots \\
 		f(\boldsymbol{x}^{(N_P)}_P)
 	\end{bmatrix}
+	$}
 \end{equation}
 
 同理，我们在$\partial\Omega$上取一组配点$\boldsymbol{x}^{(1)}_B, \boldsymbol{x}^{(2)}_B, \cdots , \boldsymbol{x}^{(N_B)}_B$，则有
 
 \begin{equation}
+	\scalebox{0.8}{$
 	\begin{bmatrix}
 		\Phi_{11}(\boldsymbol{x}^{(1)}_B) & \cdots & \Phi_{1J_1}(\boldsymbol{x}^{(1)}_B) & \cdots & \Phi_{M_p1}(\boldsymbol{x}^{(1)}_B) & \cdots & \Phi_{M_pJ_{M_p}}(\boldsymbol{x}^{(1)}_B) \\
 		\Phi_{11}(\boldsymbol{x}^{(2)}_B) & \cdots & \Phi_{1J_1}(\boldsymbol{x}^{(2)}_B) & \cdots & \Phi_{M_p1}(\boldsymbol{x}^{(2)}_B) & \cdots & \Phi_{M_pJ_{M_p}}(\boldsymbol{x}^{(2)}_B) \\
@@ -354,6 +357,7 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 		\vdots \\
 		g(\boldsymbol{x}^{(N_B)}_B)
 	\end{bmatrix}
+	$}
 \end{equation}
 
 记：
@@ -417,13 +421,13 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	\label{loss2}
 \end{equation}
 
-公式中，罚参数$\lambda_i$的确定是关键，往往决定着模型的收敛速度和收敛效果。为了平衡PDE损失项和边界条件损失项，一种简单而高效的策略就是通过缩放罚参数使得损失函数中每一项具有相同的数量级。在传统的PINN的训练过程中，罚参数的调整较为困难，往往依赖经验。
+公式中，罚参数$\lambda_i$的确定是关键，往往决定着模型的收敛速度和收敛效果。为了平衡PDE损失项和边界条件损失项，一种简单而高效的策略就是通过缩放罚参数使得损失函数中每一项具有相同的数量级。
 
-但RFM的情况则完全不同，虽然损失函数形式上看完全类似，但RFM与PINN构造的优化问题则完全不同，RFM求解的是内层参数固定、仅优化最外层线性参数的线性优化问题。从经典数值算法的角度来看，RFM构造的是线性最小二乘问题，该问题可以表为线性系统 $Au=f$ 的形式。
+在传统的PINN的训练过程中，罚参数的调整较为困难，往往依赖经验。但RFM的情况则完全不同，虽然损失函数形式上看完全类似，但RFM与PINN构造的优化问题则完全不同，RFM求解的是内层参数固定、仅优化最外层线性参数的线性优化问题。从经典数值算法的角度来看，RFM构造的是线性最小二乘问题，该问题可以表为线性系统 $Au=f$ 的形式。
 
 对于 方程$Au=f$，最小二乘解的目的就是求解向量 $u$使得误差$e = ||Au -f ||^2$达到最小，要使每一项损失$e_i = ||A_iu -f_i ||^2$具有相同的数量级，只需直接基于矩阵 $A$ 的信息，对矩阵的每一行元素$A_i$缩放到同一个数量级。
 
-\begin{equation}
+\begin{equation}\label{rfm-penalty-parameter}
 	\begin{cases}
 		\lambda_i = \frac{c_i}{max(A_i, -A_i)} \\
 		A_i = \lambda_i \times A_i \\
@@ -481,19 +485,21 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 
 \section{基于ST-RFM的数据同化}
 \subsection{ST-RFM的改进}
-在RFM章节，公式\ref{rfm-operator-discretization}解释了微分算子离散化的过程，该过程展示了线性微分算子如何一步步转为矩阵和向量的线性运算，但该过程的结果还包含着单位分解函数，这显然并不完美。虽然文献\cite{rfm}提供了两种单位分解函数，并通过数值算例验证了其效能，但是单位分解函数的构造方式还可能有很多，无法确认哪一种才是最合适的。这里的合适有两层含义：一是能够促进数值解的收敛，在相同的参数下，尽可能达到更高的收敛阶；二是能够适合计算机的高效计算，结构不能太复杂，比如不能有太多的分支条件，否则不利于并行计算等。本文的一项工作就是对该过程做进一步的简化：
-\begin{equation}
-	\begin{aligned}
-		\mathcal{L}u(\boldsymbol{x}, t) &\approx \mathcal{L}u_M(\boldsymbol{x}, t) \\
-		&= \mathcal{L}\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t}\psi_{n_x,n_t}(\boldsymbol{x}, t) \sum_{j=1}^{J_n }u_{n_x,n_t,j} \phi_{n_x,n_t,j}(\boldsymbol{x}, t) \\
-		&= \mathcal{L}\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t} \sum_{j=1}^{J_n } \psi_{n_x,n_t}(\boldsymbol{x}, t) u_{n_x,n_t,j} \phi_{n_x,n_t,j}(\boldsymbol{x}, t) \\
-		&= \mathcal{L}\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t} \sum_{j=1}^{J_n } \tilde{u}_{n_x,n_t,j} \phi_{n_x,n_t,j}(\boldsymbol{x}, t) \quad \left[\tilde{u}_{n_x,n_t,j} \triangleq \psi_{n_x,n_t}(\boldsymbol{x}, t) u_{n_x,n_t,j} \right]\\
-		&=\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t} \sum_{j=1}^{J_n } \mathcal{L} \tilde{u}_{n_x,n_t,j} \phi_{n_x,n_t,j}(\boldsymbol{x}, t) \\
-		&=\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t} \sum_{j=1}^{J_n } \tilde{u}_{n_x,n_t,j}  \mathcal{L} \phi_{n_x,n_t,j}(\boldsymbol{x}, t)
-	\end{aligned}
+在RFM章节，公式\ref{rfm-operator-discretization}解释了微分算子离散化的过程，该过程展示了线性微分算子如何一步步转为矩阵和向量的线性运算，但该过程的结果还包含着单位分解函数，这显然并不完美。虽然文献\cite{rfm}提供了两种单位分解函数，并通过数值算例验证了其效能，但是单位分解函数的构造方式还可能有很多，无法确认哪一种才是最合适的。这里的合适有两层含义：一是能够促进数值解的收敛，在相同的参数下，尽可能达到更高的收敛阶；二是能够适合计算机的高效计算，结构不能太复杂，比如不能有太多的分支条件，否则不利于并行计算等。本文的一项工作就是对该过程做简化，去除单位分解函数，得到ST-RFM数值解的简化格式：
+\begin{equation}\label{modified-rt-rfm-numerical}
+	u_M(\boldsymbol{x}, t)=\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t} \sum_{j=1}^{J_n }u_{n_x,n_t,j} \phi_{n_x,n_t,j}(\boldsymbol{x}, t)
 \end{equation}
 
-其中，$\tilde{u}_{n_x,n_t,j} \triangleq \psi_{n_x,n_t}(\boldsymbol{x}, t) u_{n_x,n_t,j}$是待训练的参数，这一步是关键，经过这一步的转换，微分算子离散化的结果就不再包含单位分解函数了。虽然形式上看似变得简单了，但是在表现能力上却变得丰富了。因为经过这个改动，相当于把光滑性的构造也交给神经网络了，让神经网络自己去训练出最合适的单位分解函数。此外，由于没有了单位分解函数的代码分支逻辑，使得RFM方法的运算速度更快。
+由$\phi_{n_x,n_t,j}(\boldsymbol{x}, t)$的定义可知，其是连续可微函数。所以$u_M(\boldsymbol{x}, t)$也是连续可微的，故而不需要处理各个子区域的边界问题。这里把单位分解函数去除，虽然形式上看似变得简单了，但是在表现能力上却变得丰富了。因为经过这个改动，相当于把光滑性的构造也交给神经网络了，让神经网络自己去训练出最合适的单位分解函数。此外，由于没有了单位分解函数的代码分支逻辑，使得RFM方法的运算速度更快。在此基础上，我们也能得到微分算子离散化的简单形式：
+
+\begin{equation}\label{modified-rt-rfm-operator}
+	\begin{aligned}
+		\mathcal{L}u(\boldsymbol{x}, t) &\approx \mathcal{L}u_M(\boldsymbol{x}, t) \\
+		&= \mathcal{L}\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t} \sum_{j=1}^{J_n }u_{n_x,n_t,j} \phi_{n_x,n_t,j}(\boldsymbol{x}, t) \\
+		&=\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t} \sum_{j=1}^{J_n } \mathcal{L} u_{n_x,n_t,j} \phi_{n_x,n_t,j}(\boldsymbol{x}, t) \\
+		&=\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t} \sum_{j=1}^{J_n } u_{n_x,n_t,j}  \mathcal{L} \phi_{n_x,n_t,j}(\boldsymbol{x}, t)
+	\end{aligned}
+\end{equation}
 
 \subsubsection{数值算例验证}
 我们使用一维Helmholtz方程验证RFM，方程如下：
@@ -556,14 +562,14 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	\end{cases}
 \end{equation}
 
-我们取定真解为$u(x, t) = [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})]$，则$f(x,t), g_x(t), g_2(t), h(x)$可相应的计算出来：
+我们取定真解为$u(x, t) = [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})]$，则$f(x,t), g_1(t), g_2(t), h(x)$可相应的计算出来：
 \begin{equation}
 	\begin{cases}
-		f(x, t) =& [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [-2\pi\sin(\pi t + \frac{\pi}{5}) -3\pi\sin(2\pi t - \frac{3\pi}{5}) ]\\
+		f(x, t) &= [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [-2\pi\sin(\pi t + \frac{\pi}{5}) -3\pi\sin(2\pi t - \frac{3\pi}{5}) ]\\
 		 & +\nu [2\pi^2 \cos(\pi x + \frac{\pi}{5}) + 6\pi^2 \cos(2\pi x -\frac{3\pi}{5})] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})]\\
-		u(0, t) =& [2\cos\frac{\pi}{5} + \frac{3}{2}\cos\frac{3\pi}{5}] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})] \\
-		u(5, t) =& [-2\cos\frac{\pi}{5} + \frac{3}{2}\cos\frac{3\pi}{5}] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})] \\
-		u(x, 0) =& [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos \frac{\pi}{5} + \frac{3}{2}\cos \frac{3\pi}{5}] 
+		g_1(t) &= [2\cos\frac{\pi}{5} + \frac{3}{2}\cos\frac{3\pi}{5}] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})] \\
+		g_2(t) &= [-2\cos\frac{\pi}{5} + \frac{3}{2}\cos\frac{3\pi}{5}] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})] \\
+		h(x) &= [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos \frac{\pi}{5} + \frac{3}{2}\cos \frac{3\pi}{5}] 
 	\end{cases}
 \end{equation}
 其中，扩散系数取$\nu=0.01$。
@@ -573,13 +579,15 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 \begin{itemize}
 	\item 空间维度的划分数量为$N_x = 5$；
 	\item 时间维度的划分数量为$N_t = 2$；
-	\item 每个子区域的空间维度的配点数量为$N_x = 30$；
-	\item 每个子区域的时间维度的配点数量为$N_t = 30$；
+	\item 每个子区域的空间维度的配点数量为$Q_x = 30$；
+	\item 每个子区域的时间维度的配点数量为$Q_t = 30$；
 	\item 每个子区域的特征函数的数量依次取$J_n=50, 100, 150, 200, 250$；
 	\item 单位分解函数的策略分别为：$\psi^a$、$\psi^b$和无$\psi$；
 \end{itemize}
 
-所以每个子区域的配点数量为$Q_n = N_x \times N_t = 900$，求解结果见表格\ref{tab:Diffusion}。{\color{red} 见图}，可见无$\psi$的策略下收敛速度更快，在同等超参数的情况下相较于$\psi^a$和$\psi^b$，误差小几个数量级。
+所以每个子区域的配点数量为$Q_n = Q_x \times Q_t = 900$，求解结果见表格\ref{tab:Diffusion}。{\color{red} 见图，Jn为横坐标，损失为纵坐标画折线图}，可见无$\psi$的策略下收敛速度更快，在同等超参数的情况下相较于$\psi^a$和$\psi^b$，误差小几个数量级。
+
+通过数值算例可以看到，去除单位分解函数，确实大大提高了训练的收敛速度和收敛精度。{\color{red} 这里可以补充下训练时间，无psi的情况训练时间应该也是快一点的}
 
 \begin{table}
 	\centering
@@ -612,12 +620,191 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	\begin{cases}
 		\mathcal{L}u(\boldsymbol{x}, t) = f(\boldsymbol{x}, t)  \quad \boldsymbol{x},t  \in \Omega \times [0, T] \\
 		\mathcal{B}u(\boldsymbol{x},t) = g(\boldsymbol{x},t)  \quad \boldsymbol{x},t \in \Omega \times [0,T]\\
-		\mathcal{I}u(\boldsymbol{x},0) = h(\boldsymbol{x})  \qquad \boldsymbol{x} \in \Omega\\
-		\mathcal{H}u(\boldsymbol{x},t) = s(\boldsymbol{x},t)  \quad \boldsymbol{x},t \in \Omega \times [0,T]\\
+		\mathcal{I}u(\boldsymbol{x},0) = s(\boldsymbol{x})  \qquad \boldsymbol{x} \in \Omega\\
+		\mathcal{H}u(\boldsymbol{x},t) = h(\boldsymbol{x},t)  \quad \boldsymbol{x},t \in \Omega \times [0,T]\\
 	\end{cases}
 \end{equation}
 
-其中，$\Omega$是空间域，$[0, T]$是时间域，$\mathcal{L}$是线性微分算子，$\mathcal{B}$是边界算子，$\mathcal{I}$是初值算子，这三者构成动力系统。$\mathcal{H}$是观测算子，一般在空间的某些固定位置，进行连续或间断观测。接下来，本文基于随机特征方法，解决这一类数据同化问题。
+其中，$\Omega$是空间域，$[0, T]$是时间域，$\mathcal{L}$是线性微分算子，$\mathcal{B}$是边界算子，$\mathcal{I}$是初值算子，这三者构成动力系统。$\mathcal{H}$是观测算子，一般在空间的某些固定位置，进行连续或间断观测。接下来，本文基于随机特征方法，解决这一类数据同化问题。步骤如下：
+
+\begin{enumerate}
+	\item 求解区域离散化
+	
+	将空间域$\Omega$划分为$N_x$个子域$\{\Omega_n\}^{N_x}_{n=1}$，每个子域$\Omega_n$的中心点记为$\hat{\boldsymbol{x}}_n$。将时间域$[0, T]$划分为$N_t$个子域，即$[0, T] = [t_0, t_1) \cup [t_1, t_2) \cup \cdots \cup [t_{N_t-1}, t_{N_t}]$，每个子域的中心点$\hat{t}_n = \frac{t_{n-1} + t_n}{2}$。则总的区域数为$M_p=N_x \cdot N_t$，对第$n$个区域随机初始化$J_n$个随机特征函数。
+	
+	\item 微分算子离散化
+	
+	利用改进的ST-RFM微分算子离散化公式\ref{modified-rt-rfm-operator}，可得：
+	\begin{equation}
+		\begin{aligned}
+			f(\boldsymbol{x}, t) &= \mathcal{L}u(\boldsymbol{x}, t) \\
+			&\approx \mathcal{L}u_M(\boldsymbol{x}, t) \\
+			&= \sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t} \sum_{j=1}^{J_n } u_{n_x,n_t,j}  \mathcal{L} \phi_{n_x,n_t,j}(\boldsymbol{x}, t) \\
+			&= \sum_{n=1}^{M_p} \sum_{j=1}^{J_n } u_{nj}  \mathcal{L} \phi_{nj}(\boldsymbol{y}) \quad \left[\boldsymbol{y} \triangleq (\boldsymbol{x}, t) \right]
+		\end{aligned}
+	\end{equation}
+
+	我们在$\Omega \times [0, T] $上取一组配点$\boldsymbol{y}^{(1)}_P, \boldsymbol{y}^{(2)}_P, \cdots , \boldsymbol{y}^{(N_P)}_P$，则有
+	\begin{equation}
+		\scalebox{0.8}{$
+			\begin{bmatrix}
+				\mathcal{L}\phi_{11}(\boldsymbol{y}^{(1)}_P) & \cdots & \mathcal{L}\phi_{1J_1}(\boldsymbol{y}^{(1)}_P) & \cdots & \mathcal{L}\phi_{M_p1}(\boldsymbol{y}^{(1)}_P) & \cdots & \mathcal{L}\phi_{M_pJ_{M_p}}(\boldsymbol{y}^{(1)}_P) \\
+				\mathcal{L}\phi_{11}(\boldsymbol{y}^{(2)}_P) & \cdots & \mathcal{L}\phi_{1J_1}(\boldsymbol{y}^{(2)}_P) & \cdots & \mathcal{L}\phi_{M_p1}(\boldsymbol{y}^{(2)}_P) & \cdots & \mathcal{L}\phi_{M_pJ_{M_p}}(\boldsymbol{y}^{(2)}_P) \\
+				\vdots & \ddots & \vdots & \vdots & \vdots & \ddots & \vdots \\
+				\mathcal{L}\phi_{11}(\boldsymbol{y}^{(N_P)}_P) & \cdots & \mathcal{L}\phi_{1J_1}(\boldsymbol{y}^{(N_P)}_P) & \cdots & \mathcal{L}\phi_{M_p1}(\boldsymbol{y}^{(N_P)}_P) & \cdots & \mathcal{L}\phi_{M_pJ_{M_p}}(\boldsymbol{y}^{(N_P)}_P)
+			\end{bmatrix}
+			\begin{bmatrix}
+				u_{11} \\
+				\vdots \\
+				u_{1J_1} \\
+				\vdots \\
+				u_{M_p1} \\
+				\vdots \\
+				u_{M_pJ_{M_p}}
+			\end{bmatrix} 
+			\approx
+			\begin{bmatrix}
+				f(\boldsymbol{y}^{(1)}_P) \\
+				f(\boldsymbol{y}^{(2)}_P) \\
+				\vdots \\
+				f(\boldsymbol{y}^{(N_P)}_P)
+			\end{bmatrix}
+			$}
+	\end{equation}
+
+	把上述公式简记为：$Pu = f$
+	
+	
+	\item 边界算子离散化
+	
+	我们在$\partial\Omega \times [0, T]$上取一组配点$\boldsymbol{y}^{(1)}_B, \boldsymbol{y}^{(2)}_B, \cdots , \boldsymbol{y}^{(N_B)}_B$，则有
+	\begin{equation}
+		\scalebox{0.8}{$
+			\begin{bmatrix}
+				\phi_{11}(\boldsymbol{y}^{(1)}_B) & \cdots & \phi_{1J_1}(\boldsymbol{y}^{(1)}_B) & \cdots & \phi_{M_p1}(\boldsymbol{y}^{(1)}_B) & \cdots & \phi_{M_pJ_{M_p}}(\boldsymbol{y}^{(1)}_B) \\
+				\phi_{11}(\boldsymbol{y}^{(2)}_B) & \cdots & \phi_{1J_1}(\boldsymbol{y}^{(2)}_B) & \cdots & \phi_{M_p1}(\boldsymbol{y}^{(2)}_B) & \cdots & \phi_{M_pJ_{M_p}}(\boldsymbol{y}^{(2)}_B) \\
+				\vdots & \ddots & \vdots & \vdots & \vdots & \ddots & \vdots \\
+				\phi_{11}(\boldsymbol{y}^{(N_B)}_B) & \cdots & \phi_{1J_1}(\boldsymbol{y}^{(N_B)}_B) & \cdots & \phi_{M_p1}(\boldsymbol{y}^{(N_B)}_B) & \cdots & \phi_{M_pJ_{M_p}}(\boldsymbol{y}^{(N_B)}_B)
+			\end{bmatrix}
+			\begin{bmatrix}
+				u_{11} \\
+				\vdots \\
+				u_{1J_1} \\
+				\vdots \\
+				u_{M_p1} \\
+				\vdots \\
+				u_{M_pJ_{M_p}}
+			\end{bmatrix}
+			\approx
+			\begin{bmatrix}
+				g(\boldsymbol{y}^{(1)}_B) \\
+				g(\boldsymbol{y}^{(2)}_B) \\
+				\vdots \\
+				g(\boldsymbol{y}^{(N_B)}_B)
+			\end{bmatrix}
+			$}
+	\end{equation}
+
+	把上述公式简记为：$Bu = g$
+	
+	\item 初值算子离散化
+	
+	我们在$\Omega \times [0]$上取一组配点$\boldsymbol{y}^{(1)}_I, \boldsymbol{y}^{(2)}_I, \cdots , \boldsymbol{y}^{(N_I)}_I$，则有
+	\begin{equation}
+		\scalebox{0.8}{$
+			\begin{bmatrix}
+				\phi_{11}(\boldsymbol{y}^{(1)}_I) & \cdots & \phi_{1J_1}(\boldsymbol{y}^{(1)}_I) & \cdots & \phi_{M_p1}(\boldsymbol{y}^{(1)}_I) & \cdots & \phi_{M_pJ_{M_p}}(\boldsymbol{y}^{(1)}_I) \\
+				\phi_{11}(\boldsymbol{y}^{(2)}_I) & \cdots & \phi_{1J_1}(\boldsymbol{y}^{(2)}_I) & \cdots & \phi_{M_p1}(\boldsymbol{y}^{(2)}_I) & \cdots & \phi_{M_pJ_{M_p}}(\boldsymbol{y}^{(2)}_I) \\
+				\vdots & \ddots & \vdots & \vdots & \vdots & \ddots & \vdots \\
+				\phi_{11}(\boldsymbol{y}^{(N_I)}_I) & \cdots & \phi_{1J_1}(\boldsymbol{y}^{(N_I)}_I) & \cdots & \phi_{M_p1}(\boldsymbol{y}^{(N_I)}_I) & \cdots & \phi_{M_pJ_{M_p}}(\boldsymbol{y}^{(N_I)}_I)
+			\end{bmatrix}
+			\begin{bmatrix}
+				u_{11} \\
+				\vdots \\
+				u_{1J_1} \\
+				\vdots \\
+				u_{M_p1} \\
+				\vdots \\
+				u_{M_pJ_{M_p}}
+			\end{bmatrix}
+			\approx
+			\begin{bmatrix}
+				s(\boldsymbol{y}^{(1)}_I) \\
+				s(\boldsymbol{y}^{(2)}_I) \\
+				\vdots \\
+				s(\boldsymbol{y}^{(N_I)}_I)
+			\end{bmatrix}
+			$}
+	\end{equation}
+	
+	把上述公式简记为：$Iu = s$
+	
+	\item 观测算子离散化
+	
+	我们在$\Omega \times [0, T]$上取一组观测数据$\boldsymbol{y}^{(1)}_H, \boldsymbol{y}^{(2)}_H, \cdots , \boldsymbol{y}^{(N_H)}_H$，则有
+	\begin{equation}
+		\scalebox{0.8}{$
+			\begin{bmatrix}
+				\phi_{11}(\boldsymbol{y}^{(1)}_H) & \cdots & \phi_{1J_1}(\boldsymbol{y}^{(1)}_H) & \cdots & \phi_{M_p1}(\boldsymbol{y}^{(1)}_H) & \cdots & \phi_{M_pJ_{M_p}}(\boldsymbol{y}^{(1)}_H) \\
+				\phi_{11}(\boldsymbol{y}^{(2)}_H) & \cdots & \phi_{1J_1}(\boldsymbol{y}^{(2)}_H) & \cdots & \phi_{M_p1}(\boldsymbol{y}^{(2)}_H) & \cdots & \phi_{M_pJ_{M_p}}(\boldsymbol{y}^{(2)}_H) \\
+				\vdots & \ddots & \vdots & \vdots & \vdots & \ddots & \vdots \\
+				\phi_{11}(\boldsymbol{y}^{(N_H)}_H) & \cdots & \phi_{1J_1}(\boldsymbol{y}^{(N_H)}_H) & \cdots & \phi_{M_p1}(\boldsymbol{y}^{(N_H)}_H) & \cdots & \phi_{M_pJ_{M_p}}(\boldsymbol{y}^{(N_H)}_H)
+			\end{bmatrix}
+			\begin{bmatrix}
+				u_{11} \\
+				\vdots \\
+				u_{1J_1} \\
+				\vdots \\
+				u_{M_p1} \\
+				\vdots \\
+				u_{M_pJ_{M_p}}
+			\end{bmatrix}
+			\approx
+			\begin{bmatrix}
+				h(\boldsymbol{y}^{(1)}_H) \\
+				h(\boldsymbol{y}^{(2)}_H) \\
+				\vdots \\
+				h(\boldsymbol{y}^{(N_H)}_H)
+			\end{bmatrix}
+			$}
+	\end{equation}
+	
+	把上述公式简记为：$Hu = h$
+	
+	\item 转换为线性最小二乘问题
+	
+	将上述方程组合并为一个大的线性方程组：
+	\begin{equation}
+		\begin{bmatrix}
+			P \\
+			B \\
+			I \\
+			H \\
+		\end{bmatrix}
+		u = 
+		\begin{bmatrix}
+			f \\
+			g \\
+			s \\
+			h \\
+		\end{bmatrix}
+	\end{equation}
+
+	至此，我们将数据同化的求解问题转换成了形如 $Au = f$ 的线性方程组求解问题，其中$u$是待求解的参数。这种问题可以采用线性最小二乘方法进行求解。
+	
+	\item 设置损失函数和罚参数
+	
+	损失函数在配点上进行计算，使用强形式在配点上构造损失函数：
+	\begin{multline}
+		Loss = \sum_{\boldsymbol{y}_{i} \in \Omega \times [0, T]}\lambda_{i}\|\mathcal{L}\boldsymbol{u_M}(\boldsymbol{y}_{i})-\boldsymbol{f}(\boldsymbol{y}_{i})\|_{2}^{2} + \sum_{\boldsymbol{y}_{j} \in \partial \Omega \times [0, T]}\lambda_{j}\|\mathcal{B}\boldsymbol{u_M}(\boldsymbol{y}_{j})-\boldsymbol{g}(\boldsymbol{y}_{j})\|_{2}^{2} +\\
+		\sum_{\boldsymbol{y}_{k} \in \Omega \times [0]}\lambda_{k}\|\mathcal{I}\boldsymbol{u_M}(\boldsymbol{y}_{k})-\boldsymbol{s}(\boldsymbol{y}_{k})\|_{2}^{2} +
+		\sum_{\boldsymbol{y}_{l} \in \Omega \times [0, T]}\lambda_{l}\|\mathcal{H}\boldsymbol{u_M}(\boldsymbol{y}_{l})-\boldsymbol{h}(\boldsymbol{y}_{l})\|_{2}^{2}
+		\label{da-loss}
+	\end{multline}
+	
+	其中，$\lambda_{i}, \lambda_{j}, \lambda_{k}, \lambda_{l}$是罚参数，由公式\ref{rfm-penalty-parameter}，我们知道罚参数为$\lambda_i = \frac{c_i}{max(A_i, -A_i)}$，其中$c_i$是关键的缩放因子，当没有具体的先验知识的情况下，取常数即可。但是对于数据同化问题，一般而言观测数据更为可信，所以一般会把观测损失项的罚参数的缩放因子设置的大一些，以增加观测数据的影响权重。
+
+\end{enumerate}
 
 我们使用一维扩散方程验证ST-RFM，方程如下：
 \begin{equation}\label{equ:ConvectionDiffusion}
@@ -630,6 +817,8 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 \end{equation}
 
 我们取扩散系数$\nu=0.01$，对流速度$v=0.01$，真解$u(x, t) = [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})]$，则$f(x,t), g_x(t), g_2(t), h(x)$可相应的计算出来。
+
+我们取扩散系数$\nu=0.01$，对流速度$v=0.01$，真解$u(x, t) =e^{-t} \sin(\pi (x+t+x t))$，则$f(x,t), g_x(t), g_2(t), h(x)$可相应的计算出来。
 
 \bibliography{references}
 \end{document}

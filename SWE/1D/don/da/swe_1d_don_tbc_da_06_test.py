@@ -16,9 +16,15 @@ def plot(X, T, U_true, U_numerical, U_nn):
     ax1 = fig.add_subplot(231)
     ax2 = fig.add_subplot(232)
     ax3 = fig.add_subplot(233)
+    # ax1.set_zlim(0, 0.2)
+    # ax2.set_zlim(0, 0.2)
+    # ax3.set_zlim(0, 0.2)
     ax4 = fig.add_subplot(234, projection='3d')
     ax5 = fig.add_subplot(235, projection='3d')
     ax6 = fig.add_subplot(236, projection='3d')
+    ax4.set_zlim(0.12, 0.22)
+    ax5.set_zlim(0.12, 0.22)
+    ax6.set_zlim(0.12, 0.22)
 
     cp1 = ax1.contourf(T, X, U_true, 20, cmap="rainbow")
     fig.colorbar(cp1, ax=ax1)
@@ -109,8 +115,8 @@ def rk4(u0, n, dx, dt):
 
 
 if "__main__" == __name__:
-    # torch.manual_seed(123)
-    # np.random.seed(123)
+    # torch.manual_seed(1234)
+    # np.random.seed(1234)
 
     # 后100个作为测试集
     total_data = np.load('swe_1d_rbf_sample_4000_l_0.2_t_1.npy')
@@ -190,7 +196,7 @@ if "__main__" == __name__:
     L_rel_nn = np.linalg.norm(epsilon_nn) / np.linalg.norm(U_true)
     print('L_inf_nn :', L_inf_nn, ' , L_2_nn', L_2_nn, ' , L_rel_nn : ', L_rel_nn)
 
-    # plot(X, T, U_true, U_numerical, U_nn)
+    plot(X, T, U_true, U_numerical, U_nn)
 
     # # 创建图表对象
     # fig, ax = plt.subplots()
