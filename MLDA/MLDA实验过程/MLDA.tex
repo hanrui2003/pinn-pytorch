@@ -809,16 +809,26 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 我们使用一维扩散方程验证ST-RFM，方程如下：
 \begin{equation}\label{equ:ConvectionDiffusion}
 	\begin{cases}
-		\frac{\partial u}{\partial t} + v \frac{\partial u}{\partial x} - \nu \frac{\partial^2 u}{\partial x^2} +Du = f(x, t)  \quad (x, t) \in [0, 5] \times [0, 1] \\
+		\frac{\partial u}{\partial t} + v \frac{\partial u}{\partial x} - \nu \frac{\partial^2 u}{\partial x^2} +u = f(x, t)  \quad (x, t) \in [0, 5] \times [0, 1] \\
 		u(0, t) = g_1(t) \quad t \in [0, 1] \\
 		u(5, t) = g_2(t) \quad t \in [0, 1] \\
 		u(x, 0) = h(x) \quad x \in [0, 5] 
 	\end{cases}
 \end{equation}
 
-我们取扩散系数$\nu=0.01$，对流速度$v=0.01$，真解$u(x, t) = [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})]$，则$f(x,t), g_x(t), g_2(t), h(x)$可相应的计算出来。
+我们取扩散系数$\nu=0.01$，对流速度$v=0.01$，真解$u(x, t) = e^{-t}\sin(\pi(x + t + x\cdot t))$，则$f(x,t), g_1(t), g_2(t), h(x)$可相应的计算出来。
 
-我们取扩散系数$\nu=0.01$，对流速度$v=0.01$，真解$u(x, t) =e^{-t} \sin(\pi (x+t+x t))$，则$f(x,t), g_x(t), g_2(t), h(x)$可相应的计算出来。
+对方程使用改进的ST-RFM进行数值求解，超参数的设置如下：
+
+\begin{itemize}
+	\item 空间维度的划分数量为$N_x = 5$；
+	\item 时间维度的划分数量为$N_t = 2$；
+	\item 每个子区域的空间维度的配点数量为$Q_x = 10$；
+	\item 每个子区域的时间维度的配点数量为$Q_t = 10$；
+	\item 每个子区域的特征函数的数量为$J_n=150$；
+\end{itemize}
+
+所以每个子区域的配点数量为$Q_n = Q_x \times Q_t = 100$，求解结果见
 
 \bibliography{references}
 \end{document}

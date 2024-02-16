@@ -1,7 +1,7 @@
 本文件用于记录RFM做数据同化问题的，默认就用no_psi.
 
 convection_diffusion_interp.py
-一个差值函数，用于为对流扩散方程生成噪声的，用的径向基函数。
+一个插值函数，用于为对流扩散方程生成噪声的，用的径向基函数。
 
 
 convection_diffusion_noise_no_psi.py
