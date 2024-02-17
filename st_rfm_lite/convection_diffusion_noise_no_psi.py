@@ -146,8 +146,9 @@ def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points):
     x_interp = interp_point['x_interp']
     y_interp = interp_point['y_interp']
     y_noise = np.interp(ic_points[:, [0]], x_interp, y_interp)
+    y_noise_bc = np.interp(bc_points[:, [1]], x_interp, y_interp)
     f_I = u_real(ic_points[:, [0]], ic_points[:, [1]]) + y_noise
-    f_B = u_real(bc_points[:, [0]], bc_points[:, [1]])
+    f_B = u_real(bc_points[:, [0]], bc_points[:, [1]]) + y_noise_bc
     f = np.concatenate((f_P, f_I, f_B), axis=0)
 
     c = 1.0

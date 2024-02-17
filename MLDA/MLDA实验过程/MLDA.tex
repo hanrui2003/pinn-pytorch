@@ -62,6 +62,92 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 可微分框架，能够在同一框架下求解反问题
 边界罚项中罚参数的调整容易
 
+\section{预备知识}
+\subsection{一维浅水方程及数值解法}
+\subsubsection{一维浅水方程基本概念}
+浅水方程（shallow water equation, SWE）常用来描述一个水平广度远远大于深度的水体（例如湖泊，溪流，海岸）。浅水方程，顾名思义，它成立的一个重要假设就是水很“浅”，这个假设具体体现在它默认对于任意一个固定的 位置，在不同深度的上的所有水都有着同样的运动速度。换句话说，水的流速在竖直方向上是不变的。水“浅”假设的另外一个简化效果就是我们只需要考虑水体在水平方向的移动，而忽略水在竖直方向的运动。一维浅水波的方程如下：
+
+\begin{equation}
+	\begin{cases}
+		\frac{\partial}{\partial t} h + \frac{\partial}{\partial x} hv = 0  \\
+		\frac{\partial}{\partial t} hv + \frac{\partial}{\partial x} (hv^2 + \frac{gh^2}{2}) = 0
+		\label{swe-1D}
+	\end{cases}
+\end{equation}
+
+其中，$h(x,t)$为水在时间$t$位置$x$ 的高度；$v(x,t)$为在时间$t$位置 $x$上水体的流速，默认右为正方向；$g$为重力加速度；
+
+一维浅水方程的积分形式如下：
+\begin{equation}\label{equ:swe-int-form}
+	\begin{cases}
+		\frac{d}{dt} \int^{x_1}_{x_0} h dx = h(x_0, t) v(x_0, t) -  h(x_1, t) v(x_1, t) = \int^{x_1}_{x_0} -\frac{\partial}{\partial x} (hv)dx \\
+		\frac{d}{dt} \int^{x_1}_{x_0} hv dx = h(x_0, t)v^2(x_0, t) + \frac{gh^2(x_0, t)}{2} - h(x_1, t)v^2(x_1, t) - \frac{gh^2(x_1, t)}{2}
+	\end{cases}
+\end{equation}
+
+第一个方程是质量守恒方程：$ \int^{x_1}_{x_0} h dx$是水体在区间$[x_0, x_1]$上的体积，则$ \int^{x_1}_{x_0} \rho h dx$为该区间上水体的质量。所以$\frac{d}{dt} \int^{x_1}_{x_0} \rho h dx$表示该区域水体质量随着时间的变化，由质量守恒定律可知，显然等于$x_0$处水体质量的变化减去$x_1$处水体质量的变化，即$\rho h(x_0, t) v(x_0, t) - \rho h(x_1, t) v(x_1, t)$。等式两边约去水体密度$\rho$即得第一个方程。
+
+第二个方程是动量守恒方程：由于$ \int^{x_1}_{x_0} \rho h dx$是水体在区间$[x_0, x_1]$上的质量，则$\int^{x_1}_{x_0} \rho hv dx$是水体在区间$[x_0, x_1]$上的动量，$\frac{d}{dt} \int^{x_1}_{x_0} \rho hv dx$表示区间$[x_0, x_1]$上水体总动量随着时间的变化，这一变化有两个来源。
+\begin{enumerate}
+	\item 流入流出区间的水本身带有的动量：用$x_0$处流入的动量减去$x_1$处流出的动量，即$\rho h(x_0, t)v^2(x_0, t) - \rho h(x_1, t)v^2(x_1, t)$。
+	\item 边界处的水压对区间内水体施加的力；根据公式$\frac{dI}{dt} = F$，在三维空间，我们将压强对面积进行积分便可得到压力，现在在二维空间，我们只需要将压强对于深度进行积分便可得到压力。物理学中的压强表达式为$\rho g (h - y)$，则$x_0$处左边的水体对区间内水体的压力为：
+	\begin{equation}
+		\begin{aligned}
+			\int_{0}^{h(x_0,t)} \rho g(h(x_0, t) - y) dy &= \int_{0}^{h(x_0,t)} \rho gh(x_0, t) dy - \int_{0}^{h(x_0,t)} \rho gy dy \\
+			&= \rho gh^2(x_0,t) - \frac{\rho gh^2(x_0,t)}{2} \\
+			&=\frac{\rho gh^2(x_0,t)}{2}
+		\end{aligned}
+	\end{equation}
+	同理，$x_1$处右边的水体对区间内水体的压力为$\frac{\rho gh^2(x_1,t)}{2}$，所以外部压力导致的动量变化为：$\frac{\rho gh^2(x_0,t)}{2} - \frac{\rho gh^2(x_1,t)}{2}$。
+\end{enumerate}
+所以，
+\begin{equation}
+	\frac{d}{dt} \int^{x_1}_{x_0} \rho hv dx = \rho h(x_0, t)v^2(x_0, t) + \frac{\rho gh^2(x_0, t)}{2} - \rho h(x_1, t)v^2(x_1, t) - \frac{\rho gh^2(x_1, t)}{2}
+\end{equation}
+等式两边同时约去水体密度$\rho$，即得第二个积分方程。
+
+\subsubsection{有限体积法解一维浅水方程}
+有限体积法（finite volume method，FVM）是计算流体力学中常用的一种数值算法，有限体积法基于的是积分形式的守恒方程而不是微分方程，该积分形式的守恒方程描述的是计算网格定义的每个控制体。有限体积法着重从物理观点来构造离散方程 ,每一个离散方程都是有限大小体积上某种物理量守恒的表示式 , 推导过程物理概念清晰 ,离散方程系数具有一定的物理意义 ,并可保证离散方程具有守恒特性。
+
+使用有限体积法求解一维浅水方程的步骤如下：
+\begin{enumerate}
+	\item 将求解区间划分为有限多个子区间$[x_0,x_1], [x_1,x_2], [x_2, x_3], \cdots, [x_{n-1}, x_n]$，这里的每一个区间被称为控制体积（control volume）。每一个区间的长度不一定要相等，但是在本文，为了方便起见，我们令每一个控制体积都有相同的长度$\Delta x$。
+	\item 对于每一个小区间$[x_i,x_{i+1}]$，计算守恒量。对于一维浅水方程，需要存储质量的平均值和动量的平均值：
+	\begin{equation}
+		\begin{cases}
+			H_i = \frac{1}{\Delta x} \int^{x_{i+1}}_{x_i} hdx \\
+			M_i = \frac{1}{\Delta x} \int^{x_{i+1}}_{x_i} hvdx
+		\end{cases}
+	\end{equation}
+	\item 把$H_i, M_i$带入浅水方程的积分形式\ref{equ:swe-int-form}：
+	\begin{equation}
+		\begin{cases}
+			\frac{d}{dt} H_i \Delta x = h(x_i, t) v(x_i, t) -  h(x_{i+1}, t) v(x_{i+1}, t) \\
+			\frac{d}{dt} M_i \Delta x = h(x_i, t)v^2(x_i, t) - h(x_{i+1}, t)v^2(x_{i+1}, t) + \frac{gh^2(x_i, t)}{2} - \frac{gh^2(x_{i+1}, t)}{2}
+		\end{cases}
+	\end{equation}
+	\item 使用$H_i, M_i$近似$h(x, t)$和$v(x, t)$
+	\begin{itemize}
+		\item 对于任意的$x \in (x_i, x_{i+1})$，将$h(x, t)$和$v(x, t)$ 近似为：
+		\begin{equation}
+			\begin{cases}
+				h(x, t) \approx H_i(t) \\
+				h(x,t)v(x,t) \approx M_i(t) \\
+				v(x,t) \approx \frac{M_i(t)}{H_i(t)}
+			\end{cases}
+		\end{equation}
+		\item 在邻接点$\{x_i\}_1^{n-1}$上，我们可以通过对边界点左右两个区间的守恒量取平均值，对于FVM以及其他同类数值解函数存在不连续性的数值方法，这样给定两个相邻的控制体积上的函数解，求两个控制体积交界处的函数值的策略被称为数值通量（numerical flux）。这样简单取两个值的平均的通量被称为中央通量（central flux），不过它只是众多通量选择中的一种。在方程比较简单并且解函数比较平滑的时候，中央通量还是比较可靠的。但是对于SWE，中央通量是数值不稳定的（numerically unstable）。为了解决这一问题，这里我们采用Lax–Friedrichs通量。Lax-Friedrich通量很容易计算：分别取左边和右边两区间上的值计算通量，取二值的平均，再加上一修正参数，即系统中的波速乘以该守恒量在两个区间上的差再除以二。这一修正参数被称为数值消散（numerical dissipation）。
+		\begin{equation}
+			h(x_i, t) v(x_i, t) \approx \frac{M_{i-1} + M_i}{2} + wavespeed \cdot \frac{H_{i-1} - H_i}{2}
+		\end{equation}
+		其中，$wavespeed$可以通过计算通量向量对守恒向量的雅可比矩阵的特征值得到。在一些复杂的问题中，雅可比矩阵的计算可能较为繁琐，或者数值解法的收敛性可能受到影响。这时，工程师或研究人员可能会通过 "trial and error" 方法来选择一个合适的常数，使得模拟或计算的结果符合实际情况。
+		具体来说，在计算波速时，可能会通过设定不同的波速值，运行模拟或数值计算，然后观察模拟结果，选择使结果与实际情况相符的波速。这样的过程可能需要多次迭代，即反复尝试不同的值，直到找到一个令人满意的解。
+		\item 对于边界点$x_0$和$x_n$，当我们使用反射墙边界条件时，我们可以人为地设置两个假想体积（ghost cell）。比如，我们可以认为在区间$[x_0,x_1]$的左边还有一个区间： $[x_{-1},x_0]$。并且$H_{-1} = H_0, M_{-1} = -M_0$。也就是说：我们认为在$[x_{-1},x_0]$上的水和$[x_0,x_1]$上的水有相同的高度但是相反的运动方向。形象一点来说的话，那就是我们可以认为$x_0$上有一面镜子，只不过这个“镜子”反射的不是光，而是动量。
+	\end{itemize}
+	
+	\item 损失函数中各项权重的重新缩放，以平衡各项对总损失的影响；
+\end{enumerate}
+
 \subsection{RFM解偏微分方程}
 随机特征方法（random feature metod, RFM）是\cite{rfm}提出的一种用于解偏微分方程组的方法，该方法是传统算法和基于机器学习的算法之间的自然桥梁，它吸取了二者的优点，将微分方程求解问题转换为线性最小二乘问题。RFM基于以下几个思想的组合：
 \begin{enumerate}
@@ -427,7 +513,7 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 
 对于 方程$Au=f$，最小二乘解的目的就是求解向量 $u$使得误差$e = ||Au -f ||^2$达到最小，要使每一项损失$e_i = ||A_iu -f_i ||^2$具有相同的数量级，只需直接基于矩阵 $A$ 的信息，对矩阵的每一行元素$A_i$缩放到同一个数量级。
 
-\begin{equation}\label{rfm-penalty-parameter}
+\begin{equation}\label{equ:rfm-penalty-parameter}
 	\begin{cases}
 		\lambda_i = \frac{c_i}{max(A_i, -A_i)} \\
 		A_i = \lambda_i \times A_i \\
@@ -483,8 +569,9 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	ST-RFM算法的其他部分诸如矩阵的构造、损失函数的罚参数缩放等，都与RFM高度相似，这里不做过多赘述。
 \end{enumerate}
 
-\section{基于ST-RFM的数据同化}
-\subsection{ST-RFM的改进}
+\section{理论基础or本文工作？}
+\subsection{基于ST-RFM的数据同化}
+\subsubsection{ST-RFM的改进}
 在RFM章节，公式\ref{rfm-operator-discretization}解释了微分算子离散化的过程，该过程展示了线性微分算子如何一步步转为矩阵和向量的线性运算，但该过程的结果还包含着单位分解函数，这显然并不完美。虽然文献\cite{rfm}提供了两种单位分解函数，并通过数值算例验证了其效能，但是单位分解函数的构造方式还可能有很多，无法确认哪一种才是最合适的。这里的合适有两层含义：一是能够促进数值解的收敛，在相同的参数下，尽可能达到更高的收敛阶；二是能够适合计算机的高效计算，结构不能太复杂，比如不能有太多的分支条件，否则不利于并行计算等。本文的一项工作就是对该过程做简化，去除单位分解函数，得到ST-RFM数值解的简化格式：
 \begin{equation}\label{modified-rt-rfm-numerical}
 	u_M(\boldsymbol{x}, t)=\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t} \sum_{j=1}^{J_n }u_{n_x,n_t,j} \phi_{n_x,n_t,j}(\boldsymbol{x}, t)
@@ -500,117 +587,6 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 		&=\sum_{n_x=1}^{N_x} \sum_{n_t=1}^{N_t} \sum_{j=1}^{J_n } u_{n_x,n_t,j}  \mathcal{L} \phi_{n_x,n_t,j}(\boldsymbol{x}, t)
 	\end{aligned}
 \end{equation}
-
-\subsubsection{数值算例验证}
-我们使用一维Helmholtz方程验证RFM，方程如下：
-\begin{equation}\label{equ:Helmholtz}
-	\begin{cases}
-		\frac{d^2u(x)}{dx^2} - \lambda u(x) = f(x) \quad x \in [0, 8] \\
-		u(0) = c_1, \quad u(8) = c_2
-	\end{cases}
-\end{equation}
-
-我们取$\lambda = 4$，真解$u(x) = \sin(3\pi x + \frac{3\pi}{20}) \cos(2\pi x + \frac{\pi}{10}) + 2$，则$c_1, c_2$和$f(x)$可相应的计算出来：
-\begin{equation}
-	\begin{cases}
-		f(x) = -13\pi^2  \sin(3\pi x + \frac{3\pi}{20}) \cos(2\pi x + \frac{\pi}{10}) -12\pi^2 \cos(3\pi x + \frac{3\pi}{20}) \sin(2\pi x + \frac{\pi}{10}) \\
-		u(0) = u(8) = \sin\frac{3\pi}{20} \cos \frac{\pi}{10} + 2 
-	\end{cases}
-\end{equation}
-
-对方程使用RFM进行数值求解，超参数的设置如下：
-
-\begin{itemize}
-	\item 每个子区域的特征函数的数量为$J_n=50$；
-	\item 每个子区域的配点的数量为$Q_n=50$；
-	\item 子区域划分的个数依次取$M_p =2, 4, 8, 16, 32 $
-	\item 单位分解函数的策略分别为：$\psi^a$、$\psi^b$和无$\psi$；
-\end{itemize}
-
-计算结果见表格\ref{tab:Helmholtz}。{\color{red} 见图}，由图和表格\ref{tab:Helmholtz}，可以看出在相同超参数使用RFM求解Helmholtz方程的情况下，无$\psi$策略相比于使用$\psi^a$和$\psi^b$作为单位分解函数，收敛速度更快，并且$L^\infty$误差和$L^2$误差降低了好几个阶。数值结果验证了改进后的RFM方法对于静态方程的有效性。
-
-\begin{table}
-	\centering
-	\caption{一维Helmholtz方程三种单位分解策略的比较}
-	\label{tab:Helmholtz}
-	\begin{tabular}{|c|c|c|c|c|c|c|}
-		\hline
-		\multirow{2}{*}{$M_p$} & \multicolumn{2}{c|}{$\psi^a$} & \multicolumn{2}{c|}{$\psi^b$} & \multicolumn{2}{c|}{无$\psi$} \\
-		\cline{2-7}
-		& $L^\infty$ error & $L^2$ error & $L^\infty$ error & $L^2$ error & $L^\infty$ error & $L^2$ error\\
-		\hline
-		2 & 39.58 & 10.55 & 8.00 & 1.58 & 0.34 & 0.057\\
-		\hline
-		4 & 1.20E-2 & 3.09E-3  & 1.26E-4 & 1.51E-05 & 5.48E-08 & 1.11E-08\\
-		\hline
-		8 & 1.77E-05 & 4.50E-06  & 2.14E-07 & 3.68E-08 & 6.43E-10 & 1.04E-10\\
-		\hline
-		16 & 1.66E-08 & 4.75E-09  & 1.38E-09 & 2.22E-10 & 3.17E-13 & 1.46E-13\\
-		\hline
-		32 & 2.15E-09 & 8.69E-10  & 1.27E-10 & 2.64E-11 & 3.89E-14 & 1.31E-14\\
-		\hline
-	\end{tabular}
-\end{table}
-
-我们使用一维扩散方程验证ST-RFM，方程如下：
-\begin{equation}\label{equ:Diffusion}
-	\begin{cases}
-		\frac{\partial u}{\partial t} - \nu \frac{\partial^2 u}{\partial x^2} = f(x, t)  \quad (x, t) \in [0, 5] \times [0, 1] \\
-		u(0, t) = g_1(t) \quad t \in [0, 1] \\
-		u(5, t) = g_2(t) \quad t \in [0, 1] \\
-		u(x, 0) = h(x) \quad x \in [0, 5] 
-	\end{cases}
-\end{equation}
-
-我们取定真解为$u(x, t) = [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})]$，则$f(x,t), g_1(t), g_2(t), h(x)$可相应的计算出来：
-\begin{equation}
-	\begin{cases}
-		f(x, t) &= [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [-2\pi\sin(\pi t + \frac{\pi}{5}) -3\pi\sin(2\pi t - \frac{3\pi}{5}) ]\\
-		 & +\nu [2\pi^2 \cos(\pi x + \frac{\pi}{5}) + 6\pi^2 \cos(2\pi x -\frac{3\pi}{5})] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})]\\
-		g_1(t) &= [2\cos\frac{\pi}{5} + \frac{3}{2}\cos\frac{3\pi}{5}] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})] \\
-		g_2(t) &= [-2\cos\frac{\pi}{5} + \frac{3}{2}\cos\frac{3\pi}{5}] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})] \\
-		h(x) &= [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos \frac{\pi}{5} + \frac{3}{2}\cos \frac{3\pi}{5}] 
-	\end{cases}
-\end{equation}
-其中，扩散系数取$\nu=0.01$。
-
-对方程使用ST-RFM进行数值求解，超参数的设置如下：
-
-\begin{itemize}
-	\item 空间维度的划分数量为$N_x = 5$；
-	\item 时间维度的划分数量为$N_t = 2$；
-	\item 每个子区域的空间维度的配点数量为$Q_x = 30$；
-	\item 每个子区域的时间维度的配点数量为$Q_t = 30$；
-	\item 每个子区域的特征函数的数量依次取$J_n=50, 100, 150, 200, 250$；
-	\item 单位分解函数的策略分别为：$\psi^a$、$\psi^b$和无$\psi$；
-\end{itemize}
-
-所以每个子区域的配点数量为$Q_n = Q_x \times Q_t = 900$，求解结果见表格\ref{tab:Diffusion}。{\color{red} 见图，Jn为横坐标，损失为纵坐标画折线图}，可见无$\psi$的策略下收敛速度更快，在同等超参数的情况下相较于$\psi^a$和$\psi^b$，误差小几个数量级。
-
-通过数值算例可以看到，去除单位分解函数，确实大大提高了训练的收敛速度和收敛精度。{\color{red} 这里可以补充下训练时间，无psi的情况训练时间应该也是快一点的}
-
-\begin{table}
-	\centering
-	\caption{一维Diffusion方程三种单位分解策略的比较}
-	\label{tab:Diffusion}
-	\begin{tabular}{|c|c|c|c|c|c|c|}
-		\hline
-		\multirow{2}{*}{$J_n$} & \multicolumn{2}{c|}{$\psi^a$} & \multicolumn{2}{c|}{$\psi^b$} & \multicolumn{2}{c|}{无$\psi$} \\
-		\cline{2-7}
-		& $L^\infty$ error & $L^2$ error & $L^\infty$ error & $L^2$ error & $L^\infty$ error & $L^2$ error\\
-		\hline
-		50 & 6.60E-02 & 1.64E-02 & 7.82E-02 & 1.58E-02 & 2.37E-04 & 2.18E-05\\
-		\hline
-		100 & 5.70E-04 & 7.17E-05 & 4.83E-04 & 5.87E-05 & 1.26E-07 & 1.26E-08\\
-		\hline
-		150 &8.89E-06 & 9.73E-07 & 1.29E-05 & 1.77E-06 & 3.51E-09 & 2.78E-10\\
-		\hline
-		200 & 3.46E-07 & 3.93E-08 & 1.54E-06 & 2.03E-07 & 9.48E-10 & 8.54E-11\\
-		\hline
-		250 & 4.21E-08 & 6.46E-09 & 2.14E-07 & 2.97E-08 & 3.59E-10 & 6.41E-11\\
-		\hline
-	\end{tabular}
-\end{table}
 
 \subsection{使用改进的ST-RFM做数据同化}
 由于改进后的ST-RFM具有更快的收敛速度和收敛阶，所以我们基于改进的ST-RFM做数据同化。
@@ -799,14 +775,128 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 		Loss = \sum_{\boldsymbol{y}_{i} \in \Omega \times [0, T]}\lambda_{i}\|\mathcal{L}\boldsymbol{u_M}(\boldsymbol{y}_{i})-\boldsymbol{f}(\boldsymbol{y}_{i})\|_{2}^{2} + \sum_{\boldsymbol{y}_{j} \in \partial \Omega \times [0, T]}\lambda_{j}\|\mathcal{B}\boldsymbol{u_M}(\boldsymbol{y}_{j})-\boldsymbol{g}(\boldsymbol{y}_{j})\|_{2}^{2} +\\
 		\sum_{\boldsymbol{y}_{k} \in \Omega \times [0]}\lambda_{k}\|\mathcal{I}\boldsymbol{u_M}(\boldsymbol{y}_{k})-\boldsymbol{s}(\boldsymbol{y}_{k})\|_{2}^{2} +
 		\sum_{\boldsymbol{y}_{l} \in \Omega \times [0, T]}\lambda_{l}\|\mathcal{H}\boldsymbol{u_M}(\boldsymbol{y}_{l})-\boldsymbol{h}(\boldsymbol{y}_{l})\|_{2}^{2}
-		\label{da-loss}
+		\label{equ:st-rfm-da-loss}
 	\end{multline}
 	
-	其中，$\lambda_{i}, \lambda_{j}, \lambda_{k}, \lambda_{l}$是罚参数，由公式\ref{rfm-penalty-parameter}，我们知道罚参数为$\lambda_i = \frac{c_i}{max(A_i, -A_i)}$，其中$c_i$是关键的缩放因子，当没有具体的先验知识的情况下，取常数即可。但是对于数据同化问题，一般而言观测数据更为可信，所以一般会把观测损失项的罚参数的缩放因子设置的大一些，以增加观测数据的影响权重。
+	其中，$\lambda_{i}, \lambda_{j}, \lambda_{k}, \lambda_{l}$是罚参数，由公式\ref{equ:rfm-penalty-parameter}，我们知道罚参数为$\lambda_i = \frac{c_i}{max(A_i, -A_i)}$，其中$c_i$是关键的缩放因子，当没有具体的先验知识的情况下，取常数即可。但是对于数据同化问题，一般而言观测数据更为可信，所以一般会把观测损失项的罚参数的缩放因子设置的大一些，以增加观测数据的影响权重。
 
 \end{enumerate}
 
-我们使用一维扩散方程验证ST-RFM，方程如下：
+\section{数值实验}
+\subsection{改进的RFM验证}
+我们使用一维Helmholtz方程验证改进的RFM，方程如下：
+\begin{equation}\label{equ:Helmholtz}
+	\begin{cases}
+		\frac{d^2u(x)}{dx^2} - \lambda u(x) = f(x) \quad x \in [0, 8] \\
+		u(0) = c_1, \quad u(8) = c_2
+	\end{cases}
+\end{equation}
+
+我们取$\lambda = 4$，真解$u(x) = \sin(3\pi x + \frac{3\pi}{20}) \cos(2\pi x + \frac{\pi}{10}) + 2$，则$c_1, c_2$和$f(x)$可相应的计算出来：
+\begin{equation}
+	\begin{cases}
+		f(x) = -13\pi^2  \sin(3\pi x + \frac{3\pi}{20}) \cos(2\pi x + \frac{\pi}{10}) -12\pi^2 \cos(3\pi x + \frac{3\pi}{20}) \sin(2\pi x + \frac{\pi}{10}) \\
+		u(0) = u(8) = \sin\frac{3\pi}{20} \cos \frac{\pi}{10} + 2 
+	\end{cases}
+\end{equation}
+
+对方程使用RFM进行数值求解，超参数的设置如下：
+
+\begin{itemize}
+	\item 每个子区域的特征函数的数量为$J_n=50$；
+	\item 每个子区域的配点的数量为$Q_n=50$；
+	\item 子区域划分的个数依次取$M_p =2, 4, 8, 16, 32 $
+	\item 单位分解函数的策略分别为：$\psi^a$、$\psi^b$和无$\psi$；
+\end{itemize}
+
+计算结果见表格\ref{tab:Helmholtz}。{\color{red} 见图}，由图和表格\ref{tab:Helmholtz}，可以看出在相同超参数使用RFM求解Helmholtz方程的情况下，无$\psi$策略相比于使用$\psi^a$和$\psi^b$作为单位分解函数，收敛速度更快，并且$L^\infty$误差和$L^2$误差降低了好几个阶。数值结果验证了改进后的RFM方法对于静态方程的有效性。
+
+\begin{table}
+	\centering
+	\caption{一维Helmholtz方程三种单位分解策略的比较}
+	\label{tab:Helmholtz}
+	\begin{tabular}{|c|c|c|c|c|c|c|}
+		\hline
+		\multirow{2}{*}{$M_p$} & \multicolumn{2}{c|}{$\psi^a$} & \multicolumn{2}{c|}{$\psi^b$} & \multicolumn{2}{c|}{无$\psi$} \\
+		\cline{2-7}
+		& $L^\infty$ error & $L^2$ error & $L^\infty$ error & $L^2$ error & $L^\infty$ error & $L^2$ error\\
+		\hline
+		2 & 39.58 & 10.55 & 8.00 & 1.58 & 0.34 & 0.057\\
+		\hline
+		4 & 1.20E-2 & 3.09E-3  & 1.26E-4 & 1.51E-05 & 5.48E-08 & 1.11E-08\\
+		\hline
+		8 & 1.77E-05 & 4.50E-06  & 2.14E-07 & 3.68E-08 & 6.43E-10 & 1.04E-10\\
+		\hline
+		16 & 1.66E-08 & 4.75E-09  & 1.38E-09 & 2.22E-10 & 3.17E-13 & 1.46E-13\\
+		\hline
+		32 & 2.15E-09 & 8.69E-10  & 1.27E-10 & 2.64E-11 & 3.89E-14 & 1.31E-14\\
+		\hline
+	\end{tabular}
+\end{table}
+
+\subsection{改进的ST-RFM验证}
+我们使用一维扩散方程验证改进的ST-RFM，方程如下：
+\begin{equation}\label{equ:Diffusion}
+	\begin{cases}
+		\frac{\partial u}{\partial t} - \nu \frac{\partial^2 u}{\partial x^2} = f(x, t)  \quad (x, t) \in [0, 5] \times [0, 1] \\
+		u(0, t) = g_1(t) \quad t \in [0, 1] \\
+		u(5, t) = g_2(t) \quad t \in [0, 1] \\
+		u(x, 0) = h(x) \quad x \in [0, 5] 
+	\end{cases}
+\end{equation}
+
+我们取定真解为$u(x, t) = [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})]$，则$f(x,t), g_1(t), g_2(t), h(x)$可相应的计算出来：
+\begin{equation}
+	\begin{cases}
+		f(x, t) &= [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [-2\pi\sin(\pi t + \frac{\pi}{5}) -3\pi\sin(2\pi t - \frac{3\pi}{5}) ]\\
+		& +\nu [2\pi^2 \cos(\pi x + \frac{\pi}{5}) + 6\pi^2 \cos(2\pi x -\frac{3\pi}{5})] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})]\\
+		g_1(t) &= [2\cos\frac{\pi}{5} + \frac{3}{2}\cos\frac{3\pi}{5}] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})] \\
+		g_2(t) &= [-2\cos\frac{\pi}{5} + \frac{3}{2}\cos\frac{3\pi}{5}] [2\cos(\pi t + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi t - \frac{3\pi}{5})] \\
+		h(x) &= [2\cos(\pi x + \frac{\pi}{5}) + \frac{3}{2}\cos(2\pi x - \frac{3\pi}{5})] [2\cos \frac{\pi}{5} + \frac{3}{2}\cos \frac{3\pi}{5}] 
+	\end{cases}
+\end{equation}
+其中，扩散系数取$\nu=0.01$。
+
+对方程使用ST-RFM进行数值求解，超参数的设置如下：
+
+\begin{itemize}
+	\item 空间维度的划分数量为$N_x = 5$；
+	\item 时间维度的划分数量为$N_t = 2$；
+	\item 每个子区域的空间维度的配点数量为$Q_x = 30$；
+	\item 每个子区域的时间维度的配点数量为$Q_t = 30$；
+	\item 每个子区域的特征函数的数量依次取$J_n=50, 100, 150, 200, 250$；
+	\item 单位分解函数的策略分别为：$\psi^a$、$\psi^b$和无$\psi$；
+\end{itemize}
+
+所以每个子区域的配点数量为$Q_n = Q_x \times Q_t = 900$，求解结果见表格\ref{tab:Diffusion}。{\color{red} 见图，Jn为横坐标，损失为纵坐标画折线图}，可见无$\psi$的策略下收敛速度更快，在同等超参数的情况下相较于$\psi^a$和$\psi^b$，误差小几个数量级。
+
+通过数值算例可以看到，去除单位分解函数，确实大大提高了训练的收敛速度和收敛精度。{\color{red} 这里可以补充下训练时间，无psi的情况训练时间应该也是快一点的}
+
+\begin{table}
+	\centering
+	\caption{一维Diffusion方程三种单位分解策略的比较}
+	\label{tab:Diffusion}
+	\begin{tabular}{|c|c|c|c|c|c|c|}
+		\hline
+		\multirow{2}{*}{$J_n$} & \multicolumn{2}{c|}{$\psi^a$} & \multicolumn{2}{c|}{$\psi^b$} & \multicolumn{2}{c|}{无$\psi$} \\
+		\cline{2-7}
+		& $L^\infty$ error & $L^2$ error & $L^\infty$ error & $L^2$ error & $L^\infty$ error & $L^2$ error\\
+		\hline
+		50 & 6.60E-02 & 1.64E-02 & 7.82E-02 & 1.58E-02 & 2.37E-04 & 2.18E-05\\
+		\hline
+		100 & 5.70E-04 & 7.17E-05 & 4.83E-04 & 5.87E-05 & 1.26E-07 & 1.26E-08\\
+		\hline
+		150 &8.89E-06 & 9.73E-07 & 1.29E-05 & 1.77E-06 & 3.51E-09 & 2.78E-10\\
+		\hline
+		200 & 3.46E-07 & 3.93E-08 & 1.54E-06 & 2.03E-07 & 9.48E-10 & 8.54E-11\\
+		\hline
+		250 & 4.21E-08 & 6.46E-09 & 2.14E-07 & 2.97E-08 & 3.59E-10 & 6.41E-11\\
+		\hline
+	\end{tabular}
+\end{table}
+
+\subsection{使用改进的ST-RFM解数据同化问题}
+我们使用一维对流扩散方程做数据同化问题，原始方程如下：
 \begin{equation}\label{equ:ConvectionDiffusion}
 	\begin{cases}
 		\frac{\partial u}{\partial t} + v \frac{\partial u}{\partial x} - \nu \frac{\partial^2 u}{\partial x^2} +u = f(x, t)  \quad (x, t) \in [0, 5] \times [0, 1] \\
@@ -818,17 +908,68 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 
 我们取扩散系数$\nu=0.01$，对流速度$v=0.01$，真解$u(x, t) = e^{-t}\sin(\pi(x + t + x\cdot t))$，则$f(x,t), g_1(t), g_2(t), h(x)$可相应的计算出来。
 
-对方程使用改进的ST-RFM进行数值求解，超参数的设置如下：
+接下来我们使用高斯径向基函数生成一个值域为$[-0.1, 0.1]$的波函数，作为噪声添加到初值函数和边值函数。
+\begin{equation}
+	\begin{cases}
+		\frac{\partial u}{\partial t} + v \frac{\partial u}{\partial x} - \nu \frac{\partial^2 u}{\partial x^2} +u = f(x, t)  \quad (x, t) \in [0, 5] \times [0, 1] \\
+		u(0, t) = g_1(t) + RBF(x) \quad t \in [0, 1] \\
+		u(5, t) = g_2(t) + RBF(x) \quad t \in [0, 1] \\
+		u(x, 0) = h(x) + RBF(x) \quad x \in [0, 5] 
+	\end{cases}
+\end{equation}
+
+并使用改进的ST-RFM进行数值求解，超参数的设置如下：
 
 \begin{itemize}
 	\item 空间维度的划分数量为$N_x = 5$；
 	\item 时间维度的划分数量为$N_t = 2$；
 	\item 每个子区域的空间维度的配点数量为$Q_x = 10$；
 	\item 每个子区域的时间维度的配点数量为$Q_t = 10$；
-	\item 每个子区域的特征函数的数量为$J_n=150$；
+	\item 每个子区域的特征函数的数量依次取为$J_n=50, 100, 150, 200$；
 \end{itemize}
 
-所以每个子区域的配点数量为$Q_n = Q_x \times Q_t = 100$，求解结果见
+所以每个子区域的配点数量为$Q_n = Q_x \times Q_t = 100$，结果如图{\color{red} 这里给出真解和带噪声的数值解对比图}，见表格\ref{tab:convection-diffusion-noise}，可以看到误差基本稳定在固定的阶，最大范数误差的阶数是$10^{-1}$，二范数误差的阶数是$10^{-2}$。
+
+\begin{table}
+	\centering
+	\caption{一维对流扩散方程带噪声的误差情况}
+	\label{tab:convection-diffusion-noise}
+	\begin{tabular}{|c|c|c|}
+		\hline
+		$J_n$ & $L^\infty$ error & $L^2$ error \\
+		\hline
+		50 & 1.01E-01 & 2.89E-02 \\
+		\hline
+		100 & 2.10E-01 & 6.29E-02 \\
+		\hline
+		150 & 5.07E-01 & 7.85E-02 \\
+		\hline
+		200 & 2.89E-01 & 7.29E-02 \\
+		\hline
+	\end{tabular}
+\end{table}
+
+接下来，我们引入观测数据，观测点为$X = \{0.1, 0.2, 0.3, \cdots, 4.8, 4.9\}$，观测时间为$T = \{0.1, 0.2, 0.3, \cdots, 0.9, 1.0\}$，并使用原始方程的真解作为观测数据。此外，由于我们对观测数据是信任的，所以需要对损失函数公式\ref{equ:st-rfm-da-loss}里面的罚参数进行调整，调整的方法是通过设置公式\ref{equ:rfm-penalty-parameter}里面的缩放因子$c_i$。这里我们将观测配点和计算物理损失配点的缩放因子设置为$100$，将初值配点和边界配点的缩放因子设置为$10^{-5}$。其他的超参数保持不变。
+
+结果如图{\color{red}这里给出真解和带观测的数值解对比图}，见表格\ref{tab:convection-diffusion-da}，可以看到引入观测后，模型的输出和真解的误差大大减少，系统的演变向真实状态靠近。
+\begin{table}
+	\centering
+	\caption{一维对流扩散方程数据同化的误差情况}
+	\label{tab:convection-diffusion-da}
+	\begin{tabular}{|c|c|c|}
+		\hline
+		$J_n$ & $L^\infty$ error & $L^2$ error \\
+		\hline
+		50 & 1.34E-02 & 5.36E-04 \\
+		\hline
+		100 & 2.57E-04 & 6.63E-06 \\
+		\hline
+		150 & 1.41E-04& 3.57E-06 \\
+		\hline
+		200 & 8.57E-05 & 1.90E-06 \\
+		\hline
+	\end{tabular}
+\end{table}
 
 \bibliography{references}
 \end{document}
