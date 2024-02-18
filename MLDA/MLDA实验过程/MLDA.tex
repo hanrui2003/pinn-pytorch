@@ -11,6 +11,8 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 \usepackage{color}
 \usepackage{array}
 \usepackage{multirow}
+% 定义定理环境
+\newtheorem{theorem}{定理}
 \title{基于神经网络的数据同化研究}
 \author{MG21210021李庆春}
 %\date{2022.8.20}
@@ -63,7 +65,52 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 边界罚项中罚参数的调整容易
 
 \section{预备知识}
-\subsection{一维浅水方程及数值解法}
+\subsection{Lorenz63方程及龙格-库塔法}
+\subsubsection{Lorenz63方程基本概念}
+Lorenz63方程是由物理学家Edward Lorenz于1963年提出的一组非线性常微分方程，用于描述大气对流中的混沌现象。这组方程形成了混沌理论的基础之一。方程的表达式如下：
+\begin{equation}
+	\begin{cases}
+		\frac{dx}{dt} = \sigma(y -x) \\
+		\frac{dy}{dt} = x(\rho - z) - y \\
+		\frac{dz}{dt} = xy - \beta z
+	\end{cases}
+\end{equation}
+其中，$x, y, z$是状态变量，$t$是时间，而$\sigma, \rho, \beta$是控制参数。洛伦兹方程的三个具体方程描述了一个三维动力系统，通常用来模拟大气对流中的混沌行为。以下是这三个方程的具体含义：
+\begin{itemize}
+	\item 第一个方程描述了$x$的变化率。在这里$\rho$是控制参数，它代表了对流层中的水平温度梯度和垂直温度梯度之比的敏感性。这一项表示流体中的扩散效应，即$x$的变化受到$y$和$x$本身之间的差异的影响。
+	\item 第二个方程描述了$y$的变化率。在这里$\rho$是控制参数，它代表了流体对温度差异的响应。第一项$x(\rho - z)$描述了温度差异对$y$的影响，而第二项$-y$描述了$y$本身的耗散效应。
+	\item 第三个方程描述了$z$的变化率。在这里$\beta$是控制参数，它与流体中的垂直温度梯度有关。第一项$xy$表示$x$和$y$之间的相互作用，而第二项$- \beta z$描述了$z$本身的耗散效应。
+\end{itemize}
+
+Lorenz63系统显示出在特定参数值下的混沌行为，这意味着系统对初始条件极其敏感，微小的变化可能导致系统轨迹的巨大差异。这使得洛伦兹方程在混沌理论和动力系统研究中具有重要意义。
+
+\subsubsection{龙格-库塔法基本概念}
+龙格-库塔法（Runge-Kutta method）是一种数值积分方法，用于求解常微分方程（ODEs）的初值问题。这个方法基于一系列的数学步骤，通过逐步逼近解的值，允许我们在离散的时间步长上计算ODEs的数值解。它在求解这对于一些无法通过解析方法得到解的方程非常有用，例如洛伦兹方程。
+
+一般来说，最常见的Runge-Kutta方法是四阶（RK4）。这是因为它在数值稳定性、精度和计算效率之间取得了一种良好的平衡。RK4相对于更低阶的Runge-Kutta方法，如RK2，具有更高的精度，同时相对于更高阶的方法，如RK6或RK8，它的计算开销更小。
+
+令初值问题的表述如下：
+\begin{equation}
+	\begin{cases}
+		\frac{dy}{dt} = f(t, y) \\
+		y(t_0) = y_0
+	\end{cases}
+\end{equation}
+则对于该问题的RK4由如下方程给出：
+\begin{equation}
+	y_{n+1} = y_n + \frac{h}{6}(k_1 + 2k_2 + 3k_3 + k_4)
+\end{equation}
+其中
+\begin{equation}
+	\begin{cases}
+		k_1 = f(t_n, y_n) \\
+		k_2 = f(t_n + \frac{h}{2}, y_n +\frac{h}{2}k_1 ) \\
+		k_3 = f(t_n + \frac{h}{2}, y_n +\frac{h}{2}k_2 ) \\
+		k_4 = f(t_n + h, y_n +hk_3 )
+	\end{cases}
+\end{equation}
+
+\subsection{一维浅水方程及有限体积法}
 \subsubsection{一维浅水方程基本概念}
 浅水方程（shallow water equation, SWE）常用来描述一个水平广度远远大于深度的水体（例如湖泊，溪流，海岸）。浅水方程，顾名思义，它成立的一个重要假设就是水很“浅”，这个假设具体体现在它默认对于任意一个固定的 位置，在不同深度的上的所有水都有着同样的运动速度。换句话说，水的流速在竖直方向上是不变的。水“浅”假设的另外一个简化效果就是我们只需要考虑水体在水平方向的移动，而忽略水在竖直方向的运动。一维浅水波的方程如下：
 
@@ -119,13 +166,7 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 			M_i = \frac{1}{\Delta x} \int^{x_{i+1}}_{x_i} hvdx
 		\end{cases}
 	\end{equation}
-	\item 把$H_i, M_i$带入浅水方程的积分形式\ref{equ:swe-int-form}：
-	\begin{equation}
-		\begin{cases}
-			\frac{d}{dt} H_i \Delta x = h(x_i, t) v(x_i, t) -  h(x_{i+1}, t) v(x_{i+1}, t) \\
-			\frac{d}{dt} M_i \Delta x = h(x_i, t)v^2(x_i, t) - h(x_{i+1}, t)v^2(x_{i+1}, t) + \frac{gh^2(x_i, t)}{2} - \frac{gh^2(x_{i+1}, t)}{2}
-		\end{cases}
-	\end{equation}
+
 	\item 使用$H_i, M_i$近似$h(x, t)$和$v(x, t)$
 	\begin{itemize}
 		\item 对于任意的$x \in (x_i, x_{i+1})$，将$h(x, t)$和$v(x, t)$ 近似为：
@@ -138,14 +179,38 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 		\end{equation}
 		\item 在邻接点$\{x_i\}_1^{n-1}$上，我们可以通过对边界点左右两个区间的守恒量取平均值，对于FVM以及其他同类数值解函数存在不连续性的数值方法，这样给定两个相邻的控制体积上的函数解，求两个控制体积交界处的函数值的策略被称为数值通量（numerical flux）。这样简单取两个值的平均的通量被称为中央通量（central flux），不过它只是众多通量选择中的一种。在方程比较简单并且解函数比较平滑的时候，中央通量还是比较可靠的。但是对于SWE，中央通量是数值不稳定的（numerically unstable）。为了解决这一问题，这里我们采用Lax–Friedrichs通量。Lax-Friedrich通量很容易计算：分别取左边和右边两区间上的值计算通量，取二值的平均，再加上一修正参数，即系统中的波速乘以该守恒量在两个区间上的差再除以二。这一修正参数被称为数值消散（numerical dissipation）。
 		\begin{equation}
-			h(x_i, t) v(x_i, t) \approx \frac{M_{i-1} + M_i}{2} + wavespeed \cdot \frac{H_{i-1} - H_i}{2}
+			h(x_i, t) v(x_i, t) \approx \frac{M_{i-1} + M_i}{2} + c \cdot \frac{H_{i-1} - H_i}{2}
 		\end{equation}
-		其中，$wavespeed$可以通过计算通量向量对守恒向量的雅可比矩阵的特征值得到。在一些复杂的问题中，雅可比矩阵的计算可能较为繁琐，或者数值解法的收敛性可能受到影响。这时，工程师或研究人员可能会通过 "trial and error" 方法来选择一个合适的常数，使得模拟或计算的结果符合实际情况。
+		其中，$c$为波速，可以通过计算通量向量对守恒向量的雅可比矩阵的特征值得到。在一些复杂的问题中，雅可比矩阵的计算可能较为繁琐，或者数值解法的收敛性可能受到影响。这时，工程师或研究人员可能会通过 "trial and error" 方法来选择一个合适的常数，使得模拟或计算的结果符合实际情况。
 		具体来说，在计算波速时，可能会通过设定不同的波速值，运行模拟或数值计算，然后观察模拟结果，选择使结果与实际情况相符的波速。这样的过程可能需要多次迭代，即反复尝试不同的值，直到找到一个令人满意的解。
-		\item 对于边界点$x_0$和$x_n$，当我们使用反射墙边界条件时，我们可以人为地设置两个假想体积（ghost cell）。比如，我们可以认为在区间$[x_0,x_1]$的左边还有一个区间： $[x_{-1},x_0]$。并且$H_{-1} = H_0, M_{-1} = -M_0$。也就是说：我们认为在$[x_{-1},x_0]$上的水和$[x_0,x_1]$上的水有相同的高度但是相反的运动方向。形象一点来说的话，那就是我们可以认为$x_0$上有一面镜子，只不过这个“镜子”反射的不是光，而是动量。
+		\item 对于边界点$x_0$和$x_n$，当我们使用反射墙边界条件时，我们可以人为地设置两个假想体积（ghost cell）。比如，我们可以认为在区间$[x_0,x_1]$的左边还有一个区间： $[x_{-1},x_0]$。并且$H_{-1} = H_0, M_{-1} = -M_0$。也就是说：我们认为在$[x_{-1},x_0]$上的水和$[x_0,x_1]$上的水有相同的高度但是相反的运动方向。形象一点来说的话，那就是我们可以认为$x_0$上有一面镜子，只不过这个“镜子”反射的不是光，而是动量。区间$[x_{n-1}, x_n]$也采用同样的策略去处理。
 	\end{itemize}
+
+	\item 将上述结果带入浅水方程的积分形式\ref{equ:swe-int-form}进行替换：
+	\begin{equation}
+		\begin{cases}
+			\frac{d}{dt} H_i \Delta x = h(x_i, t) v(x_i, t) -  h(x_{i+1}, t) v(x_{i+1}, t) \\
+			\frac{d}{dt} M_i \Delta x = h(x_i, t)v^2(x_i, t) - h(x_{i+1}, t)v^2(x_{i+1}, t) + \frac{gh^2(x_i, t)}{2} - \frac{gh^2(x_{i+1}, t)}{2}
+		\end{cases}
+	\end{equation}
+	其中
+	\begin{equation}
+		\begin{cases}
+			h(x_i, t) v(x_i, t) = \frac{M_{i-1} + M_i}{2} + c \cdot \frac{H_{i-1} - H_i}{2} \\
+			h(x_i, t)v^2(x_i, t) + \frac{gh^2(x_i, t)}{2}  = \frac{\frac{M^2_{i-1}}{H_{i-1}} + \frac{M^2_{i}}{H_{i}}}{2} + \frac{gH^2_{i-1} + gH^2_i}{4} +c \cdot \frac{M_{i-1} - M_i}{2} 
+		\end{cases}
+	\end{equation}
+	其中c为波速，$H_{-1} = H_0, H_{n+1} = H_n,  M_{-1} = -M_0, M_{n+1} = -M_n$，所以由FVM得到的最终格式为：
+	\begin{equation}\label{equ:swe-fvm-form}
+		\begin{cases}
+			\frac{d}{dt} H_i(t) = \frac{1}{2\Delta x} [M_{i-1} - M_{i+1} + c \cdot (H_{i-1} -2H_i + H_{i+1})] \\
+			\frac{d}{dt} M_i(t) = \frac{1}{2\Delta x} [(\frac{M^2_{i-1}}{H_{i-1}} - \frac{M^2_{i+1}}{H_{i+1}}) + \frac{g}{2}(H^2_{i-1} - H^2_{i+1}) + c(M_{i-1}-2M_i+M_{i+1})]
+		\end{cases}
+	\end{equation}
 	
-	\item 损失函数中各项权重的重新缩放，以平衡各项对总损失的影响；
+	\item 使用四阶龙格库塔法（RK4）进行数值求解；
+	
+	由FVM得到的格式\ref{equ:swe-fvm-form}对应的是一个非线性方程组，因为$i \in \{1, 2, 3, \cdots, n\}$，所以方程的个数为$2n$。由于四阶龙格－库塔法（RK4）计算简单，精度较高，所以采用该方法求解。
 \end{enumerate}
 
 \subsection{RFM解偏微分方程}
@@ -568,6 +633,35 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 	
 	ST-RFM算法的其他部分诸如矩阵的构造、损失函数的罚参数缩放等，都与RFM高度相似，这里不做过多赘述。
 \end{enumerate}
+
+\subsection{PINN解偏微分方程}
+\subsection{通用逼近定理}
+通用逼近定理（Universal approximation theorem）有多个版本，最早的版本可以追溯到1989年，由George Cybenko在他的论文\cite{cybenko1989approximation}中提出。这里我们给出一个可变宽度的版本：
+\begin{theorem}
+	dddddd
+\end{theorem}
+
+
+
+\subsection{物理信息神将网络PINN}
+物理信息神经网络（Physics-Informed Neural Networks，PINN）是一种结合神经网络和物理方程的方法，用于求解偏微分方程（PDE）或其他物理问题。PINN的目标是通过神经网络学习系统的非线性行为，同时利用已知的物理方程来指导神经网络的训练，从而提高模型的准确性。
+
+以下是PINN的基本思想和特点：
+\begin{itemize}
+	\item 神经网络模型： PINN使用神经网络来建模未知的物理量，该神经网络通常称为“解网络”或“主网络”。这个网络可以是深度前馈神经网络（Feedforward Neural Network）或者是循环神经网络（Recurrent Neural Network），具体结构取决于问题的性质。
+	
+	\item 物理方程约束： PINN的关键创新在于将已知的物理方程嵌入到神经网络中。这通常通过在损失函数中引入物理方程项来实现。这样，模型在学习数据的同时，也被强制满足物理方程，从而提高模型的物理可解性。
+	
+	\item 初边值条件： 与传统的数值方法不同，PINN通常不需要显式地给定初边值条件。初边值条件被隐式地包含在训练数据中，模型通过学习过程中的损失函数来自动适应这些条件。
+	
+	\item 不需要大量数据： 由于使用物理方程作为先验知识，PINN在处理小样本问题时表现良好，这使得它适用于许多实际场景，尤其是在实验数据有限的情况下。
+	
+	\item 适用范围： PINN广泛应用于求解偏微分方程、反问题、流体动力学、结构力学等领域。由于其对物理方程的利用，PINN在少量数据或者数据噪声较大的情况下表现良好。
+	
+\end{itemize}
+总体而言，物理信息神经网络是一种将深度学习与已知物理方程相结合的方法，旨在提高模型的解释性和可靠性，特别适用于需要从有限数据中学习的物理问题。
+
+
 
 \section{理论基础or本文工作？}
 \subsection{基于ST-RFM的数据同化}
