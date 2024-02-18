@@ -634,16 +634,18 @@ Lorenz63系统显示出在特定参数值下的混沌行为，这意味着系统
 	ST-RFM算法的其他部分诸如矩阵的构造、损失函数的罚参数缩放等，都与RFM高度相似，这里不做过多赘述。
 \end{enumerate}
 
-\subsection{PINN解偏微分方程}
-\subsection{通用逼近定理}
-通用逼近定理（Universal approximation theorem）有多个版本，最早的版本可以追溯到1989年，由George Cybenko在他的论文\cite{cybenko1989approximation}中提出。这里我们给出一个可变宽度的版本：
+\subsection{PINN解偏微分方程}\label{sec:pinn-solve-pde}
+\subsubsection{通用逼近定理}
+通用逼近定理（Universal Approximation Theorem）有多个版本，最早的版本可以追溯到1989年，由George Cybenko在他的论文\cite{cybenko1989approximation}中提出。
 \begin{theorem}
-	dddddd
+	(Universal Approximation Theorem).对于任意连续函数$f: \mathbb{R}^n \rightarrow \mathbb{R}^m$和任意小的正数$\epsilon > 0$，存在一个具有单个隐层的前馈神经网络（MLP），该网络使用某种特定的非线性激活函数（如sigmoidal函数），使得该网络能够以任意精度逼近$f$。更具体地说，对于给定的输入$x$，存在一个神经网络输出$NN(x)$，满足$|f(x) - NN(x) |< \epsilon$。
 \end{theorem}
 
+随后的研究产生了许多关于通用逼近定理的扩展，其中一些关注的方面包括神经网络的深度、宽度、激活函数的选择等。一些扩展表达了更一般化的定理，包括多层神经网络、任意宽度的隐藏层等情况。这些扩展使得我们能够更深入地理解神经网络的表示能力。
 
+总体而言，通用逼近定理提供了理论支持，证明了神经网络在理论上具备以任意精度逼近连续函数的能力。然而，实际应用中，选择适当的网络结构、激活函数以及合理的训练方法等仍然是至关重要的。
 
-\subsection{物理信息神将网络PINN}
+\subsubsection{物理信息神经网络PINN}
 物理信息神经网络（Physics-Informed Neural Networks，PINN）是一种结合神经网络和物理方程的方法，用于求解偏微分方程（PDE）或其他物理问题。PINN的目标是通过神经网络学习系统的非线性行为，同时利用已知的物理方程来指导神经网络的训练，从而提高模型的准确性。
 
 以下是PINN的基本思想和特点：
@@ -661,7 +663,38 @@ Lorenz63系统显示出在特定参数值下的混沌行为，这意味着系统
 \end{itemize}
 总体而言，物理信息神经网络是一种将深度学习与已知物理方程相结合的方法，旨在提高模型的解释性和可靠性，特别适用于需要从有限数据中学习的物理问题。
 
+\subsection{DeepONet解参数化的偏微分方程}
+由\ref{sec:pinn-solve-pde}节，我们知道对于任意一个给定的偏微分方程，可以使用一个神经网络去逼近。这当然是一件很棒的事情，但是如果该偏微分方程的某些参数（如初值函数、边值函数、源项等）发生变化，那么我们将不得不重新训练神经网络，重新拟合满足新的条件参数的偏微分方程，而神经网络的训练是一件比较耗时的事情。
 
+PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微分方程，我们需要的是一个算子网络，能够将偏微分方程的参数作为网络输入，输出该参数对应的真解。
+
+\subsubsection{算子通用逼近定理}
+文献\cite{chen1993approximations,chen1995approximation1,chen1995approximation2,mhaskar1997neural,rossi2005functional}陈述了这样一个事实，对于任意一个非线性的连续泛函或者算子，存在一个具有单个隐层的神经网络去逼近它。文献\cite{chen1995approximation2}介绍了算子通用逼近定理。
+
+\begin{theorem}
+	(Universal Approximation Theorem for Operator).假设$\sigma$是连续非多项式函数，$X$是巴拿赫空间，$K_1 \subset X, K_2 \subset \mathbb{R}^d$分别为$X$和$\mathbb{R}^d$上的紧集，$V$是$C(K_1)$上的紧集，$G$是将$V$映射到$C(K_2)$的非线性连续算子。则对于$\forall \epsilon > 0$，存在正整数$n, p, m$以及常数$c_i^k,W_{bij}^k,b_{bij}^k,b_{tk} \in \mathbb{R}, W_{tk} \in \mathbb{R}^d, x_j \in K_1, i = 1, 2, \cdots, n, k=1, 2, \cdots, p, j=1,2, \cdots, m$，使得对于$\forall u \in V, y \in K_2$，成立：
+	\begin{equation}
+		\left|G(u)(y)-\sum_{k=1}^{p} \underset{Branch}{\underbrace{ \sum_{i=1}^{n}c_i^k\sigma\left(\sum_{j=1}^{m}W_{bij}^{k}u(x_j)+b_{bi}^k\right)}}. \underset{Trunk}{\underbrace{\sigma(W_{tk}.y+b_{tk})}}\right|<\epsilon
+	\end{equation}
+\end{theorem}
+
+算子通用逼近定理提供了理论支持，证明了神经网络在理论上具备以任意精度逼近连续泛函和算子的能力。实际应用中，选择适当的网络结构、激活函数以及合理的训练方法等仍然是至关重要的。
+
+\subsubsection{深度算子网络}
+深度算子网络（Deep Operator Network, DeepONet）是基于算子通用逼近定理衍生出来的一种神经网络架构，旨在为为求解参数化的偏微分方程提供更通用的方案。
+
+如果我们的偏微分方程里面有参数（比如初值函数、边值函数、源项等），这里统一用u(x)表示，我们是允许它变化的。这个时候，每个u对应一个真解s；参数化的PDE可写成如下形式：
+\begin{equation}
+	\mathcal{N}(u,s)=0
+\end{equation}
+PDE的解算子写成（此时，我们可以把PDE的一般解表示为算子G）：
+\begin{equation}
+	G(u)=s
+\end{equation}
+此时，u，s均为函数，并且满足：
+\begin{equation}
+	G(u)(y)=s(y) \in \mathbf{R}
+\end{equation}
 
 \section{理论基础or本文工作？}
 \subsection{基于ST-RFM的数据同化}
