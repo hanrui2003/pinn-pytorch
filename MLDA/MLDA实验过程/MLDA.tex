@@ -671,10 +671,10 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 \subsubsection{算子通用逼近定理}
 文献\cite{chen1993approximations,chen1995approximation1,chen1995approximation2,mhaskar1997neural,rossi2005functional}陈述了这样一个事实，对于任意一个非线性的连续泛函或者算子，存在一个具有单个隐层的神经网络去逼近它。文献\cite{chen1995approximation2}介绍了算子通用逼近定理。
 
-\begin{theorem}
+\begin{theorem}\label{thm:Universal Approximation Theorem for Operator}
 	(Universal Approximation Theorem for Operator).假设$\sigma$是连续非多项式函数，$X$是巴拿赫空间，$K_1 \subset X, K_2 \subset \mathbb{R}^d$分别为$X$和$\mathbb{R}^d$上的紧集，$V$是$C(K_1)$上的紧集，$G$是将$V$映射到$C(K_2)$的非线性连续算子。则对于$\forall \epsilon > 0$，存在正整数$n, p, m$以及常数$c_i^k,W_{bij}^k,b_{bij}^k,b_{tk} \in \mathbb{R}, W_{tk} \in \mathbb{R}^d, x_j \in K_1, i = 1, 2, \cdots, n, k=1, 2, \cdots, p, j=1,2, \cdots, m$，使得对于$\forall u \in V, y \in K_2$，成立：
 	\begin{equation}
-		\left|G(u)(y)-\sum_{k=1}^{p} \underset{Branch}{\underbrace{ \sum_{i=1}^{n}c_i^k\sigma\left(\sum_{j=1}^{m}W_{bij}^{k}u(x_j)+b_{bi}^k\right)}}. \underset{Trunk}{\underbrace{\sigma(W_{tk}.y+b_{tk})}}\right|<\epsilon
+		\left|G(u)(y)-\sum_{k=1}^{p} \underset{Branch}{\underbrace{ \sum_{i=1}^{n}c_i^k\sigma\left(\sum_{j=1}^{m}W_{bij}^{k}u(x_j)+b_{bi}^k\right)}}\cdot \underset{Trunk}{\underbrace{\sigma(W_{tk}\cdot y+b_{tk})}}\right|<\epsilon
 	\end{equation}
 \end{theorem}
 
@@ -682,6 +682,27 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 
 \subsubsection{深度算子网络}
 深度算子网络（Deep Operator Network, DeepONet）是基于算子通用逼近定理衍生出来的一种神经网络架构，旨在为为求解参数化的偏微分方程提供更通用的方案。
+
+我们知道深度神经网络的一般形式为：
+\begin{equation}
+	NN(X)=W_n\sigma_{n-1}(W_{n-1}\sigma_{n-2}(...(W_2\sigma_1(W_1X+b_1)+b_2)+..)+b_{n-1})+b_n
+\end{equation}
+
+再观察定理\ref{thm:Universal Approximation Theorem for Operator}中的公式可以发现
+\begin{equation}
+	\sum_{k=1}^{p} \sum_{i=1}^{n}c_i^k\sigma\left(\sum_{j=1}^{m}W_{bij}^{k}u(x_j)+b_{bi}^k\right) \cdot \sigma(W_{tk}\cdot y+b_{tk})
+\end{equation}
+这部分和神经网络的表达式很类似，但有一些区别。我们需要分开来看：
+\begin{itemize}
+	\item $\sigma(W_{tk}\cdot y+b_{tk})$
+	
+	这是一个两层神经网络，输入$y$为偏微分方程的配点，输出一个$p$维向量，我们称这个网络为主干网络。
+	
+	\item $\sum_{i=1}^{n}c_i^k\sigma\left(\sum_{j=1}^{m}W_{bij}^{k}u(x_j)+b_{bi}^k\right) $
+	
+	这是一个三层神经网络，网络的输入是偏微分的参数$u(x)$，因为$u(x)$是一个函数，所以要取其离散格式$u(x_j),j=1, 2, \cdots, m$作为输入。我们称这个网络为分支网络。
+\end{itemize}
+所以，算子网络是由$p$个分支网络和1个主干网络构成，最后通过一个内积操作将二者的输出结果融合，即把所有分支网络的输出合并为一个$p$维向量，与主干网络的输出向量做内积。由此我们得到算子网络的架构，{\color{red} 见图}
 
 如果我们的偏微分方程里面有参数（比如初值函数、边值函数、源项等），这里统一用u(x)表示，我们是允许它变化的。这个时候，每个u对应一个真解s；参数化的PDE可写成如下形式：
 \begin{equation}
