@@ -588,7 +588,7 @@ Lorenz63系统显示出在特定参数值下的混沌行为，这意味着系统
 
 其中，$max(A_i, -A_i)$表示矩阵第$i$行的最大值，$c_i$表示要缩放到的数量级，在没有先验知识的情况下设置为统一常数即可，如100。
 
-\subsubsection{时空随机特征方法}
+\subsubsection{时空随机特征方法}\label{sec:st-rfm}
 考虑如下时空偏微分方程：
 \begin{equation}
 	\begin{cases}
@@ -614,13 +614,13 @@ Lorenz63系统显示出在特定参数值下的混沌行为，这意味着系统
 	
 	\item 将空间随机特征函数推广到时空随机特征函数，这里有两种思路：
 	\subitem 时空拼接(concatenation of spatial and temporal, STC)，这种思路是空间随机特征函数的自然推广，相当于把空间变量$\boldsymbol{x}$和时间变量$t$拼接到一起，成为一个$d_x+1$维的输入变量。
-	\begin{equation}
+	\begin{equation}\label{equ:st-rfm-stc}
 		\phi_{n_x,n_t,j}(\boldsymbol{x}, t) = \sigma(\boldsymbol{k}_{n_x,n_t,j} l_{n_x, n_t}(\boldsymbol{x}, t) + b_{n_x,n_t,j})
 	\end{equation}
 	其中，$\boldsymbol{k}_{n_x,n_t,j}$是时空输入的权重矩阵，$b_{n_x,n_t,j}$是偏置，$ l_{n_x, n_t}(\boldsymbol{x}, t)$是线性変换，其作用是把$(\boldsymbol{x}, t) \in \Omega_{n_x} \times [t_{n_t-1}, t_{n_t}]$映射到$[-1, 1]^{d_x+1}$。
 	
 	\subitem 变量分离(separation of variables, SoV)，为了模拟偏微分方程数值解法的一类经典方法：变量分离技术，把空间输入和时间输入对应到不同的随机特征函数，然后对结果做乘积：
-	\begin{equation}
+	\begin{equation}\label{equ:st-rfm-sov}
 		\phi_{n_x,n_t,j}(\boldsymbol{x}, t) = \sigma(\boldsymbol{k}^x_{n_x,n_t,j} l_{n_x}(\boldsymbol{x}) + b^x_{n_x,n_t,j}) \cdot \sigma(k^t_{n_x,n_t,j} l_{n_t}(t) + b^t_{n_x,n_t,j})
 	\end{equation}
 	
@@ -1074,7 +1074,11 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 
 但是仔细观察，算子网络还存在一个缺陷，就是主干网络和分支网络是两个独立的网络。这就会带来训练效率的问题，因为当一组训练数据分别输入主干网络和分支网络的时候，它们各自进行前向计算，当某一个网络计算完成后，必须等待另一个网络计算完成，才能进行后续的聚合计算。这显然不符合神经网络并行计算的设计初衷，所以我们对这一块进行修改。
 
+在章节\ref{sec:st-rfm}中，我们介绍了两种神经网络架构：公式\ref{equ:st-rfm-stc}代表的STC架构和公式\ref{equ:st-rfm-sov}代表的SoV架构，这两种网络架构在理论上和数值算例上被证明是等效的。恰好，我们改进后的算子网络与SoV架构相同，那么很自然的可以对算子网络进一步改进，切换为STC架构。这种改动，把我们复杂的算子网络架构退化为普通的全连接神经网络。
 
+这样一来，就避免了多个子网络之间在训练过程中的阻塞等待问题。算子网络架构由最初的算子通用逼近定理对应的堆叠式架构，到非堆叠式架构，再到类SoV架构，最后到类STC架构，即最朴素的全连接网络。虽然结构变简单了，但是表现力却变得丰富了，训练速度也提升了，真是让人不禁感慨：大道至简。
+
+此时的训练算法也和PINN高度相似，唯一的区别就是训练数据集的构造不一样。
 
 \subsubsection{使用改进的DeepONet做数据同化}
 
