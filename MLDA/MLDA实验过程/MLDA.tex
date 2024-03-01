@@ -663,7 +663,7 @@ Lorenz63系统显示出在特定参数值下的混沌行为，这意味着系统
 \end{itemize}
 总体而言，物理信息神经网络是一种将深度学习与已知物理方程相结合的方法，旨在提高模型的解释性和可靠性，特别适用于需要从有限数据中学习的物理问题。
 
-\subsection{深度算子网络解参数化的偏微分方程}
+\subsection{深度算子网络解参数化的偏微分方程}\label{sec:deeponet-solve-pde}
 由\ref{sec:pinn-solve-pde}节，我们知道对于任意一个给定的偏微分方程，可以使用一个神经网络去逼近。这当然是一件很棒的事情，但是如果该偏微分方程的某些参数（如初值函数、边值函数、源项等）发生变化，那么我们将不得不重新训练神经网络，重新拟合满足新的条件参数的偏微分方程，而神经网络的训练是一件比较耗时的事情。
 
 PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微分方程，我们需要的是一个算子网络，能够将偏微分方程的参数作为网络输入，输出该参数对应的真解。
@@ -734,24 +734,105 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 	\item 数据项损失
 	
 	对于初值条件和边值条件等带标签的训练数据，这些数据配点都有对应的函数值，它们的损失为：
-	\begin{equation}
-		\mathcal{L}_{Data}(\theta)=\frac{1}{NP}\sum_{i=1}^N\sum_{j=1}^P\left\| G_{\theta}(u^{(i)})y_j-G(u^{(i)})y_j \right\|^2
+	\begin{equation}\label{equ:deeponet-data-loss}
+		\mathcal{L}_{Data}(\theta)=\frac{1}{NM}\sum_{i=1}^N\sum_{j=1}^M\left\| G_{\theta}(u^{(i)})y_j-G(u^{(i)})y_j \right\|^2
 	\end{equation}
-	其中，$N$表示偏微分方程参数的训练集元素个数，比如偏微分方程的参数是初值函数，那么我们需要准备一组不同的初值函数进行训练；$P$表示数据配点训练集元素的个数。
+	其中，$N$表示偏微分方程参数的训练集元素个数，比如偏微分方程的参数是初值函数，那么我们需要准备一组不同的初值函数进行训练；$M$表示数据配点训练集元素的个数。
+	这里需要注意的是$u^{(i)}$表示第$i$个训练参数，它是一个函数，但是神经网络无法直接输入一个函数，所以这里输入的是$u^{(i)}$的离散化格式，即一个$m$维的向量
+	\begin{equation}
+		u^{(i)} = [u^{(i)}(x_1), u^{(i)}(x_2), u^{(i)}(x_3), \cdots,  u^{(i)}(x_m)]
+	\end{equation}
+	其中，$x_1, x_2, x_3, \cdots, x_m$是函数$u(x)$定义域上的离散点，一般取等分点即可。
 	
 	\item 物理项损失
 	
 	类似于 PINN，物理信息算子网络通过最小化潜在的控制规律（即非线性微分算子）的残差来输出符合物理约束的函数。
-	\begin{equation}
-		\mathcal{L}_{Physics}(\theta)=\frac{1}{NQ}\sum_{i=1}^{N}\sum_{j=1}^{Q}\left\|\mathcal{N}(u^{(i)},G_{\theta}(u^{(i)})(y_j))\right\|^2
+	\begin{equation}\label{equ:deeponet-physics-loss}
+		\mathcal{L}_{Physics}(\theta)=\frac{1}{NK}\sum_{i=1}^{N}\sum_{j=1}^{K}\left\|\mathcal{N}(u^{(i)},G_{\theta}(u^{(i)})(y_j))\right\|^2
 	\end{equation}
-	其中，$N$表示偏微分方程参数的训练集元素个数；$Q$表示物理配点训练集元素的个数。
+	其中，$N$表示偏微分方程参数的训练集元素个数；$K$表示物理配点训练集元素的个数。
 \end{itemize}
 所以，最终的损失函数为：
-\begin{equation}
+\begin{equation}\label{equ:deeponet-total-loss}
 	\mathcal{L}(\theta)=\lambda_1 \mathcal{L}_{Data}(\theta) + \lambda_2 \mathcal{L}_{Physics}(\theta)
 \end{equation}
 其中，$\lambda_1$和$\lambda_1 $是两种损失各占的权重。
+
+\subsubsection{训练算法}
+\begin{enumerate}
+	\item 构造分支网络的训练数据集
+	\begin{enumerate}
+		\item 使用高斯径向基函数随机生成N个函数，以此作为偏微分方程的参数。这里的参数，可能是初值函数、边值函数或者源项等。
+		\begin{equation}
+			\{u^{(i)}(\mathbf{x})\}_{i=1}^{N}=\{u^{(1)}(\mathbf{x}), u^{(2)}(\mathbf{x}), u^{(2)}(\mathbf{x}), \cdots, u^{(N)}(\mathbf{x})\}
+		\end{equation}
+		\item 对每个参数离散化
+		
+		对定义域等分，得到离散点$x_1, x_2, x_3, \cdots, x_m$，每个参数取这些点上的函数值构成向量，作为分支网络的实际输入。记为：
+		\begin{equation}
+			B = 
+			\begin{bmatrix}
+				u_1^{(1)} & u_2^{(1)} & \cdots & u_m^{(1)} \\
+				u_1^{(2)} & u_2^{(2)} & \cdots & u_m^{(2)} \\
+				\vdots & \vdots & \ddots & \vdots \\
+				u_1^{(N)} & u_2^{(N)} & \cdots & u_m^{(N)}
+			\end{bmatrix}
+		\end{equation}
+	\end{enumerate}
+
+	\item 构造主干网络的训练数据集
+	\begin{enumerate}
+		\item 数据配点采样\\
+		对于初值条件和边值条件等带标签的训练数据，我们一般对定义域进行等间距采样，获取$M$个数据点作为主干网络的输入，并把数据配点对应的函数值作为网络训练的目标值。
+		\begin{equation}
+			T_D = \{y_{D1}, y_{D2}, y_{D3}, \cdots, y_{DM}\}
+		\end{equation}
+	
+		\item 物理配点采样\\
+		对偏微分方程的整个定义域，使用拉丁超立方采样，选取$K$个物理配点。由于物理配点是不带目标值的，所以理论上可以采样任意多的点，采取的点越多，训练拟合的效果会更精细，但是这也会增加训练的复杂度，所以这里需要权衡。
+		\begin{equation}
+			T_P = \{y_{P1}, y_{P2}, y_{P3}, \cdots, y_{PK}\}
+		\end{equation}
+	\end{enumerate}
+
+	\item 整合训练数据集\\
+	由于数据配点和物理配点计算损失的方式不一样，所以要分开处理。
+	
+	将分支网络训练数据集和主干网络的数据配点集做笛卡尔积，得到最终的数据训练集：
+	\begin{equation}
+		S_D = B \times T_D
+	\end{equation}
+
+	将分支网络训练数据集和主干网络的物理配点集做笛卡尔积，得到最终的物理训练集：
+	\begin{equation}
+		S_P = B \times T_P
+	\end{equation}
+
+	\item 构造算子网络
+	\begin{enumerate}
+		\item 构造分支网络\\
+		分支网络分为堆叠式和非堆叠式的，二者效力等同。但非堆叠式的架构简单，易于编码和训练，所以一般情况下分支网络采用非堆叠式的网络架构，即一个全连接深度神经网络。这个网络的输入维度是偏微分方程参数的离散点数。输出维度是任意的，只需和主干网络的输入维度保持一致即可。
+		
+		\item 构造主干网络\\
+		主干网络也是一个全连接深度神经网络，输入维度是偏微分方程的时空域维度之和，即空间维度加一。输出维度是任意的，只需和分支网络的输入维度保持一致即可。
+		
+		\item 构造聚合网络\\
+		由于分支网络和主干网络的输出维度相同，所以可以构造一个单层网络，以主干网络和分支网络的输出为输入，对两个向量进行内积操作，得到一维标量的最终输出。
+	\end{enumerate}
+	
+	\item 训练算子网络
+	\begin{enumerate}
+		\item 前向传播\\
+		将数据训练集和物理训练集分别喂入网络进行前向运算，并根据公式\ref{equ:deeponet-data-loss}和公式\ref{equ:deeponet-physics-loss}计算数据项损失和物理项损失；再根据公式\ref{equ:deeponet-total-loss}计算总的损失。
+		
+		\item 反向传播\\
+		将网络的损失反向传播，计算梯度。
+		
+		\item 更新网络参数\\
+		根据梯度及学习率，优化网络参数，一般采用Adam优化器即可。
+	\end{enumerate}
+	上述几个步骤是神经网络训练的一般范式，实际训练过程中，根据具体情况，设置合适的超参数，如：输出维度、网络的宽度和深度、学习率退火策略等。不断重复这几个步骤，直至损失达到目标阈值则停止。
+\end{enumerate}
 
 \section{理论基础or本文工作？}
 \subsection{基于ST-RFM的数据同化}
@@ -772,7 +853,7 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 	\end{aligned}
 \end{equation}
 
-\subsection{使用改进的ST-RFM做数据同化}
+\subsubsection{使用改进的ST-RFM做数据同化}
 由于改进后的ST-RFM具有更快的收敛速度和收敛阶，所以我们基于改进的ST-RFM做数据同化。
 
 考虑如下数据同化问题：
@@ -965,6 +1046,37 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 	其中，$\lambda_{i}, \lambda_{j}, \lambda_{k}, \lambda_{l}$是罚参数，由公式\ref{equ:rfm-penalty-parameter}，我们知道罚参数为$\lambda_i = \frac{c_i}{max(A_i, -A_i)}$，其中$c_i$是关键的缩放因子，当没有具体的先验知识的情况下，取常数即可。但是对于数据同化问题，一般而言观测数据更为可信，所以一般会把观测损失项的罚参数的缩放因子设置的大一些，以增加观测数据的影响权重。
 
 \end{enumerate}
+
+\subsection{基于DeepONet的数据同化}
+由章节\ref{sec:deeponet-solve-pde}可以知道，深度算子网络（DeepONet）可以作为参数化的偏微分方程的解算子。但是该方法只适用于单个偏微分方程，不适用于偏微分方程组的情况，对此我们进行扩展和改进，并基于改进的算子网络做数据同化问题。
+\subsubsection{DeepONet的改进}
+观察章节\ref{sec:deeponet-solve-pde}描述的算子网络架构，我们可以发现其主要分为三个部分：主干网络、分支网络和聚合网络。主干网络和分支网络的输出维度是任意的，因而它们的表现力是丰富的。但是聚合网络进行了降维操作，通过内积操作把目标结果降到了一维，所以我们对聚合网络进行改造。
+
+假设主干网络和分支网络分别输出两个$p$维的向量：$\mathbf{a}  = (a_1, a_2, a_3, \cdots, a_p)^T$和$\mathbf{b}  = (b_1, b_2, b_3, \cdots, b_p)^T$，我们将内积操作进行拆解：
+\begin{enumerate}
+	\item 逐元素相乘
+	\begin{equation}
+		\mathbf{c}  = (a_1 \times b_1, a_2\times b_2, a_3\times b_3, \cdots, a_p\times b_p)^T
+	\end{equation}
+	
+	\item 元素聚合（求和）
+	\begin{equation}\label{equ:deeponet-old-merge-network-sum}
+		Output = \sum_{i=1}^{p} c_i
+	\end{equation}
+\end{enumerate}
+可以看到内积的降维操作主要在第二步，所以我们把第二步去掉，在第一步的后面拼接一个单层的全连接网络，将第一步的输出向量作为网络的输入，而输出维度等于我们偏微分方程的个数，假设为$d$。
+\begin{equation}\label{equ:deeponet-merge-network}
+	\mathbf{Output} = \mathbf{W \cdot c + b}
+\end{equation}
+这个改动是向下兼容的，因为当偏微分方程的个数是$1$的时候，只需把修改后的聚合网络\ref{equ:deeponet-merge-network}的权重设置为$1$，偏置设置为$0$，即可退化为公式\ref{equ:deeponet-old-merge-network-sum}。也就是说，改进前的算子网络架构是改进后的架构的一种特殊情况。{\color{red} 新的网络架构如图}
+
+改进后的算子网络表现能力变得丰富，不仅可以作为单个偏微分方程的解算子，还可以作为偏微分方程组的解算子，这一点也通过数值算例得到了验证。 
+
+但是仔细观察，算子网络还存在一个缺陷，就是主干网络和分支网络是两个独立的网络。这就会带来训练效率的问题，因为当一组训练数据分别输入主干网络和分支网络的时候，它们各自进行前向计算，当某一个网络计算完成后，必须等待另一个网络计算完成，才能进行后续的聚合计算。这显然不符合神经网络并行计算的设计初衷，所以我们对这一块进行修改。
+
+
+
+\subsubsection{使用改进的DeepONet做数据同化}
 
 \section{数值实验}
 \subsection{改进的RFM验证}
