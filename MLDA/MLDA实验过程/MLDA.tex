@@ -866,7 +866,7 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 	\end{cases}
 \end{equation}
 
-其中，$\Omega$是空间域，$[0, T]$是时间域，$\mathcal{L}$是线性微分算子，$\mathcal{B}$是边界算子，$\mathcal{I}$是初值算子，这三者构成动力系统。$\mathcal{H}$是观测算子，一般在空间的某些固定位置，进行连续或间断观测。接下来，本文基于随机特征方法，解决这一类数据同化问题。步骤如下：
+其中，$\Omega$是空间域，$[0, T]$是时间域，$\mathcal{L}$是线性微分算子，$\mathcal{B}$是边界算子，$\mathcal{I}$是初值算子，这三者构成动力系统。$\mathcal{H}$是观测算子，一般在空间的某些固定位置，进行连续或间断观测。接下来基于改进的随机特征方法，解决这一类数据同化问题。步骤如下：
 
 \begin{enumerate}
 	\item 求解区域离散化
@@ -1049,7 +1049,7 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 
 \subsection{基于DeepONet的数据同化}
 由章节\ref{sec:deeponet-solve-pde}可以知道，深度算子网络（DeepONet）可以作为参数化的偏微分方程的解算子。但是该方法只适用于单个偏微分方程，不适用于偏微分方程组的情况，对此我们进行扩展和改进，并基于改进的算子网络做数据同化问题。
-\subsubsection{DeepONet的改进}
+\subsubsection{DeepONet的改进}\label{sec:deeponet-modify}
 观察章节\ref{sec:deeponet-solve-pde}描述的算子网络架构，我们可以发现其主要分为三个部分：主干网络、分支网络和聚合网络。主干网络和分支网络的输出维度是任意的，因而它们的表现力是丰富的。但是聚合网络进行了降维操作，通过内积操作把目标结果降到了一维，所以我们对聚合网络进行改造。
 
 假设主干网络和分支网络分别输出两个$p$维的向量：$\mathbf{a}  = (a_1, a_2, a_3, \cdots, a_p)^T$和$\mathbf{b}  = (b_1, b_2, b_3, \cdots, b_p)^T$，我们将内积操作进行拆解：
@@ -1078,9 +1078,101 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 
 这样一来，就避免了多个子网络之间在训练过程中的阻塞等待问题。算子网络架构由最初的算子通用逼近定理对应的堆叠式架构，到非堆叠式架构，再到类SoV架构，最后到类STC架构，即最朴素的全连接网络。虽然结构变简单了，但是表现力却变得丰富了，训练速度也提升了，真是让人不禁感慨：大道至简。
 
-此时的训练算法也和PINN高度相似，唯一的区别就是训练数据集的构造不一样。
+此时的训练算法也和PINN高度相似，唯一的区别就是训练数据集的构造不一样。PINN的输入只包括偏微分方程定义域上的数据配点和物理配点，而DeepONet的输入不仅包括数据配点和物理配点的信息，还需要涵盖偏微分方程的参数信息。简单来说，就是把参数训练集和配点训练集做笛卡尔积，得到最终的训练集。{\color{red} 最终简化的算子网络架构如图}
 
 \subsubsection{使用改进的DeepONet做数据同化}
+由章节\ref{sec:deeponet-solve-pde}可知，深度算子神经网络可以作为参数化偏微分方程的解算子，这里的参数包含一切可以影响偏微分方程解的元素，比如初值条件、边值条件、源项等。
+
+在数据同化领域，动力系统往往由描述物理定律的偏微分方程表示。动力系统随着时间演变，其真实状态往往需要依靠观测数据进行推演，即不同的观测数据对应着不同的系统状态，对应着不同的偏微分方程的解。所以可以把观测数据作为偏微分方程的参数，使用算子神经网络作为数据同化问题的解算子。
+
+由章节\ref{sec:deeponet-modify}可知，改进后的算子网络具有更简单的网络架构和更快的训练速度，所以我们基于改进的算子网络做数据同化。
+
+考虑如下数据同化问题：
+\begin{equation}
+	\begin{cases}
+		\mathcal{L}u(\boldsymbol{x}, t) = f(\boldsymbol{x}, t)  \quad \boldsymbol{x},t  \in \Omega \times [0, T] \\
+		\mathcal{B}u(\boldsymbol{x},t) = g(\boldsymbol{x},t)  \quad \boldsymbol{x},t \in \Omega \times [0,T]\\
+		\mathcal{I}u(\boldsymbol{x},0) = s(\boldsymbol{x})  \qquad \boldsymbol{x} \in \Omega\\
+		\mathcal{H}u(\boldsymbol{x},t) = h(\boldsymbol{x},t)  \quad \boldsymbol{x},t \in \Omega \times [0,T]\\
+	\end{cases}
+\end{equation}
+
+其中，$\Omega$是空间域，$[0, T]$是时间域，$\mathcal{L}$是非线性微分算子，$\mathcal{B}$是边界算子，$\mathcal{I}$是初值算子，这三者构成动力系统。$\mathcal{H}$是观测算子，一般在空间的某些固定位置，进行连续或间断观测。接下来基于简化的算子网络，解决这一类数据同化问题。算法如下：
+
+\begin{enumerate}
+	\item 构造网络的训练数据集
+	\begin{enumerate}
+		\item 使用高斯径向基函数随机生成N个函数，以此作为偏微分方程的参数。这里的参数，可能是初值函数、边值函数或者源项等。
+		\begin{equation}
+			\{u^{(i)}(\mathbf{x})\}_{i=1}^{N}=\{u^{(1)}(\mathbf{x}), u^{(2)}(\mathbf{x}), u^{(2)}(\mathbf{x}), \cdots, u^{(N)}(\mathbf{x})\}
+		\end{equation}
+		\item 对每个参数离散化
+		
+		对定义域等分，得到离散点$x_1, x_2, x_3, \cdots, x_m$，每个参数取这些点上的函数值构成向量，作为分支网络的实际输入。记为：
+		\begin{equation}
+			B = 
+			\begin{bmatrix}
+				u_1^{(1)} & u_2^{(1)} & \cdots & u_m^{(1)} \\
+				u_1^{(2)} & u_2^{(2)} & \cdots & u_m^{(2)} \\
+				\vdots & \vdots & \ddots & \vdots \\
+				u_1^{(N)} & u_2^{(N)} & \cdots & u_m^{(N)}
+			\end{bmatrix}
+		\end{equation}
+	\end{enumerate}
+	
+	\item 构造主干网络的训练数据集
+	\begin{enumerate}
+		\item 数据配点采样\\
+		对于初值条件和边值条件等带标签的训练数据，我们一般对定义域进行等间距采样，获取$M$个数据点作为主干网络的输入，并把数据配点对应的函数值作为网络训练的目标值。
+		\begin{equation}
+			T_D = \{y_{D1}, y_{D2}, y_{D3}, \cdots, y_{DM}\}
+		\end{equation}
+		
+		\item 物理配点采样\\
+		对偏微分方程的整个定义域，使用拉丁超立方采样，选取$K$个物理配点。由于物理配点是不带目标值的，所以理论上可以采样任意多的点，采取的点越多，训练拟合的效果会更精细，但是这也会增加训练的复杂度，所以这里需要权衡。
+		\begin{equation}
+			T_P = \{y_{P1}, y_{P2}, y_{P3}, \cdots, y_{PK}\}
+		\end{equation}
+	\end{enumerate}
+	
+	\item 整合训练数据集\\
+	由于数据配点和物理配点计算损失的方式不一样，所以要分开处理。
+	
+	将分支网络训练数据集和主干网络的数据配点集做笛卡尔积，得到最终的数据训练集：
+	\begin{equation}
+		S_D = B \times T_D
+	\end{equation}
+	
+	将分支网络训练数据集和主干网络的物理配点集做笛卡尔积，得到最终的物理训练集：
+	\begin{equation}
+		S_P = B \times T_P
+	\end{equation}
+	
+	\item 构造算子网络
+	\begin{enumerate}
+		\item 构造分支网络\\
+		分支网络分为堆叠式和非堆叠式的，二者效力等同。但非堆叠式的架构简单，易于编码和训练，所以一般情况下分支网络采用非堆叠式的网络架构，即一个全连接深度神经网络。这个网络的输入维度是偏微分方程参数的离散点数。输出维度是任意的，只需和主干网络的输入维度保持一致即可。
+		
+		\item 构造主干网络\\
+		主干网络也是一个全连接深度神经网络，输入维度是偏微分方程的时空域维度之和，即空间维度加一。输出维度是任意的，只需和分支网络的输入维度保持一致即可。
+		
+		\item 构造聚合网络\\
+		由于分支网络和主干网络的输出维度相同，所以可以构造一个单层网络，以主干网络和分支网络的输出为输入，对两个向量进行内积操作，得到一维标量的最终输出。
+	\end{enumerate}
+	
+	\item 训练算子网络
+	\begin{enumerate}
+		\item 前向传播\\
+		将数据训练集和物理训练集分别喂入网络进行前向运算，并根据公式\ref{equ:deeponet-data-loss}和公式\ref{equ:deeponet-physics-loss}计算数据项损失和物理项损失；再根据公式\ref{equ:deeponet-total-loss}计算总的损失。
+		
+		\item 反向传播\\
+		将网络的损失反向传播，计算梯度。
+		
+		\item 更新网络参数\\
+		根据梯度及学习率，优化网络参数，一般采用Adam优化器即可。
+	\end{enumerate}
+	上述几个步骤是神经网络训练的一般范式，实际训练过程中，根据具体情况，设置合适的超参数，如：输出维度、网络的宽度和深度、学习率退火策略等。不断重复这几个步骤，直至损失达到目标阈值则停止。
+\end{enumerate}
 
 \section{数值实验}
 \subsection{改进的RFM验证}
