@@ -1136,17 +1136,17 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 		由于改进后的算子网络实际上已经退化为一个全连接网络，不再分为主干网络和分支网络，训练集也不再分为两部分输入网络。所以“算子”二字就体现在网络输入的构造上，它是由配点训练集和参数训练集做笛卡尔积得到。
 		
 		记数据配点训练集为：
-		\begin{equation}
+		\begin{equation}\label{equ:data-collocation-point}
 			\boldsymbol{X}_d = \boldsymbol{P}_d \times \boldsymbol{H}
 		\end{equation}
 	
 		记观测配点训练集为：
-		\begin{equation}
+		\begin{equation}\label{equ:obs-collocation-point}
 			\boldsymbol{X}_o = \boldsymbol{P}_o \times \boldsymbol{H}
 		\end{equation}
 
 		记物理配点训练集为：
-		\begin{equation}
+		\begin{equation}\label{equ:physics-collocation-point}
 			\boldsymbol{X}_p = \boldsymbol{P}_p \times \boldsymbol{H}
 		\end{equation}
 	
@@ -1159,7 +1159,9 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 	
 	\item 构造神经网络
 	
-	改进后的算子网络架构和PINN在形式上是一致的，只需要构造一个全连接的深度神经网络即可。文献\cite{wang2023pinnexpertguide}给出了一些关于PINN的网络架构的经验：
+	改进后的算子网络架构和PINN在形式上是一致的，只需要构造一个全连接的深度神经网络即可，我们仍然把改进后的算子网络记为$G_{\theta}$，$\theta$为网络的参数；真解算子记为$G$。网络的输入维度等于观测配点的个数加上配点的维度，网络的输出维度等于偏微分方程组的个数。
+	
+	关于网络的其他部分，文献\cite{wang2023pinnexpertguide}给出了一些关于PINN的网络架构的经验，可以基于这个在训练中调整：
 	\begin{enumerate}
 		\item 网络的宽度一般设置为128到512个神经元；
 		\item 网络的深度一般设置为3到6层；
@@ -1170,15 +1172,47 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 	\item 训练算子网络
 	\begin{enumerate}
 		\item 前向传播\\
-		将数据训练集和物理训练集分别喂入网络进行前向运算，并根据公式\ref{equ:deeponet-data-loss}和公式\ref{equ:deeponet-physics-loss}计算数据项损失和物理项损失；再根据公式\ref{equ:deeponet-total-loss}计算总的损失。
+		将数据配点训练集\ref{equ:data-collocation-point}喂入网络进行前向运算，计算数据项损失：
+		\begin{equation}\label{equ:deeponet-data-loss}
+			\mathcal{L}_{Data}(\theta)=\frac{1}{NM}\sum_{i=1}^{NM} \left\| G_{\theta}(\boldsymbol{X}_d^{(i)})-G(\boldsymbol{X}_d^{(i)}) \right\|^2
+		\end{equation}
+	
+		将观测配点训练集\ref{equ:obs-collocation-point}喂入网络进行前向运算，计算观测项损失：
+		\begin{equation}\label{equ:deeponet-data-loss}
+			\mathcal{L}_{Obs}(\theta)=\frac{1}{NK}\sum_{i=1}^{NK} \left\| G_{\theta}(\boldsymbol{X}_o^{(i)}) - h(\boldsymbol{X}_o^{(i)}) \right\|^2
+		\end{equation}
+		
+		将物理配点训练集\ref{equ:physics-collocation-point}喂入网络进行前向运算，计算物理项损失：
+		\begin{equation}\label{equ:deeponet-data-loss}
+			\mathcal{L}_{Physics}(\theta)=\frac{1}{NL}\sum_{i=1}^{NL} \left\| \mathcal{L} G_{\theta}(\boldsymbol{X}_p^{(i)}) - f(\boldsymbol{X}_p^{(i)}) \right\|^2
+		\end{equation}
+	
+		将所有损失加权求和，得到最终损失：
+		\begin{equation}\label{equ:deeponet-data-loss}
+			\mathcal{L}(\theta) = \lambda_d \cdot \mathcal{L}_{Data}(\theta) + \lambda_o \cdot \mathcal{L}_{Obs}(\theta) + \lambda_p \cdot \mathcal{L}_{Physics}(\theta)
+		\end{equation}
+		其中，$\lambda_d, \lambda_o, \lambda_p$分别为数据损失、观测损失、物理损失所占的权重。
 		
 		\item 反向传播\\
 		将网络的损失反向传播，计算梯度。
 		
 		\item 更新网络参数\\
-		根据梯度及学习率，优化网络参数，一般采用Adam优化器即可。
+		根据梯度及学习率，优化网络参数。这里涉及到两个设置：
+		\begin{enumerate}
+			\item 优化器
+			
+			在使用神经网络解偏微分方程领域，Adam（Adaptive Moment Estimation）是一种常用的优化器。Adam优化器结合了动量（momentum）和自适应学习率的思想。它的主要思路是在更新权重的时候，结合梯度的一阶矩估计（动量项）和二阶矩估计（自适应学习率项）。
+			
+			\item 学习率退火策略
+			
+			学习率退火是一种优化算法中用于调整学习率的策略，旨在提高模型在训练过程中的性能。学习率退火策略的目标是在训练的不同阶段使用不同的学习率，以更好地适应模型的收敛和泛化需求。
+			
+			训练神经网络的时候，往往一开始的随机初始点离最小值点比较远，所以需要将学习率设置的大一些，以使损失函数能够尽快逼近最小值。当训练到后期的时候，学习率需要设置的小一些，因为如果太大，则损失值会在最小值周围振荡，导致无法收敛到最小值，甚至远离最小值点。此时最好采用学习率退火策略，如PyTorch的ReduceLROnPlateau。
+			
+		\end{enumerate}
+		
 	\end{enumerate}
-	上述几个步骤是神经网络训练的一般范式，实际训练过程中，根据具体情况，设置合适的超参数，如：输出维度、网络的宽度和深度、学习率退火策略等。不断重复这几个步骤，直至损失达到目标阈值则停止。
+	重复上述步骤，直至达到指定条件停止。停止的条件可以是达到指定的循环训练次数，也可以是损失达到某个阈值。
 \end{enumerate}
 
 \section{数值实验}
@@ -1208,7 +1242,19 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 	\item 单位分解函数的策略分别为：$\psi^a$、$\psi^b$和无$\psi$；
 \end{itemize}
 
-计算结果见表格\ref{tab:Helmholtz}。{\color{red} 见图}，由图和表格\ref{tab:Helmholtz}，可以看出在相同超参数使用RFM求解Helmholtz方程的情况下，无$\psi$策略相比于使用$\psi^a$和$\psi^b$作为单位分解函数，收敛速度更快，并且$L^\infty$误差和$L^2$误差降低了好几个阶。数值结果验证了改进后的RFM方法对于静态方程的有效性。
+计算结果见图\ref{fig:example-modified-rfm} 和表格\ref{tab:Helmholtz}，可以看出在相同超参数使用RFM求解Helmholtz方程的情况下，无$\psi$策略相比于使用$\psi^a$和$\psi^b$作为单位分解函数，收敛速度更快，并且$L^\infty$误差和$L^2$误差降低了好几个阶。数值结果验证了改进后的RFM方法对于静态方程的有效性。
+
+\begin{figure}[h]
+	\centering
+	\subfigure[$L^\infty$误差]{
+		\includegraphics[width=0.45\linewidth]{example_modified_rfm_linfty_error}
+	}
+	\subfigure[$L^2$误差]{
+		\includegraphics[width=0.45\linewidth]{example_modified_rfm_l2_error}
+	}
+	\caption{改进后的RFM效果验证。横坐标是子区域划分的个数，纵坐标是误差，横纵坐标都使用对数刻度。}
+	\label{fig:example-modified-rfm}
+\end{figure}
 
 \begin{table}
 	\centering
@@ -1267,9 +1313,21 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 	\item 单位分解函数的策略分别为：$\psi^a$、$\psi^b$和无$\psi$；
 \end{itemize}
 
-所以每个子区域的配点数量为$Q_n = Q_x \times Q_t = 900$，求解结果见表格\ref{tab:Diffusion}。{\color{red} 见图，Jn为横坐标，损失为纵坐标画折线图}，可见无$\psi$的策略下收敛速度更快，在同等超参数的情况下相较于$\psi^a$和$\psi^b$，误差小几个数量级。
+所以每个子区域的配点数量为$Q_n = Q_x \times Q_t = 900$，求解结果见图\ref{fig:example-modified-st-rfm} 和表格\ref{tab:Diffusion}。可见无$\psi$的策略下收敛速度更快，在同等超参数的情况下相较于$\psi^a$和$\psi^b$，误差小几个数量级。
 
 通过数值算例可以看到，去除单位分解函数，确实大大提高了训练的收敛速度和收敛精度。{\color{red} 这里可以补充下训练时间，无psi的情况训练时间应该也是快一点的}
+
+\begin{figure}[h]
+	\centering
+	\subfigure[$L^\infty$误差]{
+		\includegraphics[width=0.45\linewidth]{example_modified_st_rfm_linfty_error}
+	}
+	\subfigure[$L^2$误差]{
+		\includegraphics[width=0.45\linewidth]{example_modified_st_rfm_l2_error}
+	}
+	\caption{改进后的RFM效果验证。横坐标是子区域划分的个数，纵坐标是误差，横纵坐标都使用对数刻度。}
+	\label{fig:example-modified-st-rfm}
+\end{figure}
 
 \begin{table}
 	\centering
