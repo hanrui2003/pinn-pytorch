@@ -64,6 +64,8 @@ bottom=1.5in,marginparwidth=1in,marginparsep=3mm]{geometry}
 可微分框架，能够在同一框架下求解反问题
 边界罚项中罚参数的调整容易
 
+书籍\cite{law2015dataassimilation}中对数据同化给出定义：
+
 \section{预备知识}
 \subsection{Lorenz63方程及龙格-库塔法}
 \subsubsection{Lorenz63方程基本概念}
@@ -707,7 +709,7 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 观察算子网络的分支网络部分，我们可以发现它是由多个独立的分支网络堆叠而成，每个分支网络的输入是一样的，输出的维度也都是一维的，所以每个分支网络都是定义在相同定义域上的多元函数。把它们向量化就得到向量值函数，如此一来，自然可以用单独的一个深度神经网络来拟合。所以得到非堆叠的网络架构，{\color{red} 见图}
 
 \subsubsection{物理信息算子网络}
-如果我们的偏微分方程里面有参数（比如初值函数、边值函数、源项等），这里统一用u(x)表示，我们是允许它变化的。这个时候，每个u对应一个真解s；参数化的PDE可写成如下形式：
+文献\cite{lu2020deeponet}介绍了算子网络解参数化方程的方法论，并以源项和外力为参数展示了数值算例。偏微分方程的参数不仅有源项，还包括初值函数、边值函数等一切可以影响方程解的元素，这里统一用u(x)表示，我们是允许它变化的。这个时候，每个u对应一个真解s；参数化的PDE可写成如下形式：
 \begin{equation}
 	\mathcal{N}(u,s)=0
 \end{equation}
@@ -1102,62 +1104,67 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 \begin{enumerate}
 	\item 构造网络的训练数据集
 	\begin{enumerate}
-		\item 使用高斯径向基函数随机生成N个函数，以此作为偏微分方程的参数。这里的参数，可能是初值函数、边值函数或者源项等。
-		\begin{equation}
-			\{u^{(i)}(\mathbf{x})\}_{i=1}^{N}=\{u^{(1)}(\mathbf{x}), u^{(2)}(\mathbf{x}), u^{(2)}(\mathbf{x}), \cdots, u^{(N)}(\mathbf{x})\}
-		\end{equation}
-		\item 对每个参数离散化
+		\item 构造配点集
 		
-		对定义域等分，得到离散点$x_1, x_2, x_3, \cdots, x_m$，每个参数取这些点上的函数值构成向量，作为分支网络的实际输入。记为：
+		配点集包括两部分：数据配点和物理配点。数据配点指的是那些带有目标值的配点，在训练的时候通过计算网络输出值和目标值的残差来计算损失项。物理配点指的是偏微分方程定义域内的任意点，这些点大部分情况下是不带目标值的，通过物理定律进行约束，即通过计算偏微分方程等式两边的残差来计算损失项。
+		
+		数据配点包括三部分：初值配点、边值配点和观测配点。初值配点和边值配点不必多说，就是满足初值条件和边值条件的配点。对于初边值配点，一般使用等间距采样策略即可，即对初值条件和边值条件的定义域分别等分，取等分点作为配点。我们统一记为：
 		\begin{equation}
-			B = 
-			\begin{bmatrix}
-				u_1^{(1)} & u_2^{(1)} & \cdots & u_m^{(1)} \\
-				u_1^{(2)} & u_2^{(2)} & \cdots & u_m^{(2)} \\
-				\vdots & \vdots & \ddots & \vdots \\
-				u_1^{(N)} & u_2^{(N)} & \cdots & u_m^{(N)}
-			\end{bmatrix}
+			\boldsymbol{P}_d = \{\mathbf{y}_{d1}, \mathbf{y}_{d2}, \mathbf{y}_{d3}, \cdots, \mathbf{y}_{dM} \}
 		\end{equation}
+		
+		观测配点就是实际采取观测值的配点，这些配点是带有目标值的，目标值就是观测值。从这个角度看，观测配点和初边值配点没什么区别，但是观测数据在数据同化中还有别的重要含义，所以我们它记为：
+		\begin{equation}
+			\boldsymbol{P}_o = \{\mathbf{y}_{o1}, \mathbf{y}_{o2}, \mathbf{y}_{o3}, \cdots, \mathbf{y}_{oK} \}
+		\end{equation}
+		
+		物理配点一般使用拉丁超立方采样策略，在偏微分方程的整个定义域内进行随机采点，记为：
+		\begin{equation}
+			\boldsymbol{P}_p = \{\mathbf{y}_{p1}, \mathbf{y}_{p2}, \mathbf{y}_{p3}, \cdots, \mathbf{y}_{pL} \}
+		\end{equation}
+	
+		\item 构造参数集
+		
+		数据同化问题中，每一组观测数据对应偏微分方程的一个参数，因为一组观测数据对应着方程的一个解。观测数据就是观测配点上对应的观测值，记为：
+		\begin{equation}
+			\boldsymbol{H} = \{H_1, H_2, H_3, \cdots, H_N \}
+		\end{equation}
+		其中，$H_i = \{ h_1^{(i)},  h_2^{(i)},  h_3^{(i)}, \cdots,  h_m^{(i)}\}$表示观测配点上的一组观测数据。
+		
+		\item 构造训练集
+		
+		由于改进后的算子网络实际上已经退化为一个全连接网络，不再分为主干网络和分支网络，训练集也不再分为两部分输入网络。所以“算子”二字就体现在网络输入的构造上，它是由配点训练集和参数训练集做笛卡尔积得到。
+		
+		记数据配点训练集为：
+		\begin{equation}
+			\boldsymbol{X}_d = \boldsymbol{P}_d \times \boldsymbol{H}
+		\end{equation}
+	
+		记观测配点训练集为：
+		\begin{equation}
+			\boldsymbol{X}_o = \boldsymbol{P}_o \times \boldsymbol{H}
+		\end{equation}
+
+		记物理配点训练集为：
+		\begin{equation}
+			\boldsymbol{X}_p = \boldsymbol{P}_p \times \boldsymbol{H}
+		\end{equation}
+	
+		所以最终的训练集为：
+		\begin{equation}
+			\boldsymbol{X} = \boldsymbol{X}_d + \boldsymbol{X}_o + \boldsymbol{X}_p
+		\end{equation}
+
 	\end{enumerate}
 	
-	\item 构造主干网络的训练数据集
+	\item 构造神经网络
+	
+	改进后的算子网络架构和PINN在形式上是一致的，只需要构造一个全连接的深度神经网络即可。文献\cite{wang2023pinnexpertguide}给出了一些关于PINN的网络架构的经验：
 	\begin{enumerate}
-		\item 数据配点采样\\
-		对于初值条件和边值条件等带标签的训练数据，我们一般对定义域进行等间距采样，获取$M$个数据点作为主干网络的输入，并把数据配点对应的函数值作为网络训练的目标值。
-		\begin{equation}
-			T_D = \{y_{D1}, y_{D2}, y_{D3}, \cdots, y_{DM}\}
-		\end{equation}
-		
-		\item 物理配点采样\\
-		对偏微分方程的整个定义域，使用拉丁超立方采样，选取$K$个物理配点。由于物理配点是不带目标值的，所以理论上可以采样任意多的点，采取的点越多，训练拟合的效果会更精细，但是这也会增加训练的复杂度，所以这里需要权衡。
-		\begin{equation}
-			T_P = \{y_{P1}, y_{P2}, y_{P3}, \cdots, y_{PK}\}
-		\end{equation}
-	\end{enumerate}
-	
-	\item 整合训练数据集\\
-	由于数据配点和物理配点计算损失的方式不一样，所以要分开处理。
-	
-	将分支网络训练数据集和主干网络的数据配点集做笛卡尔积，得到最终的数据训练集：
-	\begin{equation}
-		S_D = B \times T_D
-	\end{equation}
-	
-	将分支网络训练数据集和主干网络的物理配点集做笛卡尔积，得到最终的物理训练集：
-	\begin{equation}
-		S_P = B \times T_P
-	\end{equation}
-	
-	\item 构造算子网络
-	\begin{enumerate}
-		\item 构造分支网络\\
-		分支网络分为堆叠式和非堆叠式的，二者效力等同。但非堆叠式的架构简单，易于编码和训练，所以一般情况下分支网络采用非堆叠式的网络架构，即一个全连接深度神经网络。这个网络的输入维度是偏微分方程参数的离散点数。输出维度是任意的，只需和主干网络的输入维度保持一致即可。
-		
-		\item 构造主干网络\\
-		主干网络也是一个全连接深度神经网络，输入维度是偏微分方程的时空域维度之和，即空间维度加一。输出维度是任意的，只需和分支网络的输入维度保持一致即可。
-		
-		\item 构造聚合网络\\
-		由于分支网络和主干网络的输出维度相同，所以可以构造一个单层网络，以主干网络和分支网络的输出为输入，对两个向量进行内积操作，得到一维标量的最终输出。
+		\item 网络的宽度一般设置为128到512个神经元；
+		\item 网络的深度一般设置为3到6层；
+		\item 激活函数一般选取双曲正切函数（$Tanh$），如果对求解问题有先验知识的话，比如在做过频谱分析的基础上，可以采用正弦激活函数（$sin$），但是千万不要用$ReLU$，因为它的二阶导数恒为0；
+		\item 网络参数的初始化采用Glorot策略，这种策略能够有效地避免梯度消失和梯度爆炸的问题；
 	\end{enumerate}
 	
 	\item 训练算子网络
