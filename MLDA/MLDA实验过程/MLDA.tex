@@ -704,9 +704,23 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 	
 	这是一个三层神经网络，网络的输入是偏微分的参数$u(x)$，网络的输出是一个一维标量。因为$u(x)$是一个函数，所以要取其离散格式$u(x_j),j=1, 2, \cdots, m$作为输入。我们称这个网络为分支网络。
 \end{itemize}
-所以，算子网络是由$p$个分支网络和1个主干网络构成，最后通过一个内积操作将二者的输出结果融合，即把所有分支网络的输出合并为一个$p$维向量，与主干网络的输出向量做内积。由此我们得到算子网络的架构，{\color{red} 见图}
+所以，算子网络是由$p$个分支网络和1个主干网络构成，最后通过一个内积操作将二者的输出结果融合，即把所有分支网络的输出合并为一个$p$维向量，与主干网络的输出向量做内积。图\ref{fig:deeponet-architecture-stacked} 展示了算子网络的架构。
 
-观察算子网络的分支网络部分，我们可以发现它是由多个独立的分支网络堆叠而成，每个分支网络的输入是一样的，输出的维度也都是一维的，所以每个分支网络都是定义在相同定义域上的多元函数。把它们向量化就得到向量值函数，如此一来，自然可以用单独的一个深度神经网络来拟合。所以得到非堆叠的网络架构，{\color{red} 见图}
+\begin{figure}[ht]
+	\centering
+	\includegraphics[width=0.95\linewidth]{deeponet_architecture_stacked}
+	\caption{堆叠式算子网络架构}
+	\label{fig:deeponet-architecture-stacked}
+\end{figure}
+
+观察算子网络的分支网络部分，我们可以发现它是由多个独立的分支网络堆叠而成，每个分支网络的输入是一样的，输出的维度也都是一维的，所以每个分支网络都是定义在相同定义域上的多元函数。把它们向量化就得到向量值函数，如此一来，自然可以用单独的一个深度神经网络来拟合。图\ref{fig:deeponet-architecture-unstacked} 展示了非堆叠式的算子网络架构。
+
+\begin{figure}[ht]
+	\centering
+	\includegraphics[width=0.95\linewidth]{deeponet_architecture_unstacked}
+	\caption{非堆叠式算子网络架构}
+	\label{fig:deeponet-architecture-unstacked}
+\end{figure}
 
 \subsubsection{物理信息算子网络}
 文献\cite{lu2020deeponet}介绍了算子网络解参数化方程的方法论，并以源项和外力为参数展示了数值算例。偏微分方程的参数不仅有源项，还包括初值函数、边值函数等一切可以影响方程解的元素，这里统一用u(x)表示，我们是允许它变化的。这个时候，每个u对应一个真解s；参数化的PDE可写成如下形式：
@@ -1315,7 +1329,7 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 
 所以每个子区域的配点数量为$Q_n = Q_x \times Q_t = 900$，求解结果见图\ref{fig:example-modified-st-rfm} 和表格\ref{tab:Diffusion}。可见无$\psi$的策略下收敛速度更快，在同等超参数的情况下相较于$\psi^a$和$\psi^b$，误差小几个数量级。
 
-通过数值算例可以看到，去除单位分解函数，确实大大提高了训练的收敛速度和收敛精度。{\color{red} 这里可以补充下训练时间，无psi的情况训练时间应该也是快一点的}
+通过数值算例可以看到，去除单位分解函数，确实大大提高了训练的收敛速度和收敛精度。
 
 \begin{figure}[h]
 	\centering
@@ -1325,7 +1339,7 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 	\subfigure[$L^2$误差]{
 		\includegraphics[width=0.45\linewidth]{example_modified_st_rfm_l2_error}
 	}
-	\caption{改进后的RFM效果验证。横坐标是子区域划分的个数，纵坐标是误差，横纵坐标都使用对数刻度。}
+	\caption{改进后的RFM效果验证。横坐标是子区域划分的个数，纵坐标是误差，纵坐标使用对数刻度。}
 	\label{fig:example-modified-st-rfm}
 \end{figure}
 
@@ -1369,8 +1383,8 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 \begin{equation}
 	\begin{cases}
 		\frac{\partial u}{\partial t} + v \frac{\partial u}{\partial x} - \nu \frac{\partial^2 u}{\partial x^2} +u = f(x, t)  \quad (x, t) \in [0, 5] \times [0, 1] \\
-		u(0, t) = g_1(t) + RBF(x) \quad t \in [0, 1] \\
-		u(5, t) = g_2(t) + RBF(x) \quad t \in [0, 1] \\
+		u(0, t) = g_1(t) + RBF(t) \quad t \in [0, 1] \\
+		u(5, t) = g_2(t) + RBF(t) \quad t \in [0, 1] \\
 		u(x, 0) = h(x) + RBF(x) \quad x \in [0, 5] 
 	\end{cases}
 \end{equation}
@@ -1385,7 +1399,7 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 	\item 每个子区域的特征函数的数量依次取为$J_n=50, 100, 150, 200$；
 \end{itemize}
 
-所以每个子区域的配点数量为$Q_n = Q_x \times Q_t = 100$，结果如图{\color{red} 这里给出真解和带噪声的数值解对比图}，见表格\ref{tab:convection-diffusion-noise}，可以看到误差基本稳定在固定的阶，最大范数误差的阶数是$10^{-1}$，二范数误差的阶数是$10^{-2}$。
+所以每个子区域的配点数量为$Q_n = Q_x \times Q_t = 100$，运行结果见表格\ref{tab:convection-diffusion-noise}，可以看到误差基本稳定在固定的阶，最大范数误差的阶数是$10^{-1}$，二范数误差的阶数是$10^{-2}$。图\ref{fig:example-conv-diff-noise} 展示了$J_n = 150$时，真解和带噪声的数值解的对比。
 
 \begin{table}
 	\centering
@@ -1406,9 +1420,33 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 	\end{tabular}
 \end{table}
 
-接下来，我们引入观测数据，观测点为$X = \{0.1, 0.2, 0.3, \cdots, 4.8, 4.9\}$，观测时间为$T = \{0.1, 0.2, 0.3, \cdots, 0.9, 1.0\}$，并使用原始方程的真解作为观测数据。此外，由于我们对观测数据是信任的，所以需要对损失函数公式\ref{equ:st-rfm-da-loss}里面的罚参数进行调整，调整的方法是通过设置公式\ref{equ:rfm-penalty-parameter}里面的缩放因子$c_i$。这里我们将观测配点和计算物理损失配点的缩放因子设置为$100$，将初值配点和边界配点的缩放因子设置为$10^{-5}$。其他的超参数保持不变。
+\begin{figure}[h]
+	\centering
+	\subfigure[真解等高图]{
+		\includegraphics[width=0.45\linewidth]{example_conv_diff_true_contour}
+	}
+	\subfigure[真解三维图]{
+		\includegraphics[width=0.45\linewidth]{example_conv_diff_true_surface}
+	}
+	\subfigure[噪声数值解等高图]{
+		\includegraphics[width=0.45\linewidth]{example_conv_diff_noise_contour}
+	}
+	\subfigure[噪声数值解三维图]{
+		\includegraphics[width=0.45\linewidth]{example_conv_diff_noise_surface}
+	}
+	\caption{一维对流扩散方程引入噪声后的情形}
+	\label{fig:example-conv-diff-noise}
+\end{figure}
 
-结果如图{\color{red}这里给出真解和带观测的数值解对比图}，见表格\ref{tab:convection-diffusion-da}，可以看到引入观测后，模型的输出和真解的误差大大减少，系统的演变向真实状态靠近。
+接下来我们引入观测，使用观测配点对应的真解作为观测值。此外，由于我们对观测数据是信任的，所以需要对损失函数公式\ref{equ:st-rfm-da-loss}里面的罚参数进行调整，调整的方法是通过设置公式\ref{equ:rfm-penalty-parameter}里面的缩放因子$c_i$，具体修改如下：
+\begin{enumerate}
+	\item 观测点为$X = \{0.1, 0.2, 0.3, \cdots, 4.8, 4.9\}$；
+	\item 观测时间为$T = \{0.1, 0.2, 0.3, \cdots, 0.9, 1.0\}$；
+	\item 将观测配点和物理配点的缩放因子设置为$100$；
+	\item 将初值配点和边界配点的缩放因子设置为$10^{-5}$；
+\end{enumerate}
+
+运行结果见表格\ref{tab:convection-diffusion-da}，可以看到引入观测后，模型的输出和真解的误差大大减少，系统的演变向真实状态靠近。图\ref{fig:example-conv-diff-da} 展示了$J_n = 150$时，真解和数据同化解的对比。
 \begin{table}
 	\centering
 	\caption{一维对流扩散方程数据同化的误差情况}
@@ -1427,6 +1465,24 @@ PINN的作用相当于一个函数，显然不适合取拟合参数化的偏微�
 		\hline
 	\end{tabular}
 \end{table}
+
+\begin{figure}[h]
+	\centering
+	\subfigure[真解等高图]{
+		\includegraphics[width=0.45\linewidth]{example_conv_diff_true_contour_2}
+	}
+	\subfigure[真解三维图]{
+		\includegraphics[width=0.45\linewidth]{example_conv_diff_true_surface_2}
+	}
+	\subfigure[噪声数值解等高图]{
+		\includegraphics[width=0.45\linewidth]{example_conv_diff_da_contour}
+	}
+	\subfigure[噪声数值解三维图]{
+		\includegraphics[width=0.45\linewidth]{example_conv_diff_da_surface}
+	}
+	\caption{一维对流扩散方程数据同化的效果}
+	\label{fig:example-conv-diff-da}
+\end{figure}
 
 \bibliography{references}
 \end{document}

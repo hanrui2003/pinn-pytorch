@@ -16,34 +16,39 @@ def plot(X1, T1, U1, X2, T2, U2):
     """
     同时绘制PDE的数值解和神经网络解，上面数值解，下面神经网络解。
     """
+    min_value = np.min([U1, U2])
+    max_value = np.max([U1, U2])
     # 创建一个 Figure 对象，并设置子图布局
     fig = plt.figure(figsize=(12, 8))
     ax1 = fig.add_subplot(221)
+    # ax1.set_ylim
     ax2 = fig.add_subplot(222, projection='3d')
     ax3 = fig.add_subplot(223)
     ax4 = fig.add_subplot(224, projection='3d')
 
-    cp1 = ax1.contourf(T1, X1, U1, 20, cmap="rainbow")
+    cp1 = ax1.contourf(T1, X1, U1, 20, cmap="rainbow", vmin=min_value, vmax=max_value)
     fig.colorbar(cp1, ax=ax1)
     ax1.set_title('u(x,t)')
     ax1.set_xlabel('t')
     ax1.set_ylabel('x')
 
-    ax2.plot_surface(T1, X1, U1, cmap="rainbow")
+    ax2.plot_surface(T1, X1, U1, cmap="rainbow", vmin=min_value, vmax=max_value)
     ax2.set_xlabel('t')
     ax2.set_ylabel('x')
     ax2.set_zlabel('u(x,t)')
+    ax2.set_zlim(min_value, max_value)
 
-    cp3 = ax3.contourf(T2, X2, U2, 20, cmap="rainbow")
+    cp3 = ax3.contourf(T2, X2, U2, 20, cmap="rainbow", vmin=min_value, vmax=max_value)
     fig.colorbar(cp3, ax=ax3)
     ax3.set_title('RFM(x,t)')
     ax3.set_xlabel('t')
     ax3.set_ylabel('x')
 
-    ax4.plot_surface(T2, X2, U2, cmap="rainbow")
+    ax4.plot_surface(T2, X2, U2, cmap="rainbow", vmin=min_value, vmax=max_value)
     ax4.set_xlabel('t')
     ax4.set_ylabel('x')
     ax4.set_zlabel('RFM(x,t)')
+    ax4.set_zlim(min_value, max_value)
 
     plt.show()
 
@@ -117,5 +122,5 @@ if __name__ == '__main__':
     U_true = true_values.reshape((X.shape[0], X.shape[1]))
     U_numerical = numerical_values.reshape((X.shape[0], X.shape[1]))
 
-    # plot(X, T, U_true, X, T, U_numerical)
+    plot(X, T, U_true, X, T, U_numerical)
     # plot_err(X, T, np.abs(U_true - U_numerical))
