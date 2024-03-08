@@ -164,6 +164,8 @@ if "__main__" == __name__:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(device)
 
+    # 101个序列对堆叠到一起，每个时间点的值都作为初值
+    # 每个序列的时间跨度是[0,5]，所以是501*202
     u_train = np.load("swe_1d_wave_sample.npy")
     print("u_train size(mb):", sys.getsizeof(u_train) / (1024 * 1024))
 
