@@ -22,26 +22,26 @@ def plot(X1, T1, U1, X2, T2, U2):
 
     cp1 = ax1.contourf(T1, X1, U1, 20, cmap="rainbow", vmin=min_value, vmax=max_value)
     fig.colorbar(cp1, ax=ax1)
-    ax1.set_title('u(x,t)')
+    ax1.set_title('FVM')
     ax1.set_xlabel('t')
     ax1.set_ylabel('x')
 
     ax2.plot_surface(T1, X1, U1, cmap="rainbow", vmin=min_value, vmax=max_value)
     ax2.set_xlabel('t')
     ax2.set_ylabel('x')
-    ax2.set_zlabel('u(x,t)')
+    ax2.set_zlabel('FVM')
     ax2.set_zlim(min_value, max_value)
 
     cp3 = ax3.contourf(T2, X2, U2, 20, cmap="rainbow", vmin=min_value, vmax=max_value)
     fig.colorbar(cp3, ax=ax3)
-    ax3.set_title('RFM(x,t)')
+    ax3.set_title('DeepONet')
     ax3.set_xlabel('t')
     ax3.set_ylabel('x')
 
     ax4.plot_surface(T2, X2, U2, cmap="rainbow", vmin=min_value, vmax=max_value)
     ax4.set_xlabel('t')
     ax4.set_ylabel('x')
-    ax4.set_zlabel('RFM(x,t)')
+    ax4.set_zlabel('DeepONet')
     ax4.set_zlim(min_value, max_value)
 
     plt.show()
@@ -127,7 +127,7 @@ if "__main__" == __name__:
     torch.manual_seed(123)
     np.random.seed(123)
 
-    model = torch.load('swe_1d_don_tbc_ic_03_e-6.pt', map_location=torch.device('cpu'))
+    model = torch.load('swe_1d_don_tbc_ic_03_e-5.pt', map_location=torch.device('cpu'))
     print("model", model)
 
     N_x = 201
@@ -180,6 +180,8 @@ if "__main__" == __name__:
     L_inf = np.max(epsilon)
     L_2 = np.sqrt(np.sum(epsilon ** 2) / len(epsilon))
 
-    print('L_inf={:.2e}'.format(L_inf), 'L_2={:.2e}'.format(L_2))
+    L_rel = np.linalg.norm(epsilon) / np.linalg.norm(h1)
 
-    plot(X, T, h_hat, X, T, h1)
+    print('L_inf={:.2e}'.format(L_inf), 'L_2={:.2e}'.format(L_2), 'L_rel={:.2e}'.format(L_rel))
+
+    plot(X, T, h1, X, T, h_hat)
