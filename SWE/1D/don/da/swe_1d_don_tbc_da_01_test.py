@@ -168,7 +168,7 @@ if "__main__" == __name__:
     # 构建网络网络结构
     layers = [183, 128, 128, 128, 128, 2]
     model = SWENet(layers)
-    model.load_state_dict(torch.load('swe_1d_don_tbc_da_01_5e-5.pt', map_location=torch.device('cpu')))
+    model.load_state_dict(torch.load('swe_1d_don_tbc_da_01_2.5e-5.pt', map_location=torch.device('cpu')))
     model.eval()
     print("model", model)
 
@@ -189,7 +189,7 @@ if "__main__" == __name__:
     L_rel_nn = np.linalg.norm(epsilon_nn) / np.linalg.norm(U_true)
     print('L_inf_nn :', L_inf_nn, ' , L_2_nn', L_2_nn, ' , L_rel_nn : ', L_rel_nn)
 
-    # plot(X, T, U_true, U_numerical, U_nn)
+    plot(X, T, U_true, U_numerical, U_nn)
 
     # # 创建图表对象
     # fig, ax = plt.subplots()
