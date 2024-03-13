@@ -52,15 +52,15 @@ if "__main__" == __name__:
     # 随机生成初值点，
     # 先根据数值解的结果，使用核密度估计，然后再采样
     U = np.load('lorenz63_chaos.npy')
-    # 定义带宽范围
-    bandwidths = 10 ** np.linspace(-1, 1, 100)
-    # 网格搜索最优带宽
-    grid = GridSearchCV(KernelDensity(kernel='gaussian'), {'bandwidth': bandwidths}, cv=5)
-    grid.fit(U)
-    best_bandwidth = grid.best_params_['bandwidth']
-    print("best bandwidth", best_bandwidth)
-    # 拟合KDE模型
-    kde = KernelDensity(kernel='gaussian', bandwidth=best_bandwidth).fit(U)
+    # # 定义带宽范围
+    # bandwidths = 10 ** np.linspace(-1, 1, 100)
+    # # 网格搜索最优带宽
+    # grid = GridSearchCV(KernelDensity(kernel='gaussian'), {'bandwidth': bandwidths}, cv=5)
+    # grid.fit(U)
+    # best_bandwidth = grid.best_params_['bandwidth']
+    # print("best bandwidth", best_bandwidth)
+    # # 拟合KDE模型
+    # kde = KernelDensity(kernel='gaussian', bandwidth=best_bandwidth).fit(U)
     # u0 = kde.sample(1)
     u0 = U[0]
     print("u0", u0)
@@ -91,7 +91,7 @@ if "__main__" == __name__:
     u0_test = np.tile(u0, (N_t, 1))
     u0_test = torch.from_numpy(u0_test).float()
 
-    model = torch.load('lorenz63_don_02_01_-2_gzz_non_random.pt', map_location=torch.device('cpu'))
+    model = torch.load('lorenz63_don_02_02_-2_gzz_non_random.pt', map_location=torch.device('cpu'))
 
     u_pred = np.zeros((total_points, 3))
     for i in range(25):

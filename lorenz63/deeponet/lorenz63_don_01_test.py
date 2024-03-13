@@ -47,7 +47,7 @@ def plot(t, u_truth, u_pred):
 
 if "__main__" == __name__:
     # torch.manual_seed(1234)
-    # np.random.seed(1234)
+    np.random.seed(123)
 
     # 随机生成初值点，
     # 先根据数值解的结果，使用核密度估计，然后再采样
@@ -62,6 +62,7 @@ if "__main__" == __name__:
     # 拟合KDE模型
     kde = KernelDensity(kernel='gaussian', bandwidth=best_bandwidth).fit(U)
     u0 = kde.sample(1)
+    # u0 = [-4., 7., 15]
     print("u0", u0)
 
     # 总点数

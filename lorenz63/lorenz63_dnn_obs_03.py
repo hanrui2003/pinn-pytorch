@@ -87,7 +87,7 @@ if "__main__" == __name__:
 
     x_test = torch.linspace(x_lb, x_ub, total_points)
 
-    obs = np.loadtxt('iobsdisturb.txt')
+    obs = np.loadtxt('./obs/data/iobsdisturb.txt')
     # 选取观测值
     x_train_bc = torch.from_numpy(obs[:, [0]])
     # 第1列为x的观测，第2列为z的观测，y没有观测。
