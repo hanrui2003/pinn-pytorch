@@ -6,52 +6,43 @@ from scipy.integrate import solve_ivp
 from swe_1d_don_tbc_da_03 import SWENet
 
 
-def plot(X, T, U_true, U_numerical, U_nn):
+def plot(X1, T1, U1, X2, T2, U2):
     """
     同时绘制PDE的数值解和神经网络解，上面数值解，下面神经网络解。
     """
+    min_value = np.min([U1, U2])
+    max_value = np.max([U1, U2])
+
     # 创建一个 Figure 对象，并设置子图布局
-    fig = plt.figure(figsize=(15, 8))
+    fig = plt.figure(figsize=(15, 10))
+    ax1 = fig.add_subplot(221)
+    ax2 = fig.add_subplot(222, projection='3d')
+    ax3 = fig.add_subplot(223)
+    ax4 = fig.add_subplot(224, projection='3d')
 
-    ax1 = fig.add_subplot(231)
-    ax2 = fig.add_subplot(232)
-    ax3 = fig.add_subplot(233)
-    ax4 = fig.add_subplot(234, projection='3d')
-    ax5 = fig.add_subplot(235, projection='3d')
-    ax6 = fig.add_subplot(236, projection='3d')
-
-    cp1 = ax1.contourf(T, X, U_true, 20, cmap="rainbow")
+    cp1 = ax1.contourf(T1, X1, U1, 20, cmap="rainbow", vmin=min_value, vmax=max_value)
     fig.colorbar(cp1, ax=ax1)
-    ax1.set_title('true(x,t)')
+    ax1.set_title('REF')
     ax1.set_xlabel('t')
     ax1.set_ylabel('x')
 
-    cp2 = ax2.contourf(T, X, U_numerical, 20, cmap="rainbow")
-    fig.colorbar(cp2, ax=ax2)
-    ax2.set_title('numerical(x,t)')
+    ax2.plot_surface(T1, X1, U1, cmap="rainbow", vmin=min_value, vmax=max_value)
     ax2.set_xlabel('t')
     ax2.set_ylabel('x')
+    ax2.set_zlabel('REF')
+    ax2.set_zlim(min_value, max_value)
 
-    cp3 = ax3.contourf(T, X, U_nn, 20, cmap="rainbow")
+    cp3 = ax3.contourf(T2, X2, U2, 20, cmap="rainbow", vmin=min_value, vmax=max_value)
     fig.colorbar(cp3, ax=ax3)
-    ax3.set_title('nn(x,t)')
+    ax3.set_title('DeepONet')
     ax3.set_xlabel('t')
     ax3.set_ylabel('x')
 
-    ax4.plot_surface(T, X, U_true, cmap="rainbow")
+    ax4.plot_surface(T2, X2, U2, cmap="rainbow", vmin=min_value, vmax=max_value)
     ax4.set_xlabel('t')
     ax4.set_ylabel('x')
-    ax4.set_zlabel('true(x,t)')
-
-    ax5.plot_surface(T, X, U_numerical, cmap="rainbow")
-    ax5.set_xlabel('t')
-    ax5.set_ylabel('x')
-    ax5.set_zlabel('numerical(x,t)')
-
-    ax6.plot_surface(T, X, U_nn, cmap="rainbow")
-    ax6.set_xlabel('t')
-    ax6.set_ylabel('x')
-    ax6.set_zlabel('nn(x,t)')
+    ax4.set_zlabel('DeepONet')
+    ax4.set_zlim(min_value, max_value)
 
     plt.show()
 
@@ -120,7 +111,7 @@ if "__main__" == __name__:
     dataset_length = len(test_dataset)
     # seq_idx = np.random.randint(dataset_length)
     # 比较优的seq_idx=16，相对误差0.012
-    seq_idx = 36
+    seq_idx = 16
     print("seq_idx :", seq_idx)
 
     obs_index = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
@@ -191,7 +182,7 @@ if "__main__" == __name__:
     L_rel_nn = np.linalg.norm(epsilon_nn) / np.linalg.norm(U_true)
     print('L_inf_nn :', L_inf_nn, ' , L_2_nn', L_2_nn, ' , L_rel_nn : ', L_rel_nn)
 
-    # plot(X, T, U_true, U_numerical, U_nn)
+    plot(X, T, U_true, X, T, U_nn)
 
     # # 创建图表对象
     # fig, ax = plt.subplots()
