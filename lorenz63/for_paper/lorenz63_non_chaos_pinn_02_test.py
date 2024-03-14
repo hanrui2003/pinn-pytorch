@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from lorenz63_non_chaos_pinn_01 import Lorenz63Net
+from lorenz63_non_chaos_pinn_02 import Lorenz63Net
 
 if "__main__" == __name__:
     # torch.manual_seed(1234)
@@ -9,13 +9,13 @@ if "__main__" == __name__:
 
     U = np.load('lorenz63_non_chaos.npy')
 
-    t = np.linspace(0, 1, 201)
-    u = U[:201]
+    t = np.linspace(0, 3, 601)
+    u = U[:601]
     x = u[:, 0]
     y = u[:, 1]
     z = u[:, 2]
 
-    model = torch.load('lorenz63_non_chaos_pinn_01_0.0001.pt', map_location=torch.device('cpu'))
+    model = torch.load('lorenz63_non_chaos_pinn_02_0.0001.pt', map_location=torch.device('cpu'))
     model.eval()
     print("model", model)
 

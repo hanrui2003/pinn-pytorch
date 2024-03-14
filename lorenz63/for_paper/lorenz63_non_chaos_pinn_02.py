@@ -72,7 +72,7 @@ if "__main__" == __name__:
     u_train_ic = np.array([U[0]])
 
     # 物理配点
-    t_train_pde = lhs(1, 600)
+    t_train_pde = 3 * lhs(1, 600)
 
     # 转为张量，用于训练
     t_train_ic = torch.from_numpy(t_train_ic).float().to(device)
@@ -88,7 +88,7 @@ if "__main__" == __name__:
     start_time = datetime.now()
     print("Training started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
     epoch = 0
-    save_threshold = 1e-3
+    save_threshold = 1e-4
     while True:
         epoch += 1
         loss = model.loss(t_train_ic, u_train_ic, t_train_pde)
