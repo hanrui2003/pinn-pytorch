@@ -47,26 +47,26 @@ def plot(t, u_truth, u_pred):
 
 if "__main__" == __name__:
     # torch.manual_seed(1234)
-    # np.random.seed(1234)
+    np.random.seed(1234)
 
     # 随机生成初值点，
     # 先根据数值解的结果，使用核密度估计，然后再采样
     U = np.load('lorenz63_chaos.npy')
-    # # 定义带宽范围
-    # bandwidths = 10 ** np.linspace(-1, 1, 100)
-    # # 网格搜索最优带宽
-    # grid = GridSearchCV(KernelDensity(kernel='gaussian'), {'bandwidth': bandwidths}, cv=5)
-    # grid.fit(U)
-    # best_bandwidth = grid.best_params_['bandwidth']
-    # print("best bandwidth", best_bandwidth)
-    # # 拟合KDE模型
-    # kde = KernelDensity(kernel='gaussian', bandwidth=best_bandwidth).fit(U)
-    # u0 = kde.sample(1)
-    u0 = U[0]
+    # 定义带宽范围
+    bandwidths = 10 ** np.linspace(-1, 1, 100)
+    # 网格搜索最优带宽
+    grid = GridSearchCV(KernelDensity(kernel='gaussian'), {'bandwidth': bandwidths}, cv=5)
+    grid.fit(U)
+    best_bandwidth = grid.best_params_['bandwidth']
+    print("best bandwidth", best_bandwidth)
+    # 拟合KDE模型
+    kde = KernelDensity(kernel='gaussian', bandwidth=best_bandwidth).fit(U)
+    u0 = kde.sample(1)
+    # u0 = U[0]
     print("u0", u0)
 
     # 总点数
-    total_points = 400
+    total_points = 1000
     # 步长
     h = 0.005
     t_total = np.arange(0., total_points * h, h)
@@ -94,14 +94,48 @@ if "__main__" == __name__:
     model = torch.load('lorenz63_don_02_01_-2_gzz_non_random.pt', map_location=torch.device('cpu'))
 
     u_pred = np.zeros((total_points, 3))
-    for i in range(20):
+    for i in range(50):
         u_hat = model(u0_test, t_test).detach().numpy()
         u_pred[i * 20:(i + 1) * 20] = u_hat[0:20]
-        u0_test[:] = torch.from_numpy(u_hat[-1])
+        # u0_test[:] = torch.from_numpy(u_hat[-1])
+        # 改为引入观测，用数值解对应的值作为观测值
+        if i + 1 == 50:
+            break
+        u0_test[:] = torch.from_numpy(u_truth[(i + 1) * 20])
 
-    max_error = abs(u_truth - u_pred).max(axis=0)
-    print("max_error", max_error)
-    # 计算相对误差，(真值-预测值)的范数/真值的范数
-    error = np.linalg.norm(u_truth - u_pred) / np.linalg.norm(u_truth)
-    print("error", error)
-    plot(t_total, u_truth, u_pred)
+    epsilon = np.abs(u_truth - u_pred)
+    L_inf_error = np.max(epsilon)
+    L_2_error = np.sqrt(np.sum(epsilon ** 2) / epsilon.size)
+    L_rel_error = np.linalg.norm(epsilon) / np.linalg.norm(u_truth)
+    print('L_inf_error :', L_inf_error, ' , L_2_error', L_2_error, ' , L_rel_error : ', L_rel_error)
+
+    x = u_truth[:, 0]
+    y = u_truth[:, 1]
+    z = u_truth[:, 2]
+    x_hat = u_pred[:, 0]
+    y_hat = u_pred[:, 1]
+    z_hat = u_pred[:, 2]
+
+    # 创建一个 Figure 对象，并设置子图布局
+    fig = plt.figure(figsize=(15, 5))
+    ax1 = fig.add_subplot(121)
+    ax2 = fig.add_subplot(122, projection='3d')
+
+    ax1.plot(t_total, x, color='b', label='x')
+    ax1.plot(t_total, y, color='g', label='y')
+    ax1.plot(t_total, z, color='k', label='z')
+    ax1.plot(t_total, x_hat, 'r--', label='x_hat')
+    ax1.plot(t_total, y_hat, 'c--', label='y_hat')
+    ax1.plot(t_total, z_hat, color='orange', linestyle='--', label='z_hat')
+    ax1.set_xlabel('t', color='black')
+    ax1.set_ylabel('u(t)', color='black')
+    ax1.legend(loc='upper right')
+
+    ax2.plot(x, y, z, 'r', label='RK')
+    ax2.plot(x_hat, y_hat, z_hat, color='b', linestyle='--', label='PINN')
+    ax2.legend()
+    ax2.set_xlabel('x')
+    ax2.set_ylabel('y')
+    ax2.set_zlabel('z')
+
+    plt.show()
