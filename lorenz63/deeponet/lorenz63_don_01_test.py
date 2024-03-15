@@ -91,17 +91,52 @@ if "__main__" == __name__:
     u0_test = np.tile(u0, (N_t, 1))
     u0_test = torch.from_numpy(u0_test).float()
 
-    model = torch.load('lorenz63_don_01_05_bak1.pt', map_location=torch.device('cpu'))
+    model = torch.load('lorenz63_don_01_05_gzz_01.pt', map_location=torch.device('cpu'))
 
     u_pred = np.zeros((total_points, 3))
     for i in range(10):
         u_hat = model(u0_test, t_test).detach().numpy()
         u_pred[i * 100:(i + 1) * 100] = u_hat[0:100]
-        u0_test[:] = torch.from_numpy(u_hat[-1])
+        # u0_test[:] = torch.from_numpy(u_hat[-1])
+        # 引入观测
+        if i + 1 == 10:
+            break
+        u0_test[:] = torch.from_numpy(u_truth[(i + 1) * 100])
 
-    max_error = abs(u_truth - u_pred).max(axis=0)
-    print("max_error", max_error)
-    # 计算相对误差，(真值-预测值)的范数/真值的范数
-    error = np.linalg.norm(u_truth - u_pred) / np.linalg.norm(u_truth)
-    print("error", error)
-    plot(t_total, u_truth, u_pred)
+    epsilon = np.abs(u_truth - u_pred)
+    L_inf_error = np.max(epsilon)
+    L_2_error = np.sqrt(np.sum(epsilon ** 2) / epsilon.size)
+    L_rel_error = np.linalg.norm(epsilon) / np.linalg.norm(u_truth)
+    print('L_inf_error :', L_inf_error, ' , L_2_error', L_2_error, ' , L_rel_error : ', L_rel_error)
+
+    x = u_truth[:, 0]
+    y = u_truth[:, 1]
+    z = u_truth[:, 2]
+
+    x_hat = u_pred[:, 0]
+    y_hat = u_pred[:, 1]
+    z_hat = u_pred[:, 2]
+
+    # 创建一个 Figure 对象，并设置子图布局
+    fig = plt.figure(figsize=(15, 5))
+    ax1 = fig.add_subplot(121)
+    ax2 = fig.add_subplot(122, projection='3d')
+
+    ax1.plot(t_total, x, color='b', label='x')
+    ax1.plot(t_total, y, color='pink', label='y')
+    ax1.plot(t_total, z, color='k', label='z')
+    ax1.plot(t_total, x_hat, 'r--', label='x_hat')
+    ax1.plot(t_total, y_hat, 'c--', label='y_hat')
+    ax1.plot(t_total, z_hat, color='orange', linestyle='--', label='z_hat')
+    ax1.set_xlabel('t', color='black')
+    ax1.set_ylabel('u(t)', color='black')
+    ax1.legend(loc='upper right')
+
+    ax2.plot(x, y, z, 'r', label='RK')
+    ax2.plot(x_hat, y_hat, z_hat, color='b', linestyle='--', label='DeepONet')
+    ax2.legend()
+    ax2.set_xlabel('x')
+    ax2.set_ylabel('y')
+    ax2.set_zlabel('z')
+
+    plt.show()

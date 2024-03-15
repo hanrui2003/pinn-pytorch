@@ -37,7 +37,7 @@ if "__main__" == __name__:
     ax2 = fig.add_subplot(122, projection='3d')
 
     ax1.plot(t, x, color='b', label='x')
-    ax1.plot(t, y, color='g', label='y')
+    ax1.plot(t, y, color='pink', label='y')
     ax1.plot(t, z, color='k', label='z')
     ax1.plot(t, x_hat, 'r--', label='x_hat')
     ax1.plot(t, y_hat, 'c--', label='y_hat')
