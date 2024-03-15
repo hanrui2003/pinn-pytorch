@@ -132,7 +132,7 @@ if "__main__" == __name__:
     ax1.legend(loc='upper right')
 
     ax2.plot(x, y, z, 'r', label='RK')
-    ax2.plot(x_hat, y_hat, z_hat, color='b', linestyle='--', label='PINN')
+    ax2.plot(x_hat, y_hat, z_hat, color='b', linestyle='--', label='DeepONet')
     ax2.legend()
     ax2.set_xlabel('x')
     ax2.set_ylabel('y')

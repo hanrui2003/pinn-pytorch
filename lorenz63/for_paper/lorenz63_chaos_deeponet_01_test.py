@@ -9,22 +9,22 @@ from lorenz63_data_chaos import u_next
 import matplotlib.pyplot as plt
 
 if "__main__" == __name__:
-    # np.random.seed(123)
+    np.random.seed(1234)
 
     # 随机生成初值点，
     # 先根据数值解的结果，使用核密度估计，然后再采样
     U = np.load('lorenz63_chaos.npy')
-    # # 定义带宽范围
-    # bandwidths = 10 ** np.linspace(-1, 1, 100)
-    # # 网格搜索最优带宽
-    # grid = GridSearchCV(KernelDensity(kernel='gaussian'), {'bandwidth': bandwidths}, cv=5)
-    # grid.fit(U)
-    # best_bandwidth = grid.best_params_['bandwidth']
-    # print("best bandwidth", best_bandwidth)
-    # # 拟合KDE模型
-    # kde = KernelDensity(kernel='gaussian', bandwidth=best_bandwidth).fit(U)
-    # u0 = kde.sample(1)
-    u0 = U[0]
+    # 定义带宽范围
+    bandwidths = 10 ** np.linspace(-1, 1, 100)
+    # 网格搜索最优带宽
+    grid = GridSearchCV(KernelDensity(kernel='gaussian'), {'bandwidth': bandwidths}, cv=5)
+    grid.fit(U)
+    best_bandwidth = grid.best_params_['bandwidth']
+    print("best bandwidth", best_bandwidth)
+    # 拟合KDE模型
+    kde = KernelDensity(kernel='gaussian', bandwidth=best_bandwidth).fit(U)
+    u0 = kde.sample(1)
+    # u0 = U[0]
     print("u0", u0)
 
     # 步长
@@ -45,13 +45,17 @@ if "__main__" == __name__:
     s_test = np.hstack((t_test, u0_test))
     s_test = torch.from_numpy(s_test).float()
 
-    model = torch.load('lorenz63_chaos_deeponet_01_0.1.pt', map_location=torch.device('cpu'))
+    model = torch.load('lorenz63_chaos_deeponet_01_0.01.pt', map_location=torch.device('cpu'))
 
     u_pred = np.zeros((total_points, 3))
     for i in range(50):
         u_hat = model(s_test).detach().numpy()
         u_pred[i * 20:(i + 1) * 20] = u_hat[0:20]
-        u0_test = np.tile(u_hat[-1], (N_delta_t, 1))
+        # u0_test = np.tile(u_hat[-1], (N_delta_t, 1))
+        # 改为引入观测，用数值解对应的值作为观测值
+        if i + 1 == 50:
+            break
+        u0_test = np.tile(u_truth[(i + 1) * 20], (N_delta_t, 1))
         s_test = np.hstack((t_test, u0_test))
         s_test = torch.from_numpy(s_test).float()
 
@@ -88,7 +92,7 @@ if "__main__" == __name__:
     ax1.legend(loc='upper right')
 
     ax2.plot(x, y, z, 'r', label='RK')
-    ax2.plot(x_hat, y_hat, z_hat, color='b', linestyle='--', label='PINN')
+    ax2.plot(x_hat, y_hat, z_hat, color='b', linestyle='--', label='DeepONet')
     ax2.legend()
     ax2.set_xlabel('x')
     ax2.set_ylabel('y')
