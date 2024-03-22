@@ -43,4 +43,12 @@ oned_rfm_diff_no_psi_da_2.npz/pt L_inf=3.74e-11 L_2=5.27e-12  比没有观测略
 是不是应该找一个不太好的方程，然后加观测，引起对比？怎么找呢？
 
 
+convection_diffusion_da_psi_b.py
+使用psi_b做数据同化，方便后面对比，（参数要设置大很多）
+
+convection_diffusion_da_psi_b_1.pt/npz  10min13sec
+Nx=5,Nt=4,M=300,Qx=30,Qt=30
+2024-03-22 22:50:41.239486 L_inf=1.02e-07 L_2=1.09e-09
+
+
 
