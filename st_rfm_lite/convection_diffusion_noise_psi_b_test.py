@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.autograd as autograd
 import math
-from convection_diffusion_psi_b import u_real, LocalNet
+from convection_diffusion_noise_psi_b import u_real, LocalNet
 
 from scipy.linalg import lstsq
 from datetime import datetime
@@ -18,6 +18,7 @@ def plot(X1, T1, U1, X2, T2, U2):
     """
     min_value = np.min([U1, U2])
     max_value = np.max([U1, U2])
+
     # 创建一个 Figure 对象，并设置子图布局
     fig = plt.figure(figsize=(15, 10))
     ax1 = fig.add_subplot(221)
@@ -35,6 +36,7 @@ def plot(X1, T1, U1, X2, T2, U2):
     ax2.set_xlabel('t')
     ax2.set_ylabel('x')
     ax2.set_zlabel('u(x,t)')
+    ax2.set_zlim(min_value, max_value)
 
     cp3 = ax3.contourf(T2, X2, U2, 20, cmap="rainbow", vmin=min_value, vmax=max_value)
     fig.colorbar(cp3, ax=ax3)
@@ -46,6 +48,7 @@ def plot(X1, T1, U1, X2, T2, U2):
     ax4.set_xlabel('t')
     ax4.set_ylabel('x')
     ax4.set_zlabel('RFM(x,t)')
+    ax4.set_zlim(min_value, max_value)
 
     plt.show()
 
@@ -76,11 +79,11 @@ def plot_err(X1, T1, U1):
 if __name__ == '__main__':
     print(datetime.now(), "Main start")
 
-    data = np.load("convection_diffusion_psi_b.npz")
+    data = np.load("convection_diffusion_noise_psi_b.npz")
     Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max = data['config']
     w = data['w']
 
-    models = torch.load('convection_diffusion_psi_b.pt')
+    models = torch.load('convection_diffusion_noise_psi_b.pt')
 
     print(datetime.now(), "test start")
     test_Qx = 2 * Qx

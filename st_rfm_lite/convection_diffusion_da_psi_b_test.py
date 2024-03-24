@@ -19,7 +19,7 @@ def plot(X1, T1, U1, X2, T2, U2):
     min_value = np.min([U1, U2])
     max_value = np.max([U1, U2])
     # 创建一个 Figure 对象，并设置子图布局
-    fig = plt.figure(figsize=(12, 8))
+    fig = plt.figure(figsize=(15, 10))
     ax1 = fig.add_subplot(221)
     # ax1.set_ylim
     ax2 = fig.add_subplot(222, projection='3d')

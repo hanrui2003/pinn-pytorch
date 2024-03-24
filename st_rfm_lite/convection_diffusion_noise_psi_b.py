@@ -46,10 +46,14 @@ def weights_init(m):
 
 
 class LocalNet(nn.Module):
-    def __init__(self, in_features, hidden_features, x_max, x_min, t_max, t_min):
+    def __init__(self, in_features, hidden_features, x_max, x_min, t_max, t_min, Nx, Nt, n_x, n_t):
         super(LocalNet, self).__init__()
         self.in_features = in_features
         self.hidden_features = hidden_features
+        self.Nx = Nx
+        self.Nt = Nt
+        self.n_x = n_x
+        self.n_t = n_t
         # 半径的倒数
         self.r_inv = torch.tensor([2.0 / (x_max - x_min), 2.0 / (t_max - t_min)])
         # 区域中心
@@ -59,7 +63,32 @@ class LocalNet(nn.Module):
     def forward(self, y):
         # 标准化，使得取值在[-1,1]
         y = (y - self.y_c) * self.r_inv
-        return self.phi(y)
+        z = self.phi(y)
+        x = y[:, [0]]
+        t = y[:, [1]]
+        if self.n_x == 0:
+            psi_x = ((x >= -1) & (x < 3 / 4)) * 1.0 + \
+                    ((x >= 3 / 4) & (x < 5 / 4)) * (1 - torch.sin(2 * np.pi * x)) / 2
+        elif self.n_x == self.Nx - 1:
+            psi_x = ((x >= -5 / 4) & (x < -3 / 4)) * (1 + torch.sin(2 * np.pi * x)) / 2 + \
+                    ((x >= -3 / 4) & (x <= 1)) * 1.0
+        else:
+            psi_x = ((x >= -5 / 4) & (x < -3 / 4)) * (1 + torch.sin(2 * np.pi * x)) / 2 + \
+                    ((x >= -3 / 4) & (x < 3 / 4)) * 1.0 + \
+                    ((x >= 3 / 4) & (x < 5 / 4)) * (1 - torch.sin(2 * np.pi * x)) / 2
+
+        if self.n_t == 0:
+            psi_t = ((t >= -1) & (t < 3 / 4)) * 1.0 + \
+                    ((t >= 3 / 4) & (t < 5 / 4)) * (1 - torch.sin(2 * np.pi * t)) / 2
+        elif self.n_t == self.Nt - 1:
+            psi_t = ((t >= -5 / 4) & (t < -3 / 4)) * (1 + torch.sin(2 * np.pi * t)) / 2 + \
+                    ((t >= -3 / 4) & (t <= 1)) * 1.0
+        else:
+            psi_t = ((t >= -5 / 4) & (t < -3 / 4)) * (1 + torch.sin(2 * np.pi * t)) / 2 + \
+                    ((t >= -3 / 4) & (t < 3 / 4)) * 1.0 + \
+                    ((t >= 3 / 4) & (t < 5 / 4)) * (1 - torch.sin(2 * np.pi * t)) / 2
+
+        return psi_x * psi_t * z
 
 
 def pre_define(Nx, Nt, M, X_min, X_max, T_min, T_max):
@@ -74,7 +103,8 @@ def pre_define(Nx, Nt, M, X_min, X_max, T_min, T_max):
         for n in range(Nt):
             t_min = n * delta_t + T_min
             t_max = (n + 1) * delta_t + T_min
-            model = LocalNet(in_features=2, hidden_features=M, x_min=x_min, x_max=x_max, t_min=t_min, t_max=t_max)
+            model = LocalNet(in_features=2, hidden_features=M, x_min=x_min, x_max=x_max, t_min=t_min, t_max=t_max,
+                             Nx=Nx, Nt=Nt, n_x=k, n_t=n)
             model = model.apply(weights_init)
             for param in model.parameters():
                 param.requires_grad = False
@@ -183,8 +213,8 @@ def main(Nx, Nt, M, Qx, Qt):
     w = lstsq(A, f, lapack_driver="gelss")[0]
     print(datetime.now(), "main process end")
 
-    torch.save(models, 'convection_diffusion_noise_no_psi.pt')
-    np.savez('convection_diffusion_noise_no_psi.npz', w=w,
+    torch.save(models, 'convection_diffusion_noise_psi_b.pt')
+    np.savez('convection_diffusion_noise_psi_b.npz', w=w,
              config=np.array([Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max], dtype=int))
 
     print(datetime.now(), "main end")
@@ -206,7 +236,7 @@ if __name__ == '__main__':
     # t维度划分的区间数
     Nts = [2, ]
     # 每个局部局域的特征函数数量
-    Ms = [150, ]
+    Ms = [50, ]
     # x维度每个区间的配点数，Qx+1
     Qxs = [10, ]
     # t维度每个区间的配点数，Qt+1
