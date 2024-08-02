@@ -9,7 +9,7 @@ from lorenz63_data_chaos import u_next
 import matplotlib.pyplot as plt
 
 if "__main__" == __name__:
-    np.random.seed(1234)
+    np.random.seed(123)
 
     # 随机生成初值点，
     # 先根据数值解的结果，使用核密度估计，然后再采样
@@ -45,7 +45,7 @@ if "__main__" == __name__:
     s_test = np.hstack((t_test, u0_test))
     s_test = torch.from_numpy(s_test).float()
 
-    model = torch.load('lorenz63_chaos_deeponet_01_0.01.pt', map_location=torch.device('cpu'))
+    model = torch.load('lorenz63_chaos_deeponet_01_0.005.pt', map_location=torch.device('cpu'))
 
     u_pred = np.zeros((total_points, 3))
     for i in range(50):
