@@ -240,8 +240,8 @@ def main(Nx, Ny, Nt, M, Qx, Qy, Qt):
     w = lstsq(A, f, lapack_driver="gelss")[0]
     print(datetime.now(), "main process end")
 
-    torch.save(models, 'convection_diffusion_2d_da_no_psi.pt')
-    np.savez('convection_diffusion_2d_da_no_psi.npz', w=w,
+    torch.save(models, 'convection_diffusion_2d_da_no_psi_100.pt')
+    np.savez('convection_diffusion_2d_da_no_psi_100.npz', w=w,
              config=np.array([Nx, Ny, Nt, M, Qx, Qy, Qt, X_min, X_max, Y_min, Y_max, T_min, T_max], dtype=int))
 
     print(datetime.now(), "main end")

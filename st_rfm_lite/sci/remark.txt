@@ -1,0 +1,23 @@
+convection_diffusion_2d_da_no_psi.py
+使用rfm解二维的对流扩散方程
+convection_diffusion_da_no_psi_100.pt
+2024-08-03 21:30:57.940897 Main start
+2024-08-03 21:30:57.940927 main start
+2024-08-03 21:30:57.960855 pre_define start
+2024-08-03 21:30:57.994554 pre_define end
+2024-08-03 21:30:57.994571 cal_matrix start
+2024-08-03 21:40:06.316508 cal_matrix end
+2024-08-03 21:40:55.135190 main process end
+2024-08-03 21:40:55.151780 main end
+2024-08-03 21:40:55.251761 Main end
+
+convection_diffusion_da_no_psi_200.pt
+2024-08-03 23:14:08.065288 Main start
+2024-08-03 23:14:08.065314 main start
+2024-08-03 23:14:08.085058 pre_define start
+2024-08-03 23:14:08.097485 pre_define end
+2024-08-03 23:14:08.097499 cal_matrix start
+2024-08-03 23:51:26.461971 cal_matrix end
+2024-08-03 23:56:27.790222 main process end
+2024-08-03 23:56:27.808785 main end
+2024-08-03 23:56:28.009305 Main end
