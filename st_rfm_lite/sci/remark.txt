@@ -1,23 +1,26 @@
 convection_diffusion_2d_da_no_psi.py
-使用rfm解二维的对流扩散方程
-convection_diffusion_da_no_psi_100.pt
-2024-08-03 21:30:57.940897 Main start
-2024-08-03 21:30:57.940927 main start
-2024-08-03 21:30:57.960855 pre_define start
-2024-08-03 21:30:57.994554 pre_define end
-2024-08-03 21:30:57.994571 cal_matrix start
-2024-08-03 21:40:06.316508 cal_matrix end
-2024-08-03 21:40:55.135190 main process end
-2024-08-03 21:40:55.151780 main end
-2024-08-03 21:40:55.251761 Main end
+使用rfm解二维的对流扩散方程:v_x = v_y = 0.01
 
-convection_diffusion_da_no_psi_200.pt
-2024-08-03 23:14:08.065288 Main start
-2024-08-03 23:14:08.065314 main start
-2024-08-03 23:14:08.085058 pre_define start
-2024-08-03 23:14:08.097485 pre_define end
-2024-08-03 23:14:08.097499 cal_matrix start
-2024-08-03 23:51:26.461971 cal_matrix end
-2024-08-03 23:56:27.790222 main process end
-2024-08-03 23:56:27.808785 main end
-2024-08-03 23:56:28.009305 Main end
+convection_diffusion_da_no_psi_1.pt
+2024-08-04 19:48:12.189425 Main start
+Nx= 2 ,Ny= 2 ,Nt= 2 ,M= 200 ,Qx= 20 ,Qy= 20 ,Qt= 20
+2024-08-04 19:48:12.189456 main start
+2024-08-04 19:48:12.198052 pre_define start
+2024-08-04 19:48:12.201357 pre_define end
+2024-08-04 19:48:12.201370 cal_matrix start
+2024-08-04 19:53:37.829286 cal_matrix end
+2024-08-04 19:53:44.407544 main process end, residuals : [159.70891749]
+2024-08-04 19:53:44.414604 main end
+2024-08-04 19:53:44.446704 Main end
+
+convection_diffusion_da_no_psi_2.pt
+2024-08-04 20:40:02.932151 Main start
+Nx= 2 ,Ny= 2 ,Nt= 2 ,M= 200 ,Qx= 30 ,Qy= 30 ,Qt= 30
+2024-08-04 20:40:02.932179 main start
+2024-08-04 20:40:02.948662 pre_define start
+2024-08-04 20:40:02.952555 pre_define end
+2024-08-04 20:40:02.952571 cal_matrix start
+2024-08-04 20:58:08.291376 cal_matrix end
+2024-08-04 20:58:24.357865 main process end, residuals : [152.13525033] ,mse: [0.00060179]
+2024-08-04 20:58:24.363288 main end
+2024-08-04 20:58:24.502368 Main end

@@ -12,7 +12,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 
 
-def plot(X1, T1, U1, X2, T2, U2):
+def plot(X, Y, U1, U2):
     """
     同时绘制PDE的数值解和神经网络解，上面数值解，下面神经网络解。
     """
@@ -20,35 +20,42 @@ def plot(X1, T1, U1, X2, T2, U2):
     max_value = np.max([U1, U2])
     # 创建一个 Figure 对象，并设置子图布局
     fig = plt.figure(figsize=(12, 8))
-    ax1 = fig.add_subplot(221)
-    # ax1.set_ylim
-    ax2 = fig.add_subplot(222, projection='3d')
-    ax3 = fig.add_subplot(223)
-    ax4 = fig.add_subplot(224, projection='3d')
+    ax1 = fig.add_subplot(231, projection='3d')
+    ax2 = fig.add_subplot(232, projection='3d')
+    ax3 = fig.add_subplot(233, projection='3d')
+    ax4 = fig.add_subplot(234, projection='3d')
+    ax5 = fig.add_subplot(235, projection='3d')
+    ax6 = fig.add_subplot(236, projection='3d')
 
-    cp1 = ax1.contourf(T1, X1, U1, 20, cmap="rainbow", vmin=min_value, vmax=max_value)
-    fig.colorbar(cp1, ax=ax1)
-    ax1.set_title('u(x,t)')
-    ax1.set_xlabel('t')
-    ax1.set_ylabel('x')
+    ax1.plot_surface(X, Y, U1[0], cmap="rainbow", vmin=min_value, vmax=max_value)
+    ax1.set_xlabel('x')
+    ax1.set_ylabel('y')
+    ax1.set_zlim(min_value, max_value)
 
-    ax2.plot_surface(T1, X1, U1, cmap="rainbow", vmin=min_value, vmax=max_value)
-    ax2.set_xlabel('t')
-    ax2.set_ylabel('x')
-    ax2.set_zlabel('u(x,t)')
+    ax2.plot_surface(X, Y, U1[1], cmap="rainbow", vmin=min_value, vmax=max_value)
+    ax2.set_xlabel('x')
+    ax2.set_ylabel('y')
     ax2.set_zlim(min_value, max_value)
 
-    cp3 = ax3.contourf(T2, X2, U2, 20, cmap="rainbow", vmin=min_value, vmax=max_value)
-    fig.colorbar(cp3, ax=ax3)
-    ax3.set_title('RFM(x,t)')
-    ax3.set_xlabel('t')
-    ax3.set_ylabel('x')
+    ax3.plot_surface(X, Y, U1[2], cmap="rainbow", vmin=min_value, vmax=max_value)
+    ax3.set_xlabel('x')
+    ax3.set_ylabel('y')
+    ax3.set_zlim(min_value, max_value)
 
-    ax4.plot_surface(T2, X2, U2, cmap="rainbow", vmin=min_value, vmax=max_value)
-    ax4.set_xlabel('t')
-    ax4.set_ylabel('x')
-    ax4.set_zlabel('RFM(x,t)')
+    ax4.plot_surface(X, Y, U2[0], cmap="rainbow", vmin=min_value, vmax=max_value)
+    ax4.set_xlabel('x')
+    ax4.set_ylabel('y')
     ax4.set_zlim(min_value, max_value)
+
+    ax5.plot_surface(X, Y, U2[1], cmap="rainbow", vmin=min_value, vmax=max_value)
+    ax5.set_xlabel('x')
+    ax5.set_ylabel('y')
+    ax5.set_zlim(min_value, max_value)
+
+    ax6.plot_surface(X, Y, U2[2], cmap="rainbow", vmin=min_value, vmax=max_value)
+    ax6.set_xlabel('x')
+    ax6.set_ylabel('y')
+    ax6.set_zlim(min_value, max_value)
 
     plt.show()
 
@@ -79,11 +86,11 @@ def plot_err(X1, T1, U1):
 if __name__ == '__main__':
     print(datetime.now(), "Main start")
 
-    data = np.load("convection_diffusion_2d_da_no_psi_200.npz")
+    data = np.load("convection_diffusion_2d_da_no_psi_1.npz")
     Nx, Ny, Nt, M, Qx, Qy, Qt, X_min, X_max, Y_min, Y_max, T_min, T_max = data['config']
     w = data['w']
 
-    models = torch.load('convection_diffusion_2d_da_no_psi_200.pt')
+    models = torch.load('convection_diffusion_2d_da_no_psi_1.pt')
 
     print(datetime.now(), "test start")
     test_Qx = 2 * Qx
@@ -96,6 +103,8 @@ if __name__ == '__main__':
     X, Y = np.meshgrid(x, y)
     point_xy = np.hstack((X.flatten()[:, None], Y.flatten()[:, None]))
 
+    U_true = []
+    U_numerical = []
     for t in t_slice:
         t_column = t * np.ones((point_xy.shape[0], 1))
         points = np.hstack((point_xy, t_column))
@@ -115,23 +124,11 @@ if __name__ == '__main__':
         epsilon = np.abs(true_values - numerical_values)
         L_inf = np.max(epsilon)
         L_2 = np.sqrt(np.sum(epsilon ** 2) / len(epsilon))
+        print('Error for t :', t)
+        print('Nx={:d},Ny={:d},M={:d},Qx={:d},Qy={:d}'.format(Nx, Ny, M, test_Qx, test_Qy))
+        print(datetime.now(), 'L_inf={:.2e}'.format(L_inf), 'L_2={:.2e}'.format(L_2))
+        U_true.append(true_values.reshape((X.shape[0], X.shape[1])))
+        U_numerical.append(numerical_values.reshape((X.shape[0], X.shape[1])))
 
-
-
-
-
-    print('********************* ERROR *********************')
-    print('Nx={:d},Nt={:d},M={:d},Qx={:d},Qt={:d}'.format(Nx, Nt, M, Qx, Qt))
-    print(datetime.now(), 'L_inf={:.2e}'.format(L_inf), 'L_2={:.2e}'.format(L_2))
-    # print("边值条件误差")
-    # print("{:.2e} {:.2e}".format(max(epsilon[0, :]), max(epsilon[-1, :])))
-    # print("初值、终值误差")
-    # print("{:.2e} {:.2e}".format(max(epsilon[:, 0]), max(epsilon[:, -1])))
-    print(datetime.now(), "test end")
     print(datetime.now(), "Main end")
-
-    U_true = true_values.reshape((X.shape[0], X.shape[1]))
-    U_numerical = numerical_values.reshape((X.shape[0], X.shape[1]))
-
-    plot(X, T, U_true, X, T, U_numerical)
-    # plot_err(X, T, np.abs(U_true - U_numerical))
+    plot(X, Y, U_true, U_numerical)

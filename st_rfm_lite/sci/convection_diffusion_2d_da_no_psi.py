@@ -10,22 +10,30 @@ from scipy.linalg import lstsq
 from datetime import datetime
 
 torch.set_default_dtype(torch.float64)
-Pi = np.pi
+X_min = 0.0
+X_max = 4.0
+Y_min = 0.0
+Y_max = 4.0
+T_min = 0.0
+T_max = 2.0
+mu = 2 * np.pi / (X_max - X_min)
+nu = 2 * np.pi / (Y_max - Y_min)
+lamda = np.sqrt(mu ** 2 + nu ** 2)
 v_x = 0.01
 v_y = 0.01
 D = 1
 
 
 def u_real(x, y, t):
-    return np.exp(-t) * np.sin(Pi * (x + y + t + x * y * t))
+    return np.sin(mu * x) * np.sin(nu * y) * (2 * np.cos(lamda * t) + np.sin(lamda * t))
 
 
 def f_real(x, y, t):
-    u_x = np.exp(-t) * Pi * (y * t + 1) * np.cos(Pi * (x + y + t + x * y * t))
-    u_xx = -np.exp(-t) * (Pi * (y * t + 1)) ** 2 * np.sin(Pi * (x + y + t + x * y * t))
-    u_y = np.exp(-t) * Pi * (x * t + 1) * np.cos(Pi * (x + y + t + x * y * t))
-    u_yy = -np.exp(-t) * (Pi * (x * t + 1)) ** 2 * np.sin(Pi * (x + y + t + x * y * t))
-    u_t = np.exp(-t) * (Pi * (x * y + 1) * np.cos(Pi * (x + y + t + x * y * t)) - np.sin(Pi * (x + y + t + x * y * t)))
+    u_x = mu * np.cos(mu * x) * np.sin(nu * y) * (2 * np.cos(lamda * t) + np.sin(lamda * t))
+    u_xx = -mu ** 2 * np.sin(mu * x) * np.sin(nu * y) * (2 * np.cos(lamda * t) + np.sin(lamda * t))
+    u_y = nu * np.sin(mu * x) * np.cos(nu * y) * (2 * np.cos(lamda * t) + np.sin(lamda * t))
+    u_yy = -nu ** 2 * np.sin(mu * x) * np.sin(nu * y) * (2 * np.cos(lamda * t) + np.sin(lamda * t))
+    u_t = lamda * np.sin(mu * x) * np.sin(nu * y) * (np.cos(lamda * t) - 2 * np.sin(lamda * t))
     return u_t + v_x * u_x + v_y * u_y - D * (u_xx + u_yy)
 
 
@@ -225,9 +233,9 @@ def main(Nx, Ny, Nt, M, Qx, Qy, Qt):
         (X[:, -1, :].flatten()[:, None], Y[:, -1, :].flatten()[:, None], T[:, -1, :].flatten()[:, None]))
     bc_points = np.vstack((top_bc_points, bottom_bc_points, left_bc_points, right_bc_points))
 
-    t_obs = np.linspace(T_min, T_max, 11)[1:]
-    x_obs = np.linspace(X_min, X_max, 51)[1:-1]
-    y_obs = np.linspace(Y_min, Y_max, 51)[1:-1]
+    t_obs = np.linspace(T_min, T_max, 21)[1:]
+    x_obs = np.linspace(X_min, X_max, 21)[1:-1]
+    y_obs = np.linspace(Y_min, Y_max, 21)[1:-1]
     obs_points = np.array([(x, y, t) for x in x_obs for y in y_obs for t in t_obs])
 
     models = pre_define(Nx=Nx, Ny=Ny, Nt=Nt, M=M, X_min=X_min, X_max=X_max, Y_min=Y_min, Y_max=Y_max, T_min=T_min,
@@ -237,11 +245,11 @@ def main(Nx, Ny, Nt, M, Qx, Qy, Qt):
     A, f = cal_matrix(models, Nx, Ny, Nt, M, Qx, Qy, Qt, pde_points, ic_points, bc_points, obs_points)
 
     # 为什么选择gelss，默认的不行吗？
-    w = lstsq(A, f, lapack_driver="gelss")[0]
-    print(datetime.now(), "main process end")
+    w, residuals, *_ = lstsq(A, f, lapack_driver="gelss")
+    print(datetime.now(), "main process end,", "residuals :", residuals, ",mse:", residuals / len(A))
 
-    torch.save(models, 'convection_diffusion_2d_da_no_psi_100.pt')
-    np.savez('convection_diffusion_2d_da_no_psi_100.npz', w=w,
+    torch.save(models, 'convection_diffusion_2d_da_no_psi.pt')
+    np.savez('convection_diffusion_2d_da_no_psi.npz', w=w,
              config=np.array([Nx, Ny, Nt, M, Qx, Qy, Qt, X_min, X_max, Y_min, Y_max, T_min, T_max], dtype=int))
 
     print(datetime.now(), "main end")
@@ -252,32 +260,26 @@ if __name__ == '__main__':
     # torch.manual_seed(123)
     # np.random.seed(123)
 
-    X_min = 0.0
-    X_max = 5.0
-    Y_min = 0.0
-    Y_max = 5.0
-    T_min = 0.0
-    T_max = 1.0
-
     # 以下是五组配置，每次训练只取一列
     # x维度划分的区间数
-    Nxs = [5, ]
+    Nxs = [2, ]
     # y维度划分的区间数
-    Nys = [5, ]
+    Nys = [2, ]
     # t维度划分的区间数
     Nts = [2, ]
     # 每个局部局域的特征函数数量
-    Ms = [100, ]
+    Ms = [200, ]
     # x维度每个区间的配点数，Qx+1
-    Qxs = [10, ]
+    Qxs = [30, ]
     # y维度每个区间的配点数，Qx+1
-    Qys = [10, ]
+    Qys = [30, ]
     # t维度每个区间的配点数，Qt+1
-    Qts = [10, ]
+    Qts = [30, ]
 
     loop = zip(Nxs, Nys, Nts, Ms, Qxs, Qys, Qts)
     for i, item in enumerate(loop):
         Nx, Ny, Nt, M, Qx, Qy, Qt = item
+        print("Nx=", Nx, ",Ny=", Ny, ",Nt=", Nt, ",M=", M, ",Qx=", Qx, ",Qy=", Qy, ",Qt=", Qt)
         main(Nx=Nx, Ny=Ny, Nt=Nt, M=M, Qx=Qx, Qy=Qy, Qt=Qt)
 
     print(datetime.now(), "Main end")
