@@ -24,3 +24,66 @@ Nx= 2 ,Ny= 2 ,Nt= 2 ,M= 200 ,Qx= 30 ,Qy= 30 ,Qt= 30
 2024-08-04 20:58:24.357865 main process end, residuals : [152.13525033] ,mse: [0.00060179]
 2024-08-04 20:58:24.363288 main end
 2024-08-04 20:58:24.502368 Main end
+
+===============================complex domain=================
+convection_diffusion_2d_da_complex_domain_100.py
+复杂区域，扣除三个圆
+convection_diffusion_2d_da_complex_domain_100.pt
+2024-08-05 22:18:23.968797 Main start
+Nx= 4 ,Ny= 4 ,Nt= 2 ,M= 100 ,Qx= 10 ,Qy= 10 ,Qt= 10
+2024-08-05 22:18:23.968827 main start
+2024-08-05 22:18:23.973027 pre_define start
+2024-08-05 22:18:23.981714 pre_define end
+2024-08-05 22:18:23.981728 cal_matrix start
+2024-08-05 22:19:53.227885 cal_matrix end
+2024-08-05 22:20:02.396411 main process end, shape of A : (32019, 3200) residuals : [1.33515396] mse :  [4.16988026e-05] L_2 error : [0.00645746]
+2024-08-05 22:20:02.410155 main end
+2024-08-05 22:20:02.456948 Main end
+
+convection_diffusion_2d_da_complex_domain_150.pt
+2024-08-05 23:26:01.830140 Main start
+Nx= 4 ,Ny= 4 ,Nt= 2 ,M= 150 ,Qx= 10 ,Qy= 10 ,Qt= 10
+2024-08-05 23:26:01.830169 main start
+2024-08-05 23:26:01.834382 pre_define start
+2024-08-05 23:26:01.843163 pre_define end
+2024-08-05 23:26:01.843176 cal_matrix start
+2024-08-05 23:29:42.972079 cal_matrix end
+2024-08-05 23:30:13.403607 main process end, shape of A : (32019, 4800) residuals : [0.01344159] mse :  [4.19800484e-07] L_2 error : [0.00064792]
+2024-08-05 23:30:13.417546 main end
+2024-08-05 23:30:13.474367 Main end
+
+convection_diffusion_2d_da_complex_domain_200.pt
+2024-08-05 22:59:06.467819 Main start
+Nx= 4 ,Ny= 4 ,Nt= 2 ,M= 200 ,Qx= 10 ,Qy= 10 ,Qt= 10
+2024-08-05 22:59:06.467851 main start
+2024-08-05 22:59:06.472049 pre_define start
+2024-08-05 22:59:06.480978 pre_define end
+2024-08-05 22:59:06.480993 cal_matrix start
+2024-08-05 23:10:15.978396 cal_matrix end
+2024-08-05 23:11:25.182773 main process end, shape of A : (32019, 6400) residuals : [0.00016902] mse :  [5.27877725e-09] L_2 error : [7.26551943e-05]
+2024-08-05 23:11:25.197219 main end
+2024-08-05 23:11:25.258982 Main end
+
+convection_diffusion_2d_da_complex_domain_250.pt
+2024-08-05 22:38:38.266180 Main start
+Nx= 4 ,Ny= 4 ,Nt= 2 ,M= 250 ,Qx= 10 ,Qy= 10 ,Qt= 10
+2024-08-05 22:38:38.266210 main start
+2024-08-05 22:38:38.270336 pre_define start
+2024-08-05 22:38:38.279423 pre_define end
+2024-08-05 22:38:38.279437 cal_matrix start
+2024-08-05 22:54:00.443770 cal_matrix end
+2024-08-05 22:56:09.631378 main process end, shape of A : (32019, 8000) residuals : [9.40348775e-06] mse :  [2.93684617e-10] L_2 error : [1.7137229e-05]
+2024-08-05 22:56:09.646391 main end
+2024-08-05 22:56:09.733284 Main end
+
+convection_diffusion_2d_da_complex_domain_300.pt
+2024-08-05 23:44:53.901765 Main start
+Nx= 4 ,Ny= 4 ,Nt= 2 ,M= 300 ,Qx= 10 ,Qy= 10 ,Qt= 10
+2024-08-05 23:44:53.901794 main start
+2024-08-05 23:44:53.905951 pre_define start
+2024-08-05 23:44:53.915070 pre_define end
+2024-08-05 23:44:53.915083 cal_matrix start
+2024-08-06 00:09:21.488141 cal_matrix end
+2024-08-06 00:12:59.177062 main process end, shape of A : (32019, 9600) residuals : [2.27058253e-07] mse :  [7.09135991e-12] L_2 error : [2.66296074e-06]
+2024-08-06 00:12:59.191607 main end
+2024-08-06 00:12:59.286323 Main end
