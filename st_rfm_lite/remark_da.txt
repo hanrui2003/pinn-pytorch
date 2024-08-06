@@ -7,6 +7,34 @@ convection_diffusion_interp.py
 convection_diffusion_noise_no_psi.py
 给初值加上噪声，边值条件保留，用RFM算数值解，并和真解比较
 
+==========================================================
 convection_diffusion_da_no_psi.py
 给初值加上噪声，边值条件保留，并加上观测，用RFM算数值解，并和真解比较
 观测为x=[1,2,3,4],t=0.1,0.2,...,1.0
+
+convection_diffusion_da_no_psi_50.pt
+2024-08-06 23:12:42.161654 Main start
+2024-08-06 23:12:42.161678 main start
+2024-08-06 23:12:42.162398 pre_define start
+2024-08-06 23:12:42.166626 pre_define end
+2024-08-06 23:12:42.166641 cal_matrix start
+2024-08-06 23:12:42.788934 cal_matrix end
+2024-08-06 23:12:42.871641 main process end, shape of A : (1654, 500) residuals : [2.15321688] mse :  [0.00130182] L_2 error : [0.0360808]
+2024-08-06 23:12:42.877447 main end
+2024-08-06 23:12:42.878000 Main end
+Elapsed time: 716ms
+
+convection_diffusion_da_no_psi_150.pt
+Nx=5,Nt=2,M=150,Qx=10,Qt=10
+2024-08-06 22:59:08.143405 L_inf=5.69e-05 L_2=1.36e-06
+
+convection_diffusion_da_no_psi_200.pt
+2024-08-06 23:23:59.985905 Main start
+2024-08-06 23:23:59.985930 main start
+2024-08-06 23:23:59.986658 pre_define start
+2024-08-06 23:23:59.991108 pre_define end
+2024-08-06 23:23:59.991122 cal_matrix start
+2024-08-06 23:24:03.099955 cal_matrix end
+2024-08-06 23:24:04.027814 main process end, shape of A : (1654, 2000) residuals : [] mse :  [] L_2 error : []
+2024-08-06 23:24:04.035325 main end
+2024-08-06 23:24:04.036840 Main end

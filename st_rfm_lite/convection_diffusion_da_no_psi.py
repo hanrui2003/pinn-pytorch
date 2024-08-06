@@ -212,8 +212,9 @@ def main(Nx, Nt, M, Qx, Qt):
     A, f = cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points, obs_points)
 
     # 为什么选择gelss，默认的不行吗？
-    w = lstsq(A, f, lapack_driver="gelss")[0]
-    print(datetime.now(), "main process end")
+    w, residuals, *_ = lstsq(A, f, lapack_driver="gelss")
+    print(datetime.now(), "main process end,", "shape of A :", A.shape, "residuals :", residuals, "mse : ",
+          residuals / len(A), "L_2 error :", np.sqrt(residuals / len(A)))
 
     torch.save(models, 'convection_diffusion_da_no_psi.pt')
     np.savez('convection_diffusion_da_no_psi.npz', w=w,
@@ -238,7 +239,7 @@ if __name__ == '__main__':
     # t维度划分的区间数
     Nts = [2, ]
     # 每个局部局域的特征函数数量
-    Ms = [150, ]
+    Ms = [50, ]
     # x维度每个区间的配点数，Qx+1
     Qxs = [10, ]
     # t维度每个区间的配点数，Qt+1

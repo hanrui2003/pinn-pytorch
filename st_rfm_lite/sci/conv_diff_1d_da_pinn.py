@@ -19,6 +19,15 @@ X_min = 0.0
 X_max = 5.0
 T_min = 0.0
 T_max = 1.0
+Nx = 5
+# t维度划分的区间数
+Nt = 2
+# 每个局部局域的特征函数数量
+M = 150
+# x维度每个区间的配点数，Qx+1
+Qx = 10
+# t维度每个区间的配点数，Qt+1
+Qt = 10
 
 
 def u_real(x, t):
@@ -87,16 +96,6 @@ class ConvDiffNet(nn.Module):
 if "__main__" == __name__:
     # torch.manual_seed(123)
     # np.random.seed(123)
-
-    Nx = 5
-    # t维度划分的区间数
-    Nt = 2
-    # 每个局部局域的特征函数数量
-    M = 150
-    # x维度每个区间的配点数，Qx+1
-    Qx = 10
-    # t维度每个区间的配点数，Qt+1
-    Qt = 10
 
     x = np.linspace(X_min, X_max, Nx * Qx + 1)
     t = np.linspace(T_min, T_max, Nt * Qt + 1)
