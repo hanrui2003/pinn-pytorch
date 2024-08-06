@@ -11,10 +11,34 @@ torch.set_default_dtype(torch.float)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(device)
 
+Pi = np.pi
+nu = 0.01
+v = 0.01
+D = 1
+X_min = 0.0
+X_max = 5.0
+T_min = 0.0
+T_max = 1.0
+
+
+def u_real(x, t):
+    return np.exp(-t) * np.sin(Pi * (x + t + x * t))
+
+
+def f_real(x, t):
+    u = np.exp(-t) * np.sin(Pi * (x + t + x * t))
+    u_x = np.exp(-t) * Pi * (t + 1) * np.cos(Pi * (x + t + x * t))
+    u_xx = -np.exp(-t) * (Pi * (t + 1)) ** 2 * np.sin(Pi * (x + t + x * t))
+    u_t = np.exp(-t) * (Pi * (x + 1) * np.cos(Pi * (x + t + x * t)) - np.sin(Pi * (x + t + x * t)))
+    return u_t + v * u_x - nu * u_xx + D * u
+
 
 class ConvDiffNet(nn.Module):
     def __init__(self, layers):
         super().__init__()
+        self.nu = torch.tensor(0.01).float().to(device)
+        self.v = torch.tensor(0.01).float().to(device)
+        self.D = torch.tensor(1.).float().to(device)
         self.activation = nn.Tanh()
         self.loss_func = nn.MSELoss(reduction='mean')
 
@@ -30,121 +54,100 @@ class ConvDiffNet(nn.Module):
             a = self.activation(z)
         return self.linears[-1](a)
 
-    def loss_ic(self, y_train_ic, label_ic):
-        hat = self.forward(y_train_ic)
-        return self.loss_func(label_ic, hat)
+    def loss_label(self, y, label):
+        """
+        带标签的点
+        """
+        hat = self.forward(y)
+        return self.loss_func(label, hat)
 
-    def loss_bc(self, y_train_bc, v_label_bc):
-        hat = self.forward(y_train_bc)
-        v_hat = hat[:, [1]]
-        return self.loss_func(v_label_bc, v_hat)
-
-    def loss_pde(self, y_pde):
+    def loss_pde(self, y_pde, label_pde):
+        """
+        PDE的点
+        """
         y_pde.requires_grad = True
-        nn_hat = self.forward(y_pde)
-        h_hat = nn_hat[:, [0]]
-        v_hat = nn_hat[:, [1]]
+        u_hat = self.forward(y_pde)
 
-        dh = autograd.grad(h_hat, y_pde, torch.ones_like(h_hat), create_graph=True)[0]
-        dv = autograd.grad(v_hat, y_pde, torch.ones_like(v_hat), create_graph=True)[0]
+        u_x_t = autograd.grad(u_hat, y_pde, torch.ones_like(u_hat), create_graph=True)[0]
+        u_x = u_x_t[:, [0]]
+        u_t = u_x_t[:, [1]]
 
-        h_x = dh[:, [0]]
-        h_t = dh[:, [1]]
-        v_x = dv[:, [0]]
-        v_t = dv[:, [1]]
+        u_xx_xt = autograd.grad(u_x, y_pde, torch.ones_like(u_x), create_graph=True)[0]
+        u_xx = u_xx_xt[:, [0]]
 
-        lhs_ = torch.hstack((h_t, h_hat * v_t + v_hat * h_t))
-        rhs_ = torch.hstack(
-            (-h_hat * v_x - v_hat * h_x, -2 * h_hat * v_hat * v_x - (v_hat ** 2 + self.g * h_hat) * h_x))
+        return self.loss_func(u_t + self.v * u_x - self.nu * u_xx + u_hat, label_pde)
 
-        return self.loss_func(lhs_, rhs_)
-
-    def loss(self, y_train_ic, label_ic, y_train_bc, v_label_bc, y_train_nf):
-        loss_ic = self.loss_ic(y_train_ic, label_ic)
-        loss_bc = self.loss_bc(y_train_bc, v_label_bc)
-        loss_pde = self.loss_pde(y_train_nf)
-        return loss_ic + loss_bc + loss_pde
+    def loss(self, y_ic_bc, label_ic_bc, y_obs, label_obs, y_pde, label_pde):
+        loss_ic_bc = self.loss_label(y_ic_bc, label_ic_bc)
+        loss_obs = self.loss_label(y_obs, label_obs)
+        loss_pde = self.loss_pde(y_pde, label_pde)
+        return 1e-5 * loss_ic_bc + 100 * loss_obs + 100 * loss_pde
 
 
 if "__main__" == __name__:
     # torch.manual_seed(123)
     # np.random.seed(123)
 
-    # 不妨选取第一个样本序列，时间t=[0,1]的数据，即101*202
-    sample_data = np.load('swe_1d_rbf_sample_1.npy')
-    train_data = sample_data[0][:101, :]
+    Nx = 5
+    # t维度划分的区间数
+    Nt = 2
+    # 每个局部局域的特征函数数量
+    M = 150
+    # x维度每个区间的配点数，Qx+1
+    Qx = 10
+    # t维度每个区间的配点数，Qt+1
+    Qt = 10
 
-    # 初值条件
-    x_train_ic = np.linspace(0, 1, 101)[:, None]
-    t_train_ic = np.zeros_like(x_train_ic)
-    y_train_ic = np.hstack((x_train_ic, t_train_ic))
+    x = np.linspace(X_min, X_max, Nx * Qx + 1)
+    t = np.linspace(T_min, T_max, Nt * Qt + 1)
+    X, T = np.meshgrid(x, t)
+    # 用于计算pde损失的点
+    y_train_pde = np.hstack((X.flatten()[:, None], T.flatten()[:, None]))
+    y_label_pde = f_real(y_train_pde[:, [0]], y_train_pde[:, [1]])
 
-    h_label_ic = train_data[0][:101][:, None]
-    v_label_ic = train_data[0][101:][:, None]
-    label_ic = np.hstack((h_label_ic, v_label_ic))
+    # 带标签值的点，即有真解的点
+    ic_points = np.hstack((X[0][:, None], T[0][:, None]))
+    left_bc_points = np.hstack((X[:, 0][:, None], T[:, 0][:, None]))
+    right_bc_points = np.hstack((X[:, -1][:, None], T[:, -1][:, None]))
+    bc_points = np.vstack((left_bc_points, right_bc_points))
+    y_train_ic_bc = np.vstack((ic_points, bc_points))
+    y_label_ic_bc = u_real(y_train_ic_bc[:, [0]], y_train_ic_bc[:, [1]])
 
-    # 边值条件
-    t_train_bc = np.linspace(0, 1, 101)[:, None]
-    x_train_bc1 = np.zeros_like(t_train_bc)
-    x_train_bc2 = np.ones_like(t_train_bc)
-    y_train_bc1 = np.hstack((x_train_bc1, t_train_bc))
-    y_train_bc2 = np.hstack((x_train_bc2, t_train_bc))
-    y_train_bc = np.vstack((y_train_bc1, y_train_bc2))
-
-    v_label_bc = np.zeros((y_train_bc.shape[0], 1))
-
-    # 观测条件
-    t_train_obs = np.array([.1, .2, .3, .4, .5, .6, .7, .8, .9, 1.])[:, None]
-    x_train_obs = 0.5 * np.ones_like(t_train_obs)
-    y_train_obs = np.hstack((x_train_obs, t_train_obs))
-
-    delta_index = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-    h_label_obs = train_data[delta_index, 50][:, None]
-    v_label_obs = train_data[delta_index, 151][:, None]
-    label_obs = np.hstack((h_label_obs, v_label_obs))
-
-    # 把初值和观测数据合并，因为本质都是带标签的数据
-    y_train_ic_obs = np.vstack((y_train_ic, y_train_obs))
-    label_ic_obs = np.vstack((label_ic, label_obs))
-
-    # 配置点
-    y_train_nf = lhs(2, 10000)
+    # 观测点
+    t_obs = np.linspace(T_min, T_max, 11)[1:]
+    x_obs = np.linspace(X_min, X_max, 51)[1:-1]
+    y_train_obs = np.array([(x, t) for x in x_obs for t in t_obs])
+    y_label_obs = u_real(y_train_obs[:, [0]], y_train_obs[:, [1]])
 
     # 把训练数据转为tensor
-    y_train_ic_obs = torch.from_numpy(y_train_ic_obs).float().to(device)
-    label_ic_obs = torch.from_numpy(label_ic_obs).float().to(device)
-    y_train_bc = torch.from_numpy(y_train_bc).float().to(device)
-    v_label_bc = torch.from_numpy(v_label_bc).float().to(device)
-    y_train_nf = torch.from_numpy(y_train_nf).float().to(device)
+    y_train_ic_bc = torch.from_numpy(y_train_ic_bc).float().to(device)
+    y_label_ic_bc = torch.from_numpy(y_label_ic_bc).float().to(device)
+    y_train_obs = torch.from_numpy(y_train_obs).float().to(device)
+    y_label_obs = torch.from_numpy(y_label_obs).float().to(device)
+    y_train_pde = torch.from_numpy(y_train_pde).float().to(device)
+    y_label_pde = torch.from_numpy(y_label_pde).float().to(device)
 
-    layers = [2, 32, 32, 32, 32, 32, 32, 2]
+    layers = [2, 32, 32, 32, 32, 32, 32, 1]
     model = ConvDiffNet(layers)
     model.to(device)
     print("model:\n", model)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, amsgrad=False)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, min_lr=1e-7, mode='min', factor=0.5,
-                                                           patience=6000,
-                                                           verbose=True)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-2, amsgrad=False)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5000, gamma=0.5)
 
     # 记录训练开始时间
     start_time = datetime.now()
     print("Training started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
-    epoch = 0
-    while True:
-        epoch += 1
-        loss = model.loss(y_train_ic_obs, label_ic_obs, y_train_bc, v_label_bc, y_train_nf)
+    for epoch in range(100000):
+        loss = model.loss(y_train_ic_bc, y_label_ic_bc, y_train_obs, y_label_obs, y_train_pde, y_label_pde)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        scheduler.step(loss)
-        if epoch % 100 == 0:
-            print(datetime.now(), 'epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
-        if loss.item() < 5E-6:
-            print(datetime.now(), 'epoch :', epoch, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
-            break
+        scheduler.step()
+        if (epoch + 1) % 100 == 0:
+            print(datetime.now(), 'epoch :', epoch + 1, 'lr :', optimizer.param_groups[0]['lr'], 'loss :', loss.item())
 
-    torch.save(model, 'swe_1d_pinn_obs_01.pt')
+    torch.save(model, 'conv_diff_1d_da_pinn.pt')
 
     # 训练结束后记录结束时间并计算总时间
     end_time = datetime.now()
