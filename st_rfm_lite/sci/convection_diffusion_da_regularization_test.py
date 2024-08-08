@@ -28,26 +28,24 @@ def plot(X1, T1, U1, X2, T2, U2):
 
     cp1 = ax1.contourf(T1, X1, U1, 20, cmap="rainbow", vmin=min_value, vmax=max_value)
     fig.colorbar(cp1, ax=ax1)
-    ax1.set_title('u(x,t)')
     ax1.set_xlabel('t')
     ax1.set_ylabel('x')
 
     ax2.plot_surface(T1, X1, U1, cmap="rainbow", vmin=min_value, vmax=max_value)
     ax2.set_xlabel('t')
     ax2.set_ylabel('x')
-    ax2.set_zlabel('u(x,t)')
+    # ax2.set_zlabel('u(x,t)')
     ax2.set_zlim(min_value, max_value)
 
     cp3 = ax3.contourf(T2, X2, U2, 20, cmap="rainbow", vmin=min_value, vmax=max_value)
     fig.colorbar(cp3, ax=ax3)
-    ax3.set_title('RFM(x,t)')
     ax3.set_xlabel('t')
     ax3.set_ylabel('x')
 
     ax4.plot_surface(T2, X2, U2, cmap="rainbow", vmin=min_value, vmax=max_value)
     ax4.set_xlabel('t')
     ax4.set_ylabel('x')
-    ax4.set_zlabel('RFM(x,t)')
+    # ax4.set_zlabel('u(x,t)')
     ax4.set_zlim(min_value, max_value)
 
     plt.show()
@@ -79,11 +77,11 @@ def plot_err(X1, T1, U1):
 if __name__ == '__main__':
     print(datetime.now(), "Main start")
 
-    data = np.load("convection_diffusion_da_with_bg.npz")
+    data = np.load("convection_diffusion_da_without_bg.npz")
     Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max = data['config']
     w = data['w']
 
-    models = torch.load('convection_diffusion_da_with_bg.pt')
+    models = torch.load('convection_diffusion_da_without_bg.pt')
 
     print(datetime.now(), "test start")
     test_Qx = 2 * Qx

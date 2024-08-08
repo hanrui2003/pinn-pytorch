@@ -85,11 +85,11 @@ circles = [
 if __name__ == '__main__':
     print(datetime.now(), "Main start")
 
-    data = np.load("convection_diffusion_2d_da_complex_domain_250.npz")
+    data = np.load("convection_diffusion_2d_da_complex_domain_300.npz")
     Nx, Ny, Nt, M, Qx, Qy, Qt, X_min, X_max, Y_min, Y_max, T_min, T_max = data['config']
     w = data['w']
 
-    models = torch.load('convection_diffusion_2d_da_complex_domain_250.pt')
+    models = torch.load('convection_diffusion_2d_da_complex_domain_300.pt')
 
     print(datetime.now(), "test start")
     test_Qx = 2 * Qx
@@ -169,4 +169,4 @@ if __name__ == '__main__':
     # 计算全部误差 end
 
     print(datetime.now(), "Main end")
-    plot(X, Y, U_numerical)
+    # plot(X, Y, U_numerical)

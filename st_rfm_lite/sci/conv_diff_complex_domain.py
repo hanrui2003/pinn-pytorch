@@ -47,6 +47,8 @@ for circle in circles:
 # 设置图形参数
 plt.xlim(x_min, x_max)
 plt.ylim(y_min, y_max)
+plt.xlabel('x')
+plt.ylabel('y')
 plt.gca().set_aspect('equal', adjustable='box')
 # plt.axis('off')
 plt.show()
@@ -81,6 +83,8 @@ for circle in circles:
 # 设置图形参数
 plt.xlim(x_min, x_max)
 plt.ylim(y_min, y_max)
+plt.xlabel('x')
+plt.ylabel('y')
 plt.gca().set_aspect('equal', adjustable='box')
 # plt.axis('off')
 plt.show()
