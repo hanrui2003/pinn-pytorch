@@ -7,9 +7,9 @@ y_min, y_max = 0, 4
 
 # 定义三个圆的参数（圆心和半径）
 circles = [
-    {'center': (1, 1), 'radius': 0.5},
-    {'center': (3, 2), 'radius': 0.8},
-    {'center': (2, 3.5), 'radius': 0.7}
+    {'center': (1, 1), 'radius': 0.5},  # 完全包含在矩形内
+    {'center': (3, 2), 'radius': 0.8},  # 完全包含在矩形内
+    {'center': (2, 3.5), 'radius': 0.7}  # 部分包含在矩形内
 ]
 
 # 生成矩形区域内的网格点
