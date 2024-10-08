@@ -56,37 +56,33 @@ def laplacian_u_e(x, y, t):
     return -lambda_ ** 2 * u_e_value
 
 
-# 定义光滑函数
-def chi(x, y, x_center, y_center, radius):
+# 定义光滑函数的基本逻辑
+def chi_original(x, y, x_center, y_center, radius):
     return 1 - np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
 
 
+# 每个洞对应的边界光滑函数，构造粘性边界条件
 def chi0(x, y):
     x_center, y_center = Circles[0]['center']
     radius = Circles[0]['radius']
-    return chi(x, y, x_center, y_center, radius)
+    return chi_original(x, y, x_center, y_center, radius)
 
 
 def chi1(x, y):
     x_center, y_center = Circles[1]['center']
     radius = Circles[1]['radius']
-    return chi(x, y, x_center, y_center, radius)
+    return chi_original(x, y, x_center, y_center, radius)
 
 
 def chi2(x, y):
     x_center, y_center = Circles[2]['center']
     radius = Circles[2]['radius']
-    return chi(x, y, x_center, y_center, radius)
+    return chi_original(x, y, x_center, y_center, radius)
 
 
 # 定义总的光滑函数（乘积）
-def multiple_chi(x, y, circles):
-    result = 1
-    for circle in circles:
-        x_center, y_center = circle['center']
-        radius = circle['radius']
-        result *= chi(x, y, x_center, y_center, radius)
-    return result
+def chi(x, y):
+    return chi0(x, y) * chi1(x, y) * chi2(x, y)
 
 
 # 计算光滑函数 chi 的导数
@@ -125,7 +121,7 @@ def multiple_chi_x(x, y, circles):
             if other_circle != circle:
                 other_x_center, other_y_center = other_circle['center']
                 other_radius = other_circle['radius']
-                chi_x_i *= chi(x, y, other_x_center, other_y_center, other_radius)
+                chi_x_i *= chi_original(x, y, other_x_center, other_y_center, other_radius)
 
         # 累加结果
         result += chi_x_i
@@ -147,7 +143,7 @@ def multiple_chi_y(x, y, circles):
             if other_circle != circle:
                 other_x_center, other_y_center = other_circle['center']
                 other_radius = other_circle['radius']
-                chi_y_i *= chi(x, y, other_x_center, other_y_center, other_radius)
+                chi_y_i *= chi_original(x, y, other_x_center, other_y_center, other_radius)
 
         # 累加结果
         result += chi_y_i
@@ -182,7 +178,7 @@ def multiple_chi_xx(x, y, circles):
                 chi_xx_other = chi_xx(x, y, other_x_center, other_y_center, other_radius)
 
                 # 计算其他 chi 的乘积
-                product_of_other_chis *= chi(x, y, other_x_center, other_y_center, other_radius)
+                product_of_other_chis *= chi_original(x, y, other_x_center, other_y_center, other_radius)
 
                 # 累加其他 chi 的二阶导数项
                 sum_of_other_chi_xx_terms += chi_xx_other
@@ -191,7 +187,8 @@ def multiple_chi_xx(x, y, circles):
                 sum_of_cross_terms += chi_x_i * chi_x_other
 
         # 二阶导数乘积法则
-        result += chi_xx_i * product_of_other_chis + sum_of_other_chi_xx_terms * chi(x, y, x_center, y_center, radius)
+        result += chi_xx_i * product_of_other_chis + sum_of_other_chi_xx_terms * chi_original(x, y, x_center, y_center,
+                                                                                              radius)
         result += 2 * sum_of_cross_terms
 
     return result
@@ -225,7 +222,7 @@ def multiple_chi_yy(x, y, circles):
                 chi_yy_other = chi_yy(x, y, other_x_center, other_y_center, other_radius)
 
                 # 计算其他 chi 的乘积
-                product_of_other_chis *= chi(x, y, other_x_center, other_y_center, other_radius)
+                product_of_other_chis *= chi_original(x, y, other_x_center, other_y_center, other_radius)
 
                 # 累加其他 chi 的二阶导数项
                 sum_of_other_chi_yy_terms += chi_yy_other
@@ -234,17 +231,23 @@ def multiple_chi_yy(x, y, circles):
                 sum_of_cross_terms += chi_y_i * chi_y_other
 
         # 二阶导数乘积法则
-        result += chi_yy_i * product_of_other_chis + sum_of_other_chi_yy_terms * chi(x, y, x_center, y_center, radius)
+        result += chi_yy_i * product_of_other_chis + sum_of_other_chi_yy_terms * chi_original(x, y, x_center, y_center,
+                                                                                              radius)
         result += 2 * sum_of_cross_terms
 
     return result
+
+
+# 修正后的解
+def u(x, y, t):
+    return chi(x, y) * u_e(x, y, t)
 
 
 # 最终拉普拉斯算子
 def laplacian_u(x, y, t, circles):
     u_e_value = u_e(x, y, t)
     lap_u_e = laplacian_u_e(x, y, t)
-    chi_value = multiple_chi(x, y, circles)
+    chi_value = chi(x, y, circles)
 
     term1 = 0
     term2_x = 0
