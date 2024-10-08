@@ -50,6 +50,15 @@ def u_e(x, y, t):
     return np.sin(mu * x) * np.sin(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
 
 
+# 定义 u_e 的一阶导数
+def u_e_x(x, y, t):
+    return mu * np.cos(mu * x) * np.sin(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
+
+
+def u_e_y(x, y, t):
+    return nu * np.sin(mu * x) * np.cos(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
+
+
 # 定义 u_e 的二阶导数
 def laplacian_u_e(x, y, t):
     u_e_value = u_e(x, y, t)
@@ -68,10 +77,67 @@ def chi0(x, y):
     return chi_original(x, y, x_center, y_center, radius)
 
 
+# 计算光滑函数 chi 的导数
+def chi0_x(x, y):
+    x_center, y_center = Circles[0]['center']
+    radius = Circles[0]['radius']
+    exp_term = np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
+    return (2 * alpha * (x - x_center) / radius ** 2) * exp_term
+
+
+def chi0_y(x, y):
+    x_center, y_center = Circles[0]['center']
+    radius = Circles[0]['radius']
+    exp_term = np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
+    return (2 * alpha * (y - y_center) / radius ** 2) * exp_term
+
+
+def chi0_xx(x, y):
+    x_center, y_center = Circles[0]['center']
+    radius = Circles[0]['radius']
+    exp_term = np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
+    return (2 * alpha / radius ** 2 - 4 * alpha ** 2 * (x - x_center) ** 2 / radius ** 4) * exp_term
+
+
+def chi0_yy(x, y):
+    x_center, y_center = Circles[0]['center']
+    radius = Circles[0]['radius']
+    exp_term = np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
+    return (2 * alpha / radius ** 2 - 4 * alpha ** 2 * (y - y_center) ** 2 / radius ** 4) * exp_term
+
+
 def chi1(x, y):
     x_center, y_center = Circles[1]['center']
     radius = Circles[1]['radius']
     return chi_original(x, y, x_center, y_center, radius)
+
+
+def chi1_x(x, y):
+    x_center, y_center = Circles[1]['center']
+    radius = Circles[1]['radius']
+    exp_term = np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
+    return (2 * alpha * (x - x_center) / radius ** 2) * exp_term
+
+
+def chi1_y(x, y):
+    x_center, y_center = Circles[1]['center']
+    radius = Circles[1]['radius']
+    exp_term = np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
+    return (2 * alpha * (y - y_center) / radius ** 2) * exp_term
+
+
+def chi1_xx(x, y):
+    x_center, y_center = Circles[1]['center']
+    radius = Circles[1]['radius']
+    exp_term = np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
+    return (2 * alpha / radius ** 2 - 4 * alpha ** 2 * (x - x_center) ** 2 / radius ** 4) * exp_term
+
+
+def chi1_yy(x, y):
+    x_center, y_center = Circles[1]['center']
+    radius = Circles[1]['radius']
+    exp_term = np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
+    return (2 * alpha / radius ** 2 - 4 * alpha ** 2 * (y - y_center) ** 2 / radius ** 4) * exp_term
 
 
 def chi2(x, y):
@@ -80,30 +146,73 @@ def chi2(x, y):
     return chi_original(x, y, x_center, y_center, radius)
 
 
+def chi2_x(x, y):
+    x_center, y_center = Circles[2]['center']
+    radius = Circles[2]['radius']
+    exp_term = np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
+    return (2 * alpha * (x - x_center) / radius ** 2) * exp_term
+
+
+def chi2_y(x, y):
+    x_center, y_center = Circles[2]['center']
+    radius = Circles[2]['radius']
+    exp_term = np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
+    return (2 * alpha * (y - y_center) / radius ** 2) * exp_term
+
+
+def chi2_xx(x, y):
+    x_center, y_center = Circles[2]['center']
+    radius = Circles[2]['radius']
+    exp_term = np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
+    return (2 * alpha / radius ** 2 - 4 * alpha ** 2 * (x - x_center) ** 2 / radius ** 4) * exp_term
+
+
+def chi2_yy(x, y):
+    x_center, y_center = Circles[2]['center']
+    radius = Circles[2]['radius']
+    exp_term = np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
+    return (2 * alpha / radius ** 2 - 4 * alpha ** 2 * (y - y_center) ** 2 / radius ** 4) * exp_term
+
+
 # 定义总的光滑函数（乘积）
 def chi(x, y):
     return chi0(x, y) * chi1(x, y) * chi2(x, y)
 
 
-# 计算光滑函数 chi 的导数
-def chi_x(x, y, x_center, y_center, radius):
-    exp_term = np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
-    return (2 * alpha * (x - x_center) / radius ** 2) * exp_term
+def chi_x(x, y):
+    return chi0_x(x, y) * chi1(x, y) * chi2(x, y) + \
+           chi0(x, y) * chi1_x(x, y) * chi2(x, y) + \
+           chi0(x, y) * chi1(x, y) * chi2_x(x, y)
 
 
-def chi_y(x, y, x_center, y_center, radius):
-    exp_term = np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
-    return (2 * alpha * (y - y_center) / radius ** 2) * exp_term
+def chi_y(x, y):
+    return chi0_y(x, y) * chi1(x, y) * chi2(x, y) + \
+           chi0(x, y) * chi1_y(x, y) * chi2(x, y) + \
+           chi0(x, y) * chi1(x, y) * chi2_y(x, y)
 
 
-def chi_xx(x, y, x_center, y_center, radius):
-    exp_term = np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
-    return (2 * alpha / radius ** 2 - 4 * alpha ** 2 * (x - x_center) ** 2 / radius ** 4) * exp_term
+def chi_xx(x, y):
+    return chi0_xx(x, y) * chi1(x, y) * chi2(x, y) + \
+           chi0(x, y) * chi1_xx(x, y) * chi2(x, y) + \
+           chi0(x, y) * chi1(x, y) * chi2_xx(x, y) + \
+           2 * chi0_x(x, y) * chi1_x(x, y) * chi2(x, y) + \
+           2 * chi0_x(x, y) * chi1(x, y) * chi2_x(x, y) + \
+           2 * chi0(x, y) * chi1_x(x, y) * chi2_x(x, y)
 
 
-def chi_yy(x, y, x_center, y_center, radius):
-    exp_term = np.exp(-alpha * ((x - x_center) ** 2 + (y - y_center) ** 2 - radius ** 2) / radius ** 2)
-    return (2 * alpha / radius ** 2 - 4 * alpha ** 2 * (y - y_center) ** 2 / radius ** 4) * exp_term
+def chi_yy(x, y):
+    return chi0_yy(x, y) * chi1(x, y) * chi2(x, y) + \
+           chi0(x, y) * chi1_yy(x, y) * chi2(x, y) + \
+           chi0(x, y) * chi1(x, y) * chi2_yy(x, y) + \
+           2 * chi0_y(x, y) * chi1_y(x, y) * chi2(x, y) + \
+           2 * chi0_y(x, y) * chi1(x, y) * chi2_y(x, y) + \
+           2 * chi0(x, y) * chi1_y(x, y) * chi2_y(x, y)
+
+
+def laplacian_u(x, y, t):
+    return (chi_xx(x, y) + chi_yy(x, y)) * u_e(x, y, t) + \
+           2 * (chi_x(x, y) * u_e_x(x, y, t) + chi_y(x, y) * u_e_y(x, y, t)) + \
+           chi(x, y) * laplacian_u_e(x, y, t)
 
 
 # multiple_chi_x: 计算多个 chi 的一阶 x 导数
@@ -114,7 +223,7 @@ def multiple_chi_x(x, y, circles):
         radius = circle['radius']
 
         # 当前 chi 的一阶 x 导数
-        chi_x_i = chi_x(x, y, x_center, y_center, radius)
+        chi_x_i = chi0_x(x, y, x_center, y_center, radius)
 
         # 更新乘积（去掉当前 chi）
         for other_circle in circles:
@@ -136,7 +245,7 @@ def multiple_chi_y(x, y, circles):
         radius = circle['radius']
 
         # 当前 chi 的一阶 y 导数
-        chi_y_i = chi_y(x, y, x_center, y_center, radius)
+        chi_y_i = chi0_y(x, y, x_center, y_center, radius)
 
         # 更新乘积（去掉当前 chi）
         for other_circle in circles:
@@ -158,10 +267,10 @@ def multiple_chi_xx(x, y, circles):
         radius = circle['radius']
 
         # 当前 chi 的二阶 x 导数
-        chi_xx_i = chi_xx(x, y, x_center, y_center, radius)
+        chi_xx_i = chi0_xx(x, y, x_center, y_center, radius)
 
         # 当前 chi 的一阶 x 导数
-        chi_x_i = chi_x(x, y, x_center, y_center, radius)
+        chi_x_i = chi0_x(x, y, x_center, y_center, radius)
 
         # 计算其他 chi 的乘积
         product_of_other_chis = 1
@@ -174,8 +283,8 @@ def multiple_chi_xx(x, y, circles):
                 other_radius = other_circle['radius']
 
                 # 其他 chi 的一阶和二阶导数
-                chi_x_other = chi_x(x, y, other_x_center, other_y_center, other_radius)
-                chi_xx_other = chi_xx(x, y, other_x_center, other_y_center, other_radius)
+                chi_x_other = chi0_x(x, y, other_x_center, other_y_center, other_radius)
+                chi_xx_other = chi0_xx(x, y, other_x_center, other_y_center, other_radius)
 
                 # 计算其他 chi 的乘积
                 product_of_other_chis *= chi_original(x, y, other_x_center, other_y_center, other_radius)
@@ -202,10 +311,10 @@ def multiple_chi_yy(x, y, circles):
         radius = circle['radius']
 
         # 当前 chi 的二阶 y 导数
-        chi_yy_i = chi_yy(x, y, x_center, y_center, radius)
+        chi_yy_i = chi0_yy(x, y, x_center, y_center, radius)
 
         # 当前 chi 的一阶 y 导数
-        chi_y_i = chi_y(x, y, x_center, y_center, radius)
+        chi_y_i = chi0_y(x, y, x_center, y_center, radius)
 
         # 计算其他 chi 的乘积
         product_of_other_chis = 1
@@ -218,8 +327,8 @@ def multiple_chi_yy(x, y, circles):
                 other_radius = other_circle['radius']
 
                 # 其他 chi 的一阶和二阶导数
-                chi_y_other = chi_y(x, y, other_x_center, other_y_center, other_radius)
-                chi_yy_other = chi_yy(x, y, other_x_center, other_y_center, other_radius)
+                chi_y_other = chi0_y(x, y, other_x_center, other_y_center, other_radius)
+                chi_yy_other = chi0_yy(x, y, other_x_center, other_y_center, other_radius)
 
                 # 计算其他 chi 的乘积
                 product_of_other_chis *= chi_original(x, y, other_x_center, other_y_center, other_radius)
@@ -256,9 +365,9 @@ def laplacian_u(x, y, t, circles):
     for circle in circles:
         x_center, y_center = circle['center']
         radius = circle['radius']
-        term1 += chi_xx(x, y, x_center, y_center, radius) + chi_yy(x, y, x_center, y_center, radius)
-        term2_x += chi_x(x, y, x_center, y_center, radius) * (-mu * np.sin(mu * x) * np.sin(nu * y))
-        term2_y += chi_y(x, y, x_center, y_center, radius) * (-nu * np.sin(mu * x) * np.sin(nu * y))
+        term1 += chi0_xx(x, y, x_center, y_center, radius) + chi0_yy(x, y, x_center, y_center, radius)
+        term2_x += chi0_x(x, y, x_center, y_center, radius) * (-mu * np.sin(mu * x) * np.sin(nu * y))
+        term2_y += chi0_y(x, y, x_center, y_center, radius) * (-nu * np.sin(mu * x) * np.sin(nu * y))
 
     return chi_value * lap_u_e + term1 * u_e_value + 2 * (term2_x + term2_y)
 
