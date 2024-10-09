@@ -20,7 +20,9 @@ mu = 2 * np.pi / (X_max - X_min)
 nu = 2 * np.pi / (Y_max - Y_min)
 lambda_ = np.sqrt(mu ** 2 + nu ** 2)
 # 陡度因子
-alpha = 10
+alpha = 1.0
+# 波速
+c = 1.0
 
 # 定义三个圆的参数（圆心和半径）
 Circles = [
@@ -57,6 +59,11 @@ def u_e_x(x, y, t):
 
 def u_e_y(x, y, t):
     return nu * np.sin(mu * x) * np.cos(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
+
+
+def u_e_tt(x, y, t):
+    u_e_value = u_e(x, y, t)
+    return -lambda_ ** 2 * u_e_value
 
 
 # 定义 u_e 的二阶导数
@@ -215,170 +222,14 @@ def laplacian_u(x, y, t):
            chi(x, y) * laplacian_u_e(x, y, t)
 
 
-# multiple_chi_x: 计算多个 chi 的一阶 x 导数
-def multiple_chi_x(x, y, circles):
-    result = 0
-    for circle in circles:
-        x_center, y_center = circle['center']
-        radius = circle['radius']
-
-        # 当前 chi 的一阶 x 导数
-        chi_x_i = chi0_x(x, y, x_center, y_center, radius)
-
-        # 更新乘积（去掉当前 chi）
-        for other_circle in circles:
-            if other_circle != circle:
-                other_x_center, other_y_center = other_circle['center']
-                other_radius = other_circle['radius']
-                chi_x_i *= chi_original(x, y, other_x_center, other_y_center, other_radius)
-
-        # 累加结果
-        result += chi_x_i
-    return result
-
-
-# multiple_chi_y: 计算多个 chi 的一阶 y 导数
-def multiple_chi_y(x, y, circles):
-    result = 0
-    for circle in circles:
-        x_center, y_center = circle['center']
-        radius = circle['radius']
-
-        # 当前 chi 的一阶 y 导数
-        chi_y_i = chi0_y(x, y, x_center, y_center, radius)
-
-        # 更新乘积（去掉当前 chi）
-        for other_circle in circles:
-            if other_circle != circle:
-                other_x_center, other_y_center = other_circle['center']
-                other_radius = other_circle['radius']
-                chi_y_i *= chi_original(x, y, other_x_center, other_y_center, other_radius)
-
-        # 累加结果
-        result += chi_y_i
-    return result
-
-
-# multiple_chi_xx: 计算多个 chi 的二阶 x 导数
-def multiple_chi_xx(x, y, circles):
-    result = 0
-    for i, circle in enumerate(circles):
-        x_center, y_center = circle['center']
-        radius = circle['radius']
-
-        # 当前 chi 的二阶 x 导数
-        chi_xx_i = chi0_xx(x, y, x_center, y_center, radius)
-
-        # 当前 chi 的一阶 x 导数
-        chi_x_i = chi0_x(x, y, x_center, y_center, radius)
-
-        # 计算其他 chi 的乘积
-        product_of_other_chis = 1
-        sum_of_other_chi_xx_terms = 0
-        sum_of_cross_terms = 0
-
-        for j, other_circle in enumerate(circles):
-            if i != j:
-                other_x_center, other_y_center = other_circle['center']
-                other_radius = other_circle['radius']
-
-                # 其他 chi 的一阶和二阶导数
-                chi_x_other = chi0_x(x, y, other_x_center, other_y_center, other_radius)
-                chi_xx_other = chi0_xx(x, y, other_x_center, other_y_center, other_radius)
-
-                # 计算其他 chi 的乘积
-                product_of_other_chis *= chi_original(x, y, other_x_center, other_y_center, other_radius)
-
-                # 累加其他 chi 的二阶导数项
-                sum_of_other_chi_xx_terms += chi_xx_other
-
-                # 累加交叉项
-                sum_of_cross_terms += chi_x_i * chi_x_other
-
-        # 二阶导数乘积法则
-        result += chi_xx_i * product_of_other_chis + sum_of_other_chi_xx_terms * chi_original(x, y, x_center, y_center,
-                                                                                              radius)
-        result += 2 * sum_of_cross_terms
-
-    return result
-
-
-# multiple_chi_yy: 计算多个 chi 的二阶 y 导数（类似的改法）
-def multiple_chi_yy(x, y, circles):
-    result = 0
-    for i, circle in enumerate(circles):
-        x_center, y_center = circle['center']
-        radius = circle['radius']
-
-        # 当前 chi 的二阶 y 导数
-        chi_yy_i = chi0_yy(x, y, x_center, y_center, radius)
-
-        # 当前 chi 的一阶 y 导数
-        chi_y_i = chi0_y(x, y, x_center, y_center, radius)
-
-        # 计算其他 chi 的乘积
-        product_of_other_chis = 1
-        sum_of_other_chi_yy_terms = 0
-        sum_of_cross_terms = 0
-
-        for j, other_circle in enumerate(circles):
-            if i != j:
-                other_x_center, other_y_center = other_circle['center']
-                other_radius = other_circle['radius']
-
-                # 其他 chi 的一阶和二阶导数
-                chi_y_other = chi0_y(x, y, other_x_center, other_y_center, other_radius)
-                chi_yy_other = chi0_yy(x, y, other_x_center, other_y_center, other_radius)
-
-                # 计算其他 chi 的乘积
-                product_of_other_chis *= chi_original(x, y, other_x_center, other_y_center, other_radius)
-
-                # 累加其他 chi 的二阶导数项
-                sum_of_other_chi_yy_terms += chi_yy_other
-
-                # 累加交叉项
-                sum_of_cross_terms += chi_y_i * chi_y_other
-
-        # 二阶导数乘积法则
-        result += chi_yy_i * product_of_other_chis + sum_of_other_chi_yy_terms * chi_original(x, y, x_center, y_center,
-                                                                                              radius)
-        result += 2 * sum_of_cross_terms
-
-    return result
-
-
 # 修正后的解
-def u(x, y, t):
+def u_real(x, y, t):
     return chi(x, y) * u_e(x, y, t)
 
 
-# 最终拉普拉斯算子
-def laplacian_u(x, y, t, circles):
-    u_e_value = u_e(x, y, t)
-    lap_u_e = laplacian_u_e(x, y, t)
-    chi_value = chi(x, y, circles)
-
-    term1 = 0
-    term2_x = 0
-    term2_y = 0
-
-    for circle in circles:
-        x_center, y_center = circle['center']
-        radius = circle['radius']
-        term1 += chi0_xx(x, y, x_center, y_center, radius) + chi0_yy(x, y, x_center, y_center, radius)
-        term2_x += chi0_x(x, y, x_center, y_center, radius) * (-mu * np.sin(mu * x) * np.sin(nu * y))
-        term2_y += chi0_y(x, y, x_center, y_center, radius) * (-nu * np.sin(mu * x) * np.sin(nu * y))
-
-    return chi_value * lap_u_e + term1 * u_e_value + 2 * (term2_x + term2_y)
-
-
 def f_real(x, y, t):
-    u_x = mu * np.cos(mu * x) * np.sin(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
-    u_xx = -mu ** 2 * np.sin(mu * x) * np.sin(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
-    u_y = nu * np.sin(mu * x) * np.cos(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
-    u_yy = -nu ** 2 * np.sin(mu * x) * np.sin(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
-    u_t = lambda_ * np.sin(mu * x) * np.sin(nu * y) * (np.cos(lambda_ * t) - 2 * np.sin(lambda_ * t))
-    return u_t + v_x * u_x + v_y * u_y - D * (u_xx + u_yy)
+    u_tt = chi(x, y) * u_e_tt(x, y, t)
+    return u_tt - c * laplacian_u(x, y, t)
 
 
 def L_inf_error(v, axis=None):
@@ -482,11 +333,9 @@ def cal_matrix(models, Nx, Ny, Nt, M, Qx, Qy, Qt, pde_points, ic_points, bc_poin
                 obs_out = models[k][j][n](obs_point)
                 obs_values = obs_out.detach().numpy()
 
-                grad_u_x = []
-                grad_u_y = []
-                grad_u_t = []
                 grad_u_xx = []
                 grad_u_yy = []
+                grad_u_tt = []
                 for i in range(M):
                     u_x_y_t = autograd.grad(outputs=pde_out[:, i], inputs=pde_point,
                                             grad_outputs=torch.ones_like(pde_out[:, i]),
@@ -505,19 +354,20 @@ def cal_matrix(models, Nx, Ny, Nt, M, Qx, Qy, Qt, pde_points, ic_points, bc_poin
                                                create_graph=True, retain_graph=True)[0]
                     u_yy = u_yx_yy_yt[:, 1]
 
-                    grad_u_x.append(u_x.detach().numpy())
-                    grad_u_y.append(u_y.detach().numpy())
-                    grad_u_t.append(u_t.detach().numpy())
+                    u_tx_ty_tt = autograd.grad(outputs=u_t, inputs=pde_point,
+                                               grad_outputs=torch.ones_like(u_t),
+                                               create_graph=True, retain_graph=True)[0]
+                    u_tt = u_tx_ty_tt[:, 2]
+
                     grad_u_xx.append(u_xx.detach().numpy())
                     grad_u_yy.append(u_yy.detach().numpy())
+                    grad_u_tt.append(u_tt.detach().numpy())
 
-                grad_u_x = np.array(grad_u_x).T
-                grad_u_y = np.array(grad_u_y).T
-                grad_u_t = np.array(grad_u_t).T
                 grad_u_xx = np.array(grad_u_xx).T
                 grad_u_yy = np.array(grad_u_yy).T
+                grad_u_tt = np.array(grad_u_tt).T
 
-                A_P[:, M_begin: M_begin + M] = grad_u_t + v_x * grad_u_x + v_y * grad_u_y - D * (grad_u_xx + grad_u_yy)
+                A_P[:, M_begin: M_begin + M] = grad_u_tt - c * (grad_u_xx + grad_u_yy)
                 A_I[:, M_begin: M_begin + M] = ic_values
                 A_B[:, M_begin: M_begin + M] = bc_values
                 A_O[:, M_begin: M_begin + M] = obs_values
@@ -568,7 +418,7 @@ def main(Nx, Ny, Nt, M, Qx, Qy, Qt):
     # 用于计算pde损失的点
     pde_points = pick_point(x, y, t)
     # 带标签值的点，即有真解的点
-    ic_points = np.hstack((X[:, :, 0].flatten()[:, None], Y[:, :, 0].flatten()[:, None], T[:, :, 0].flatten()[:, None]))
+    ic_points = pick_point(x, y, 0)
     top_bc_points = np.hstack((X[0].flatten()[:, None], Y[0].flatten()[:, None], T[0].flatten()[:, None]))
     bottom_bc_points = np.hstack((X[-1].flatten()[:, None], Y[-1].flatten()[:, None], T[-1].flatten()[:, None]))
     left_bc_points = np.hstack(
@@ -593,8 +443,8 @@ def main(Nx, Ny, Nt, M, Qx, Qy, Qt):
     print(datetime.now(), "main process end,", "shape of A :", A.shape, "residuals :", residuals, "mse : ",
           residuals / len(A), "L_2 error :", np.sqrt(residuals / len(A)))
 
-    torch.save(models, 'convection_diffusion_2d_da_complex_domain.pt')
-    np.savez('convection_diffusion_2d_da_complex_domain.npz', w=w,
+    torch.save(models, 'membrane_vibration_2d_da_complex_domain_01.pt')
+    np.savez('membrane_vibration_2d_da_complex_domain_01.npz', w=w,
              config=np.array([Nx, Ny, Nt, M, Qx, Qy, Qt, X_min, X_max, Y_min, Y_max, T_min, T_max], dtype=int))
 
     print(datetime.now(), "main end")

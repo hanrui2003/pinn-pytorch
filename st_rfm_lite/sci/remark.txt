@@ -101,3 +101,26 @@ Elapsed time:  0:21:33.228603
 ====================================Regularization======
 convection_diffusion_da_regularization.py
 比较当观测极度稀疏的时候，背景场（初边值）的作用（正则化）
+
+====================薄膜振动：复杂区域======
+membrane_vibration_2d_da_complex_domain_01.py
+手动推导数
+
+membrane_vibration_2d_da_complex_domain_02.py
+使用sympy符号微分
+
+membrane_vibration_2d_da_complex_domain_02_100.pt
+2024-10-09 10:46:34.696375 Main start
+Nx= 4 ,Ny= 4 ,Nt= 2 ,M= 100 ,Qx= 10 ,Qy= 10 ,Qt= 10
+2024-10-09 10:46:34.696444 main start
+2024-10-09 10:46:34.699983 pre_define start
+2024-10-09 10:46:34.708573 pre_define end
+2024-10-09 10:46:34.708594 cal_matrix start
+2024-10-09 10:52:34.730488 cal_matrix end
+2024-10-09 10:52:58.201739 main process end, shape of A : (31612, 3200) residuals : [2.82762408e+10] mse :  [894478.07223729] L_2 error : [945.7685088]
+2024-10-09 10:52:58.222587 main end
+2024-10-09 10:52:58.466383 Main end
+
+membrane_vibration_2d_da_complex_domain_03
+Debug程序，因为前面的程序没能得到理想的结果，所以把之前没有粘性边界的程序，一点点修改调试。
+

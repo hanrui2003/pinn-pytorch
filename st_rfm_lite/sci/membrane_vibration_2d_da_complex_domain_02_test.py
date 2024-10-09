@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.autograd as autograd
 import math
-from convection_diffusion_2d_da_complex_domain import u_real, LocalNet, pick_point
+from membrane_vibration_2d_da_complex_domain_02 import u_func, LocalNet, pick_point, Circles
 
 from scipy.linalg import lstsq
 from datetime import datetime
@@ -75,21 +75,14 @@ def plot_err(X1, T1, U1):
     plt.show()
 
 
-# 定义三个圆的参数（圆心和半径）
-circles = [
-    {'center': (1, 1), 'radius': 0.5},
-    {'center': (3, 2), 'radius': 0.8},
-    {'center': (2, 3.5), 'radius': 0.7}
-]
-
 if __name__ == '__main__':
     print(datetime.now(), "Main start")
 
-    data = np.load("convection_diffusion_2d_da_complex_domain_100.npz")
+    data = np.load("membrane_vibration_2d_da_complex_domain_02.npz")
     Nx, Ny, Nt, M, Qx, Qy, Qt, X_min, X_max, Y_min, Y_max, T_min, T_max = data['config']
     w = data['w']
 
-    models = torch.load('convection_diffusion_2d_da_complex_domain_100.pt')
+    models = torch.load('membrane_vibration_2d_da_complex_domain_02.pt')
 
     print(datetime.now(), "test start")
     test_Qx = 2 * Qx
@@ -106,7 +99,7 @@ if __name__ == '__main__':
     outside = np.ones_like(X, dtype=bool)
 
     # 对每个圆，标记出在圆内的点
-    for circle in circles:
+    for circle in Circles:
         x0, y0 = circle['center']
         r = circle['radius']
         distances = np.sqrt((X - x0) ** 2 + (Y - y0) ** 2)
@@ -130,7 +123,7 @@ if __name__ == '__main__':
                     A[:, M_begin: M_begin + M] = values
 
         numerical_values = np.dot(A, w)
-        true_values = u_real(points[:, [0]], points[:, [1]], points[:, [2]])
+        true_values = u_func(points[:, [0]], points[:, [1]], points[:, [2]])
 
         epsilon = np.abs(true_values - numerical_values)
         L_inf = np.max(epsilon)
@@ -142,6 +135,10 @@ if __name__ == '__main__':
         u_numerical = np.full_like(X, np.nan)
         u_numerical[outside] = numerical_values.flatten()
         U_numerical.append(u_numerical)
+
+        u_true = np.full_like(X, np.nan)
+        u_true[outside] = true_values.flatten()
+        U_true.append(u_true)
 
     # 计算全部误差 start
     all_points = pick_point(x, y, t)
@@ -156,7 +153,7 @@ if __name__ == '__main__':
                 A[:, M_begin: M_begin + M] = values
 
     all_numerical_values = np.dot(A, w)
-    all_true_values = u_real(all_points[:, [0]], all_points[:, [1]], all_points[:, [2]])
+    all_true_values = u_func(all_points[:, [0]], all_points[:, [1]], all_points[:, [2]])
 
     all_epsilon = np.abs(all_true_values - all_numerical_values)
     L_inf_all = np.max(all_epsilon)
@@ -169,4 +166,5 @@ if __name__ == '__main__':
     # 计算全部误差 end
 
     print(datetime.now(), "Main end")
-    # plot(X, Y, U_numerical)
+    plot(X, Y, U_numerical)
+    plot(X, Y, U_true)
