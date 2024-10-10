@@ -18,7 +18,7 @@ T_min = 0.0
 T_max = 2.0
 mu = 2 * np.pi / (X_max - X_min)
 nu = 2 * np.pi / (Y_max - Y_min)
-lamda = np.sqrt(mu ** 2 + nu ** 2)
+lambda_ = np.sqrt(mu ** 2 + nu ** 2)
 v_x = 0.01
 v_y = 0.01
 D = 1
@@ -48,15 +48,15 @@ def pick_point(x, y, t):
 
 
 def u_real(x, y, t):
-    return np.sin(mu * x) * np.sin(nu * y) * (2 * np.cos(lamda * t) + np.sin(lamda * t))
+    return np.sin(mu * x) * np.sin(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
 
 
 def f_real(x, y, t):
-    u_x = mu * np.cos(mu * x) * np.sin(nu * y) * (2 * np.cos(lamda * t) + np.sin(lamda * t))
-    u_xx = -mu ** 2 * np.sin(mu * x) * np.sin(nu * y) * (2 * np.cos(lamda * t) + np.sin(lamda * t))
-    u_y = nu * np.sin(mu * x) * np.cos(nu * y) * (2 * np.cos(lamda * t) + np.sin(lamda * t))
-    u_yy = -nu ** 2 * np.sin(mu * x) * np.sin(nu * y) * (2 * np.cos(lamda * t) + np.sin(lamda * t))
-    u_t = lamda * np.sin(mu * x) * np.sin(nu * y) * (np.cos(lamda * t) - 2 * np.sin(lamda * t))
+    u_x = mu * np.cos(mu * x) * np.sin(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
+    u_xx = -mu ** 2 * np.sin(mu * x) * np.sin(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
+    u_y = nu * np.sin(mu * x) * np.cos(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
+    u_yy = -nu ** 2 * np.sin(mu * x) * np.sin(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
+    u_t = lambda_ * np.sin(mu * x) * np.sin(nu * y) * (np.cos(lambda_ * t) - 2 * np.sin(lambda_ * t))
     return u_t + v_x * u_x + v_y * u_y - D * (u_xx + u_yy)
 
 
@@ -272,8 +272,8 @@ def main(Nx, Ny, Nt, M, Qx, Qy, Qt):
     print(datetime.now(), "main process end,", "shape of A :", A.shape, "residuals :", residuals, "mse : ",
           residuals / len(A), "L_2 error :", np.sqrt(residuals / len(A)))
 
-    torch.save(models, 'convection_diffusion_2d_da_complex_domain.pt')
-    np.savez('convection_diffusion_2d_da_complex_domain.npz', w=w,
+    torch.save(models, 'membrane_vibration_2d_da_complex_domain_03.pt')
+    np.savez('membrane_vibration_2d_da_complex_domain_03.npz', w=w,
              config=np.array([Nx, Ny, Nt, M, Qx, Qy, Qt, X_min, X_max, Y_min, Y_max, T_min, T_max], dtype=int))
 
     print(datetime.now(), "main end")
@@ -292,7 +292,7 @@ if __name__ == '__main__':
     # t维度划分的区间数
     Nts = [2, ]
     # 每个局部局域的特征函数数量
-    Ms = [100, ]
+    Ms = [50, ]
     # x维度每个区间的配点数，Qx+1
     Qxs = [10, ]
     # y维度每个区间的配点数，Qx+1
