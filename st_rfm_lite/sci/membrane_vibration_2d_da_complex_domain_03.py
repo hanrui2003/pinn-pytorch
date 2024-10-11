@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.autograd as autograd
 import math
+import sympy as sp
 
 from scipy.linalg import lstsq
 from datetime import datetime
@@ -22,12 +23,14 @@ lambda_ = np.sqrt(mu ** 2 + nu ** 2)
 v_x = 0.01
 v_y = 0.01
 D = 1
+# 陡度因子
+alpha = 1.0
+# 波速
+c = 1.0
 
 # 定义三个圆的参数（圆心和半径）
 circles = [
-    {'center': (1, 1), 'radius': 0.5},
-    {'center': (3, 2), 'radius': 0.8},
-    {'center': (2, 3.5), 'radius': 0.7}
+    {'center': (2, 2), 'radius': 0.5}
 ]
 
 
@@ -47,17 +50,21 @@ def pick_point(x, y, t):
     return remaining_points
 
 
-def u_real(x, y, t):
-    return np.sin(mu * x) * np.sin(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
+# 定义符号变量
+x, y, t = sp.symbols('x y t')
+x0, y0 = circles[0]['center']
+r0 = circles[0]['radius']
+chi = 1 - sp.exp(-alpha * ((x - x0) ** 2 + (y - y0) ** 2 - r0 ** 2) / r0 ** 2)
+u = chi * sp.sin(mu * x) * sp.sin(nu * y) * (2 * sp.cos(lambda_ * t) + sp.sin(lambda_ * t))
+u_x = sp.diff(u, x)
+u_xx = sp.diff(u_x, x)
+u_y = sp.diff(u, y)
+u_yy = sp.diff(u_y, y)
+u_t = sp.diff(u, t)
+f = u_t + v_x * u_x + v_y * u_y - D * (u_xx + u_yy)
 
-
-def f_real(x, y, t):
-    u_x = mu * np.cos(mu * x) * np.sin(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
-    u_xx = -mu ** 2 * np.sin(mu * x) * np.sin(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
-    u_y = nu * np.sin(mu * x) * np.cos(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
-    u_yy = -nu ** 2 * np.sin(mu * x) * np.sin(nu * y) * (2 * np.cos(lambda_ * t) + np.sin(lambda_ * t))
-    u_t = lambda_ * np.sin(mu * x) * np.sin(nu * y) * (np.cos(lambda_ * t) - 2 * np.sin(lambda_ * t))
-    return u_t + v_x * u_x + v_y * u_y - D * (u_xx + u_yy)
+u_real = sp.lambdify((x, y, t), u, 'numpy')
+f_real = sp.lambdify((x, y, t), f, 'numpy')
 
 
 def L_inf_error(v, axis=None):
@@ -206,10 +213,10 @@ def cal_matrix(models, Nx, Ny, Nt, M, Qx, Qy, Qt, pde_points, ic_points, bc_poin
     f_B = u_real(bc_points[:, [0]], bc_points[:, [1]], bc_points[:, [2]])
     f_O = u_real(obs_points[:, [0]], obs_points[:, [1]], obs_points[:, [2]])
 
-    c_p = 100.0
+    c_p = 1.0
     c_i = 1e-5
-    c_b = 1e-5
-    c_o = 100.0
+    c_b = 1.0
+    c_o = 1.0
     # 对每行按其绝对值最大值缩放
     for i in range(len(A_P)):
         ratio = c_p / max(-A_P[i, :].min(), A_P[i, :].max())
@@ -247,7 +254,7 @@ def main(Nx, Ny, Nt, M, Qx, Qy, Qt):
     # 用于计算pde损失的点
     pde_points = pick_point(x, y, t)
     # 带标签值的点，即有真解的点
-    ic_points = np.hstack((X[:, :, 0].flatten()[:, None], Y[:, :, 0].flatten()[:, None], T[:, :, 0].flatten()[:, None]))
+    ic_points = pick_point(x, y, 0)
     top_bc_points = np.hstack((X[0].flatten()[:, None], Y[0].flatten()[:, None], T[0].flatten()[:, None]))
     bottom_bc_points = np.hstack((X[-1].flatten()[:, None], Y[-1].flatten()[:, None], T[-1].flatten()[:, None]))
     left_bc_points = np.hstack(
