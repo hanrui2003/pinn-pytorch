@@ -123,4 +123,5 @@ Nx= 4 ,Ny= 4 ,Nt= 2 ,M= 100 ,Qx= 10 ,Qy= 10 ,Qt= 10
 
 membrane_vibration_2d_da_complex_domain_03
 Debug程序，因为前面的程序没能得到理想的结果，所以把之前没有粘性边界的程序，一点点修改调试。
+使用sympy符号微分，对流扩散方程，都读系数0.1，训练得到很好的误差效果。
 

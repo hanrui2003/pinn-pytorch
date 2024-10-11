@@ -24,13 +24,15 @@ v_x = 0.01
 v_y = 0.01
 D = 1
 # 陡度因子
-alpha = 1.0
+alpha = 0.1
 # 波速
 c = 1.0
 
 # 定义三个圆的参数（圆心和半径）
 circles = [
-    {'center': (2, 2), 'radius': 0.5}
+    {'center': (1, 1), 'radius': 0.5},
+    {'center': (3, 2), 'radius': 0.8},
+    {'center': (2, 3.5), 'radius': 0.7}
 ]
 
 
@@ -52,9 +54,18 @@ def pick_point(x, y, t):
 
 # 定义符号变量
 x, y, t = sp.symbols('x y t')
+
 x0, y0 = circles[0]['center']
 r0 = circles[0]['radius']
-chi = 1 - sp.exp(-alpha * ((x - x0) ** 2 + (y - y0) ** 2 - r0 ** 2) / r0 ** 2)
+x1, y1 = circles[1]['center']
+r1 = circles[1]['radius']
+x2, y2 = circles[2]['center']
+r2 = circles[2]['radius']
+chi = (1 - sp.exp(-alpha * ((x - x0) ** 2 + (y - y0) ** 2 - r0 ** 2) / r0 ** 2)) * \
+      (1 - sp.exp(-alpha * ((x - x1) ** 2 + (y - y1) ** 2 - r1 ** 2) / r1 ** 2)) * \
+      (1 - sp.exp(-alpha * ((x - x2) ** 2 + (y - y2) ** 2 - r2 ** 2) / r2 ** 2))
+
+# chi = 1 - sp.exp(-alpha * ((x - x0) ** 2 + (y - y0) ** 2 - r0 ** 2) / r0 ** 2)
 u = chi * sp.sin(mu * x) * sp.sin(nu * y) * (2 * sp.cos(lambda_ * t) + sp.sin(lambda_ * t))
 u_x = sp.diff(u, x)
 u_xx = sp.diff(u_x, x)
