@@ -104,10 +104,13 @@ convection_diffusion_da_regularization.py
 
 ====================薄膜振动：复杂区域======
 membrane_vibration_2d_da_complex_domain_01.py
-手动推导数
+手动推导数，太麻烦，没继续。
 
 membrane_vibration_2d_da_complex_domain_02.py
-使用sympy符号微分
+使用sympy符号微分，效果不好.
+经过membrane_vibration_2d_da_complex_domain_04的调试发现，
+membrane_vibration_2d_da_complex_domain_02里面的参数设置的不对，应该将陡度系数设置的小一点如0.1，将边界罚参数设置的和pde、观测一样。
+就能得到很好的效果。
 
 membrane_vibration_2d_da_complex_domain_02_100.pt
 2024-10-09 10:46:34.696375 Main start
@@ -123,5 +126,10 @@ Nx= 4 ,Ny= 4 ,Nt= 2 ,M= 100 ,Qx= 10 ,Qy= 10 ,Qt= 10
 
 membrane_vibration_2d_da_complex_domain_03
 Debug程序，因为前面的程序没能得到理想的结果，所以把之前没有粘性边界的程序，一点点修改调试。
-使用sympy符号微分，对流扩散方程，都读系数0.1，训练得到很好的误差效果。
+使用sympy符号微分，对流扩散方程，陡度系数0.1，pde、观测、边界的罚参数均为1，训练得到很好的误差效果。
 
+membrane_vibration_2d_da_complex_domain_04
+使用薄膜振动方程，得到很好的误差范围。
+
+membrane_vibration_2d_da_complex_domain_04
+去掉自动调节罚参数到同一数量级的逻辑，暂时看，效果下降。

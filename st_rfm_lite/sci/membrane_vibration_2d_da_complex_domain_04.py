@@ -26,43 +26,11 @@ alpha = 0.1
 c = 1.0
 
 # 定义三个圆的参数（圆心和半径）
-Circles = [
+circles = [
     {'center': (1, 1), 'radius': 0.5},
     {'center': (3, 2), 'radius': 0.8},
     {'center': (2, 3.5), 'radius': 0.7}
 ]
-
-# 定义符号变量
-x, y, t = sp.symbols('x y t')
-
-# 未经修正的解
-u0 = sp.sin(mu * x) * sp.sin(nu * y) * (2 * sp.cos(lambda_ * t) + sp.sin(lambda_ * t))
-
-# 粘性边界条件的光滑函数
-x0, y0 = Circles[0]['center']
-r0 = Circles[0]['radius']
-x1, y1 = Circles[1]['center']
-r1 = Circles[1]['radius']
-x2, y2 = Circles[2]['center']
-r2 = Circles[2]['radius']
-chi = (1 - sp.exp(-alpha * ((x - x0) ** 2 + (y - y0) ** 2 - r0 ** 2) / r0 ** 2)) * \
-      (1 - sp.exp(-alpha * ((x - x1) ** 2 + (y - y1) ** 2 - r1 ** 2) / r1 ** 2)) * \
-      (1 - sp.exp(-alpha * ((x - x2) ** 2 + (y - y2) ** 2 - r2 ** 2) / r2 ** 2))
-
-# 修正后的最终解
-u = chi * u0
-
-u_xx = sp.diff(u, x, 2)
-u_yy = sp.diff(u, y, 2)
-u_tt = sp.diff(u, t, 2)
-f = u_tt - c * (u_xx + u_yy)
-
-# 转为数值函数
-u_func = sp.lambdify((x, y, t), u, 'numpy')
-u_xx_func = sp.lambdify((x, y, t), u_xx, 'numpy')
-u_yy_func = sp.lambdify((x, y, t), u_yy, 'numpy')
-u_tt_func = sp.lambdify((x, y, t), u_tt, 'numpy')
-f_func = sp.lambdify((x, y, t), f, 'numpy')
 
 
 def pick_point(x, y, t):
@@ -70,7 +38,7 @@ def pick_point(x, y, t):
     # 初始化一个布尔数组，用于标记在圆外的点
     outside = np.ones_like(X, dtype=bool)
 
-    for circle in Circles:
+    for circle in circles:
         x0, y0 = circle['center']
         r = circle['radius']
         distances = np.sqrt((X - x0) ** 2 + (Y - y0) ** 2)
@@ -79,6 +47,29 @@ def pick_point(x, y, t):
     # 筛选出位于所有圆外的点，并组成 (m, 2) 的点列
     remaining_points = np.vstack((X[outside], Y[outside], T[outside])).T
     return remaining_points
+
+
+# 定义符号变量
+x, y, t = sp.symbols('x y t')
+
+x0, y0 = circles[0]['center']
+r0 = circles[0]['radius']
+x1, y1 = circles[1]['center']
+r1 = circles[1]['radius']
+x2, y2 = circles[2]['center']
+r2 = circles[2]['radius']
+chi = (1 - sp.exp(-alpha * ((x - x0) ** 2 + (y - y0) ** 2 - r0 ** 2) / r0 ** 2)) * \
+      (1 - sp.exp(-alpha * ((x - x1) ** 2 + (y - y1) ** 2 - r1 ** 2) / r1 ** 2)) * \
+      (1 - sp.exp(-alpha * ((x - x2) ** 2 + (y - y2) ** 2 - r2 ** 2) / r2 ** 2))
+
+u = chi * sp.sin(mu * x) * sp.sin(nu * y) * (2 * sp.cos(lambda_ * t) + sp.sin(lambda_ * t))
+u_xx = sp.diff(u, x, 2)
+u_yy = sp.diff(u, y, 2)
+u_tt = sp.diff(u, t, 2)
+f = u_tt - c * (u_xx + u_yy)
+
+u_real = sp.lambdify((x, y, t), u, 'numpy')
+f_real = sp.lambdify((x, y, t), f, 'numpy')
 
 
 def L_inf_error(v, axis=None):
@@ -221,10 +212,10 @@ def cal_matrix(models, Nx, Ny, Nt, M, Qx, Qy, Qt, pde_points, ic_points, bc_poin
                 A_B[:, M_begin: M_begin + M] = bc_values
                 A_O[:, M_begin: M_begin + M] = obs_values
 
-    f_P = f_func(pde_points[:, [0]], pde_points[:, [1]], pde_points[:, [2]])
-    f_I = u_func(ic_points[:, [0]], ic_points[:, [1]], ic_points[:, [2]])
-    f_B = u_func(bc_points[:, [0]], bc_points[:, [1]], bc_points[:, [2]])
-    f_O = u_func(obs_points[:, [0]], obs_points[:, [1]], obs_points[:, [2]])
+    f_P = f_real(pde_points[:, [0]], pde_points[:, [1]], pde_points[:, [2]])
+    f_I = u_real(ic_points[:, [0]], ic_points[:, [1]], ic_points[:, [2]])
+    f_B = u_real(bc_points[:, [0]], bc_points[:, [1]], bc_points[:, [2]])
+    f_O = u_real(obs_points[:, [0]], obs_points[:, [1]], obs_points[:, [2]])
 
     c_p = 1.0
     c_i = 1e-5
@@ -287,12 +278,13 @@ def main(Nx, Ny, Nt, M, Qx, Qy, Qt):
     # matrix define (Aw=b)
     A, f = cal_matrix(models, Nx, Ny, Nt, M, Qx, Qy, Qt, pde_points, ic_points, bc_points, obs_points)
 
+    # 为什么选择gelss，默认的不行吗？
     w, residuals, *_ = lstsq(A, f, lapack_driver="gelss")
     print(datetime.now(), "main process end,", "shape of A :", A.shape, "residuals :", residuals, "mse : ",
           residuals / len(A), "L_2 error :", np.sqrt(residuals / len(A)))
 
-    torch.save(models, 'membrane_vibration_2d_da_complex_domain_02_' + str(M) + '.pt')
-    np.savez('membrane_vibration_2d_da_complex_domain_02_' + str(M) + '.npz', w=w,
+    torch.save(models, 'membrane_vibration_2d_da_complex_domain_04_' + str(M) + '.pt')
+    np.savez('membrane_vibration_2d_da_complex_domain_04_' + str(M) + '.npz', w=w,
              config=np.array([Nx, Ny, Nt, M, Qx, Qy, Qt, X_min, X_max, Y_min, Y_max, T_min, T_max], dtype=int))
 
     print(datetime.now(), "main end")
