@@ -78,11 +78,11 @@ def plot_err(X1, T1, U1):
 if __name__ == '__main__':
     print(datetime.now(), "Main start")
 
-    data = np.load("membrane_vibration_2d_da_complex_domain_05_200.npz")
+    data = np.load("membrane_vibration_2d_da_complex_domain_05_250.npz")
     Nx, Ny, Nt, M, Qx, Qy, Qt, X_min, X_max, Y_min, Y_max, T_min, T_max = data['config']
     w = data['w']
 
-    models = torch.load('membrane_vibration_2d_da_complex_domain_05_200.pt')
+    models = torch.load('membrane_vibration_2d_da_complex_domain_05_250.pt')
 
     print(datetime.now(), "test start")
     test_Qx = 2 * Qx
