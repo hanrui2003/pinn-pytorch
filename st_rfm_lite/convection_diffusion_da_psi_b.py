@@ -9,6 +9,9 @@ import math
 from scipy.linalg import lstsq
 from datetime import datetime
 
+"""
+观测加上高斯噪声，同时修改损失权重为lambda
+"""
 torch.set_default_dtype(torch.float64)
 Pi = np.pi
 nu = 0.01
@@ -46,7 +49,7 @@ def weights_init(m):
 
 
 class LocalNet(nn.Module):
-    def __init__(self, in_features, hidden_features, x_max, x_min, t_max, t_min,Nx, Nt, n_x, n_t):
+    def __init__(self, in_features, hidden_features, x_max, x_min, t_max, t_min, Nx, Nt, n_x, n_t):
         super(LocalNet, self).__init__()
         self.in_features = in_features
         self.hidden_features = hidden_features
@@ -186,31 +189,20 @@ def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points, obs_
     f_I = u_real(ic_points[:, [0]], ic_points[:, [1]]) + y_noise
     f_B = u_real(bc_points[:, [0]], bc_points[:, [1]]) + y_noise_bc
     f_O = u_real(obs_points[:, [0]], obs_points[:, [1]])
+    obs_noise = np.random.randn(f_O.shape[0], f_O.shape[1]) / 40
+    print("obs_noise max:", max(obs_noise), ", min:", min(obs_noise))
+    f_O += obs_noise
 
-    c_p = 100.0
-    c_i = 1e-5
-    c_b = 1e-5
-    c_o = 100.0
-    # 对每行按其绝对值最大值缩放
-    for i in range(len(A_P)):
-        ratio = c_p / max(-A_P[i, :].min(), A_P[i, :].max())
-        A_P[i, :] = A_P[i, :] * ratio
-        f_P[i] = f_P[i] * ratio
+    lambda_p = 1.0
+    lambda_i = 1e-5
+    lambda_b = 1e-5
+    lambda_o = 1.0
 
-    for i in range(len(A_I)):
-        ratio = c_i / max(-A_I[i, :].min(), A_I[i, :].max())
-        A_I[i, :] = A_I[i, :] * ratio
-        f_I[i] = f_I[i] * ratio
+    A_I *= lambda_i
+    f_I *= lambda_i
 
-    for i in range(len(A_B)):
-        ratio = c_b / max(-A_B[i, :].min(), A_B[i, :].max())
-        A_B[i, :] = A_B[i, :] * ratio
-        f_B[i] = f_B[i] * ratio
-
-    for i in range(len(A_O)):
-        ratio = c_o / max(-A_O[i, :].min(), A_O[i, :].max())
-        A_O[i, :] = A_O[i, :] * ratio
-        f_O[i] = f_O[i] * ratio
+    A_B *= lambda_b
+    f_B *= lambda_b
 
     A = np.concatenate((A_P, A_I, A_B, A_O), axis=0)
     f = np.concatenate((f_P, f_I, f_B, f_O), axis=0)
@@ -245,8 +237,8 @@ def main(Nx, Nt, M, Qx, Qt):
     w = lstsq(A, f, lapack_driver="gelss")[0]
     print(datetime.now(), "main process end")
 
-    torch.save(models, 'convection_diffusion_da_psi_b.pt')
-    np.savez('convection_diffusion_da_psi_b.npz', w=w,
+    torch.save(models, 'convection_diffusion_da_psi_b_' + str(M) + '.pt')
+    np.savez('convection_diffusion_da_psi_b_' + str(M) + '.npz', w=w,
              config=np.array([Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max], dtype=int))
 
     print(datetime.now(), "main end")
