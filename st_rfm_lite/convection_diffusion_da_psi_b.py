@@ -189,13 +189,16 @@ def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points, obs_
     f_I = u_real(ic_points[:, [0]], ic_points[:, [1]]) + y_noise
     f_B = u_real(bc_points[:, [0]], bc_points[:, [1]]) + y_noise_bc
     f_O = u_real(obs_points[:, [0]], obs_points[:, [1]])
-    obs_noise = np.random.randn(f_O.shape[0], f_O.shape[1]) / 40
+
+    # 观测增加噪声，临时种子数，使得可以和其他程序使用相同的噪声，进行对比
+    temp_rng = np.random.default_rng(123)
+    obs_noise = 1e-8 * temp_rng.standard_normal(f_O.shape)
     print("obs_noise max:", max(obs_noise), ", min:", min(obs_noise))
     f_O += obs_noise
 
     lambda_p = 1.0
-    lambda_i = 1e-5
-    lambda_b = 1e-5
+    lambda_i = 1e-7
+    lambda_b = 1e-7
     lambda_o = 1.0
 
     A_I *= lambda_i

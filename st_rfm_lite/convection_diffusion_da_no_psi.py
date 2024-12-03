@@ -157,30 +157,22 @@ def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points, obs_
     f_B = u_real(bc_points[:, [0]], bc_points[:, [1]]) + y_noise_bc
     f_O = u_real(obs_points[:, [0]], obs_points[:, [1]])
 
-    c_p = 100.0
-    c_i = 1e-5
-    c_b = 1e-5
-    c_o = 100.0
-    # 对每行按其绝对值最大值缩放
-    for i in range(len(A_P)):
-        ratio = c_p / max(-A_P[i, :].min(), A_P[i, :].max())
-        A_P[i, :] = A_P[i, :] * ratio
-        f_P[i] = f_P[i] * ratio
+    # 观测增加噪声，临时种子数，使得可以和其他程序使用相同的噪声，进行对比
+    temp_rng = np.random.default_rng(123)
+    obs_noise = 1e-8 * temp_rng.standard_normal(f_O.shape)
+    print("obs_noise max:", max(obs_noise), ", min:", min(obs_noise))
+    f_O += obs_noise
 
-    for i in range(len(A_I)):
-        ratio = c_i / max(-A_I[i, :].min(), A_I[i, :].max())
-        A_I[i, :] = A_I[i, :] * ratio
-        f_I[i] = f_I[i] * ratio
+    lambda_p = 1.0
+    lambda_i = 1e-7
+    lambda_b = 1e-7
+    lambda_o = 1.0
 
-    for i in range(len(A_B)):
-        ratio = c_b / max(-A_B[i, :].min(), A_B[i, :].max())
-        A_B[i, :] = A_B[i, :] * ratio
-        f_B[i] = f_B[i] * ratio
+    A_I *= lambda_i
+    f_I *= lambda_i
 
-    for i in range(len(A_O)):
-        ratio = c_o / max(-A_O[i, :].min(), A_O[i, :].max())
-        A_O[i, :] = A_O[i, :] * ratio
-        f_O[i] = f_O[i] * ratio
+    A_B *= lambda_b
+    f_B *= lambda_b
 
     A = np.concatenate((A_P, A_I, A_B, A_O), axis=0)
     f = np.concatenate((f_P, f_I, f_B, f_O), axis=0)
@@ -216,8 +208,8 @@ def main(Nx, Nt, M, Qx, Qt):
     print(datetime.now(), "main process end,", "shape of A :", A.shape, "residuals :", residuals, "mse : ",
           residuals / len(A), "L_2 error :", np.sqrt(residuals / len(A)))
 
-    torch.save(models, 'convection_diffusion_da_no_psi.pt')
-    np.savez('convection_diffusion_da_no_psi.npz', w=w,
+    torch.save(models, 'convection_diffusion_da_no_psi_' + str(M) + '.pt')
+    np.savez('convection_diffusion_da_no_psi_' + str(M) + '.npz', w=w,
              config=np.array([Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max], dtype=int))
 
     print(datetime.now(), "main end")
@@ -239,7 +231,7 @@ if __name__ == '__main__':
     # t维度划分的区间数
     Nts = [2, ]
     # 每个局部局域的特征函数数量
-    Ms = [50, ]
+    Ms = [150, ]
     # x维度每个区间的配点数，Qx+1
     Qxs = [10, ]
     # t维度每个区间的配点数，Qt+1
