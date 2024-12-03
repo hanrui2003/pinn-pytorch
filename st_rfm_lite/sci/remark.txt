@@ -132,4 +132,4 @@ membrane_vibration_2d_da_complex_domain_04
 使用薄膜振动方程，得到很好的误差范围。
 
 membrane_vibration_2d_da_complex_domain_05
-去掉自动调节罚参数到同一数量级的逻辑，暂时看，效果相对来说稍微下降。
+去掉自动调节罚参数到同一数量级的逻辑，效果差不多。
