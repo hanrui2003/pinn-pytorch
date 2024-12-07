@@ -198,7 +198,7 @@ def main(Nx, Nt, M, Qx, Qt):
     bc_points = np.vstack((left_bc_points, right_bc_points))
 
     t_obs = np.linspace(T_min, T_max, 11)[1:]
-    x_obs = np.linspace(X_min, X_max, 7)[1:-1]
+    x_obs = np.linspace(X_min, X_max, 12)[1:-1]
     obs_points = np.array([(x, t) for x in x_obs for t in t_obs])
 
     models = pre_define(Nx=Nx, Nt=Nt, M=M, X_min=X_min, X_max=X_max, T_min=T_min, T_max=T_max)
@@ -211,8 +211,8 @@ def main(Nx, Nt, M, Qx, Qt):
     print(datetime.now(), "main process end,", "shape of A :", A.shape, "residuals :", residuals, "mse : ",
           residuals / len(A), "L_2 error :", np.sqrt(residuals / len(A)))
 
-    torch.save(models, 'convection_diffusion_da_no_psi_' + str(M) + '.pt')
-    np.savez('convection_diffusion_da_no_psi_' + str(M) + '.npz', w=w,
+    torch.save(models, 'convection_diffusion_da_no_psi_Nt_' + str(Nt) + '.pt')
+    np.savez('convection_diffusion_da_no_psi_Nt_' + str(Nt) + '.npz', w=w,
              config=np.array([Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max], dtype=int))
 
     print(datetime.now(), "main end")
@@ -232,7 +232,7 @@ if __name__ == '__main__':
     # x维度划分的区间数
     Nxs = [5, ]
     # t维度划分的区间数
-    Nts = [16, ]
+    Nts = [4, ]
     # 每个局部局域的特征函数数量
     Ms = [100, ]
     # x维度每个区间的配点数，Qx+1
