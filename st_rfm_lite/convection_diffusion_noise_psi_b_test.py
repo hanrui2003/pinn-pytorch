@@ -79,11 +79,13 @@ def plot_err(X1, T1, U1):
 if __name__ == '__main__':
     print(datetime.now(), "Main start")
 
-    data = np.load("convection_diffusion_noise_psi_b.npz")
+    file_index = 8
+
+    data = np.load('convection_diffusion_noise_psi_b_Nt_' + str(file_index) + '.npz')
     Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max = data['config']
     w = data['w']
 
-    models = torch.load('convection_diffusion_noise_psi_b.pt')
+    models = torch.load('convection_diffusion_noise_psi_b_Nt_' + str(file_index) + '.pt')
 
     print(datetime.now(), "test start")
     test_Qx = 2 * Qx

@@ -163,6 +163,9 @@ def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points, obs_
     print("obs_noise max:", max(obs_noise), ", min:", min(obs_noise))
     f_O += obs_noise
 
+    noised_obs = np.hstack((obs_points, f_O))
+    np.save('convection_diffusion_da_noised_obs.npy', noised_obs)
+
     lambda_p = 1.0
     lambda_i = 1e-7
     lambda_b = 1e-7
@@ -195,7 +198,7 @@ def main(Nx, Nt, M, Qx, Qt):
     bc_points = np.vstack((left_bc_points, right_bc_points))
 
     t_obs = np.linspace(T_min, T_max, 11)[1:]
-    x_obs = np.linspace(X_min, X_max, 51)[1:-1]
+    x_obs = np.linspace(X_min, X_max, 7)[1:-1]
     obs_points = np.array([(x, t) for x in x_obs for t in t_obs])
 
     models = pre_define(Nx=Nx, Nt=Nt, M=M, X_min=X_min, X_max=X_max, T_min=T_min, T_max=T_max)
@@ -229,9 +232,9 @@ if __name__ == '__main__':
     # x维度划分的区间数
     Nxs = [5, ]
     # t维度划分的区间数
-    Nts = [2, ]
+    Nts = [16, ]
     # 每个局部局域的特征函数数量
-    Ms = [150, ]
+    Ms = [100, ]
     # x维度每个区间的配点数，Qx+1
     Qxs = [10, ]
     # t维度每个区间的配点数，Qt+1
