@@ -192,7 +192,7 @@ def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points, obs_
 
     # 观测增加噪声，临时种子数，使得可以和其他程序使用相同的噪声，进行对比
     temp_rng = np.random.default_rng(123)
-    obs_noise = 1e-8 * temp_rng.standard_normal(f_O.shape)
+    obs_noise = 1e-6 * temp_rng.standard_normal(f_O.shape)
     print("obs_noise max:", max(obs_noise), ", min:", min(obs_noise))
     f_O += obs_noise
 
@@ -228,7 +228,7 @@ def main(Nx, Nt, M, Qx, Qt):
     bc_points = np.vstack((left_bc_points, right_bc_points))
 
     t_obs = np.linspace(T_min, T_max, 11)[1:]
-    x_obs = np.linspace(X_min, X_max, 51)[1:-1]
+    x_obs = np.linspace(X_min, X_max, 12)[1:-1]
     obs_points = np.array([(x, t) for x in x_obs for t in t_obs])
 
     models = pre_define(Nx=Nx, Nt=Nt, M=M, X_min=X_min, X_max=X_max, T_min=T_min, T_max=T_max)
@@ -240,8 +240,8 @@ def main(Nx, Nt, M, Qx, Qt):
     w = lstsq(A, f, lapack_driver="gelss")[0]
     print(datetime.now(), "main process end")
 
-    torch.save(models, 'convection_diffusion_da_psi_b_' + str(M) + '.pt')
-    np.savez('convection_diffusion_da_psi_b_' + str(M) + '.npz', w=w,
+    torch.save(models, 'convection_diffusion_da_psi_b_Nt_' + str(Nt) + '.pt')
+    np.savez('convection_diffusion_da_psi_b_Nt_' + str(Nt) + '.npz', w=w,
              config=np.array([Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max], dtype=int))
 
     print(datetime.now(), "main end")
@@ -261,9 +261,9 @@ if __name__ == '__main__':
     # x维度划分的区间数
     Nxs = [5, ]
     # t维度划分的区间数
-    Nts = [2, ]
+    Nts = [8, ]
     # 每个局部局域的特征函数数量
-    Ms = [50, ]
+    Ms = [100, ]
     # x维度每个区间的配点数，Qx+1
     Qxs = [10, ]
     # t维度每个区间的配点数，Qt+1

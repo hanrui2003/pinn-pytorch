@@ -159,7 +159,7 @@ def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, ic_points, bc_points, obs_
 
     # 观测增加噪声，临时种子数，使得可以和其他程序使用相同的噪声，进行对比
     temp_rng = np.random.default_rng(123)
-    obs_noise = 1e-8 * temp_rng.standard_normal(f_O.shape)
+    obs_noise = 1e-6 * temp_rng.standard_normal(f_O.shape)
     print("obs_noise max:", max(obs_noise), ", min:", min(obs_noise))
     f_O += obs_noise
 
@@ -211,8 +211,8 @@ def main(Nx, Nt, M, Qx, Qt):
     print(datetime.now(), "main process end,", "shape of A :", A.shape, "residuals :", residuals, "mse : ",
           residuals / len(A), "L_2 error :", np.sqrt(residuals / len(A)))
 
-    torch.save(models, 'convection_diffusion_da_no_psi_Nt_' + str(Nt) + '.pt')
-    np.savez('convection_diffusion_da_no_psi_Nt_' + str(Nt) + '.npz', w=w,
+    torch.save(models, 'convection_diffusion_da_no_psi_big_noise_10_obs_Nt_' + str(Nt) + '.pt')
+    np.savez('convection_diffusion_da_no_psi_big_noise_10_obs_Nt_' + str(Nt) + '.npz', w=w,
              config=np.array([Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max], dtype=int))
 
     print(datetime.now(), "main end")

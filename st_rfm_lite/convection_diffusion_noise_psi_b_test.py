@@ -40,14 +40,14 @@ def plot(X1, T1, U1, X2, T2, U2):
 
     cp3 = ax3.contourf(T2, X2, U2, 20, cmap="rainbow", vmin=min_value, vmax=max_value)
     fig.colorbar(cp3, ax=ax3)
-    ax3.set_title('RFM(x,t)')
+    ax3.set_title('IRFM(x,t)')
     ax3.set_xlabel('t')
     ax3.set_ylabel('x')
 
     ax4.plot_surface(T2, X2, U2, cmap="rainbow", vmin=min_value, vmax=max_value)
     ax4.set_xlabel('t')
     ax4.set_ylabel('x')
-    ax4.set_zlabel('RFM(x,t)')
+    ax4.set_zlabel('IRFM(x,t)')
     ax4.set_zlim(min_value, max_value)
 
     plt.show()
@@ -79,7 +79,7 @@ def plot_err(X1, T1, U1):
 if __name__ == '__main__':
     print(datetime.now(), "Main start")
 
-    file_index = 8
+    file_index = 16
 
     data = np.load('convection_diffusion_noise_psi_b_Nt_' + str(file_index) + '.npz')
     Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max = data['config']

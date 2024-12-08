@@ -12,7 +12,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 
 
-def plot(X1, T1, U1, X2, T2, U2):
+def plot(X1, T1, U1, X2, T2, U2, noised_obs):
     """
     同时绘制PDE的数值解和神经网络解，上面数值解，下面神经网络解。
     """
@@ -43,8 +43,10 @@ def plot(X1, T1, U1, X2, T2, U2):
     ax3.set_title('RFM(x,t)')
     ax3.set_xlabel('t')
     ax3.set_ylabel('x')
+    ax3.scatter(noised_obs[:, 1], noised_obs[:, 0], color='black', s=5, zorder=5, )
 
-    ax4.plot_surface(T2, X2, U2, cmap="rainbow", vmin=min_value, vmax=max_value)
+    ax4.scatter(noised_obs[:, 1], noised_obs[:, 0], noised_obs[:, 2], color='black', s=5, zorder=10)
+    ax4.plot_surface(T2, X2, U2, cmap="rainbow", vmin=min_value, vmax=max_value, alpha=.8)
     ax4.set_xlabel('t')
     ax4.set_ylabel('x')
     ax4.set_zlabel('RFM(x,t)')
@@ -79,11 +81,14 @@ def plot_err(X1, T1, U1):
 if __name__ == '__main__':
     print(datetime.now(), "Main start")
 
-    data = np.load("convection_diffusion_da_psi_b_50.npz")
+    noised_obs = np.load("convection_diffusion_da_noised_obs.npy")
+
+    file_index = 8
+    data = np.load('convection_diffusion_da_psi_b_Nt_' + str(file_index) + '.npz')
     Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max = data['config']
     w = data['w']
 
-    models = torch.load('convection_diffusion_da_psi_b_50.pt')
+    models = torch.load('convection_diffusion_da_psi_b_Nt_' + str(file_index) + '.pt')
 
     print(datetime.now(), "test start")
     test_Qx = 2 * Qx
@@ -122,5 +127,5 @@ if __name__ == '__main__':
     U_true = true_values.reshape((X.shape[0], X.shape[1]))
     U_numerical = numerical_values.reshape((X.shape[0], X.shape[1]))
 
-    # plot(X, T, U_true, X, T, U_numerical)
+    plot(X, T, U_true, X, T, U_numerical, noised_obs)
     # plot_err(X, T, np.abs(U_true - U_numerical))

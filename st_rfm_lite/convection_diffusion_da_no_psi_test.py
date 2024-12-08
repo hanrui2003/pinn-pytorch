@@ -19,7 +19,7 @@ def plot(X1, T1, U1, X2, T2, U2, noised_obs):
     min_value = np.min([U1, U2])
     max_value = np.max([U1, U2])
     # 创建一个 Figure 对象，并设置子图布局
-    fig = plt.figure(figsize=(12, 8))
+    fig = plt.figure(figsize=(15, 10))
     ax1 = fig.add_subplot(221)
     # ax1.set_ylim
     ax2 = fig.add_subplot(222, projection='3d')
@@ -44,7 +44,7 @@ def plot(X1, T1, U1, X2, T2, U2, noised_obs):
 
     cp3 = ax3.contourf(T2, X2, U2, 20, cmap="rainbow", vmin=min_value, vmax=max_value)
     fig.colorbar(cp3, ax=ax3)
-    ax3.set_title('RFM(x,t)')
+    ax3.set_title('IRFM(x,t)')
     ax3.set_xlabel('t')
     ax3.set_ylabel('x')
     ax3.scatter(noised_obs[:, 1], noised_obs[:, 0], color='black', s=5, zorder=5, )
@@ -53,7 +53,7 @@ def plot(X1, T1, U1, X2, T2, U2, noised_obs):
     ax4.plot_surface(T2, X2, U2, cmap="rainbow", vmin=min_value, vmax=max_value, alpha=.8)
     ax4.set_xlabel('t')
     ax4.set_ylabel('x')
-    ax4.set_zlabel('RFM(x,t)')
+    ax4.set_zlabel('IRFM(x,t)')
     ax4.set_zlim(min_value, max_value)
 
     plt.show()
@@ -84,15 +84,15 @@ def plot_err(X1, T1, U1):
 
 if __name__ == '__main__':
     print(datetime.now(), "Main start")
-    file_index = 4
+    file_index = 16
 
     noised_obs = np.load("convection_diffusion_da_noised_obs.npy")
 
-    data = np.load('convection_diffusion_da_no_psi_Nt_' + str(file_index) + '.npz')
+    data = np.load('convection_diffusion_da_no_psi_10_obs_Nt_' + str(file_index) + '.npz')
     Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max = data['config']
     w = data['w']
 
-    models = torch.load('convection_diffusion_da_no_psi_Nt_' + str(file_index) + '.pt')
+    models = torch.load('convection_diffusion_da_no_psi_10_obs_Nt_' + str(file_index) + '.pt')
 
     print(datetime.now(), "test start")
     test_Qx = 2 * Qx
