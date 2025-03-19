@@ -170,10 +170,6 @@ def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, label_points, initial=None
 
 
 def main(Nx, Nt, M, Qx, Qt):
-    # 记录训练开始时间
-    start_time = datetime.now()
-    print("Training started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
-
     x = np.linspace(X_min, X_max, Nx * Qx + 1)
     t = np.linspace(T_min, T_max, Nt * Qt + 1)
     X, T = np.meshgrid(x, t)
@@ -202,8 +198,10 @@ def main(Nx, Nt, M, Qx, Qt):
         A[i, :] = A[i, :] * ratio
         f[i] = f[i] * ratio
 
-    print("A dense memory size : ", A.nbytes / (1024 * 1024))
-    # 为什么选择gelss，默认的不行吗？
+    # 记录训练开始时间
+    start_time = datetime.now()
+    print("Training started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
+
     w = lstsq(A, f, lapack_driver="gelss")[0]
 
     end_time = datetime.now()
@@ -211,9 +209,9 @@ def main(Nx, Nt, M, Qx, Qt):
     print("Training ended at:", end_time.strftime("%Y-%m-%d %H:%M:%S"))
     print("Elapsed time: ", elapsed_time)
 
-    # torch.save(models, 'oned_rfm_diff_no_psi.pt')
-    # np.savez('oned_rfm_diff_no_psi.npz', w=w,
-    #          config=np.array([Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max], dtype=int))
+    torch.save(models, 'oned_rfm_diff_no_psi.pt')
+    np.savez('oned_rfm_diff_no_psi.npz', w=w,
+             config=np.array([Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max], dtype=int))
 
 
 if __name__ == '__main__':
@@ -232,7 +230,7 @@ if __name__ == '__main__':
     # t维度划分的区间数
     Nts = [2, ]
     # 每个局部局域的特征函数数量
-    Ms = [50, ]
+    Ms = [150, ]
     # x维度每个区间的配点数，Qx+1
     Qxs = [30, ]
     # t维度每个区间的配点数，Qt+1

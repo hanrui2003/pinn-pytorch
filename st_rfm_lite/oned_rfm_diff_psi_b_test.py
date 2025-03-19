@@ -99,7 +99,7 @@ if __name__ == '__main__':
             A[:, M_begin: M_begin + M] = values
 
     numerical_values = np.dot(A, w)
-    true_values = u_real(points[:, [0]], points[:, [1]])
+    true_values = u_real(points[:, [0]], points[:, [1]]).flatten()
     epsilon = np.abs(true_values - numerical_values)
 
     L_inf = np.max(epsilon)

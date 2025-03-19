@@ -11,6 +11,7 @@ import math
 from scipy.sparse import csr_matrix
 
 from scipy.linalg import lstsq
+from scipy.sparse.linalg import lsmr
 from scipy.sparse.linalg import lsqr
 from datetime import datetime
 
@@ -193,10 +194,6 @@ def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, label_points, initial=None
 
 
 def main(Nx, Nt, M, Qx, Qt):
-    # 记录训练开始时间
-    start_time = datetime.now()
-    print("Training started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
-
     x = np.linspace(X_min, X_max, Nx * Qx + 1)
     t = np.linspace(T_min, T_max, Nt * Qt + 1)
     X, T = np.meshgrid(x, t)
@@ -209,7 +206,6 @@ def main(Nx, Nt, M, Qx, Qt):
     label_points = np.vstack((ic_points, left_bc_points, right_bc_points))
 
     models = pre_define(Nx=Nx, Nt=Nt, M=M, X_min=X_min, X_max=X_max, T_min=T_min, T_max=T_max)
-    torch.save(models, 'oned_rfm_diff_psi_b.pt')
 
     true_values = list()
     numerical_values = list()
@@ -227,23 +223,28 @@ def main(Nx, Nt, M, Qx, Qt):
         A[i, :] = A[i, :] * ratio
         f[i] = f[i] * ratio
 
-    A_sparse = csr_matrix(A)
-    # 计算稀疏矩阵的实际内存占用
-    data_size = A_sparse.data.nbytes  # 非零元素的字节数
-    indices_size = A_sparse.indices.nbytes  # 列索引的字节数
-    indptr_size = A_sparse.indptr.nbytes  # 行偏移的字节数
-    total_memory_bytes = data_size + indices_size + indptr_size  # 总内存占用（字节）
-    total_memory_mb = total_memory_bytes / (1024 * 1024)  # 转换为 MB
-    print("A sparse memory size : ", total_memory_mb)
+    # A_sparse = csr_matrix(A)
+    # # 计算稀疏矩阵的实际内存占用
+    # data_size = A_sparse.data.nbytes  # 非零元素的字节数
+    # indices_size = A_sparse.indices.nbytes  # 列索引的字节数
+    # indptr_size = A_sparse.indptr.nbytes  # 行偏移的字节数
+    # total_memory_bytes = data_size + indices_size + indptr_size  # 总内存占用（字节）
+    # total_memory_mb = total_memory_bytes / (1024 * 1024)  # 转换为 MB
+    # print("A sparse memory size : ", total_memory_mb)
+    # print("A dense memory size : ", A.nbytes / (1024 * 1024))
 
-    # 为什么选择gelss，默认的不行吗？
-    w = lsqr(A_sparse, f)[0]
+    # 记录训练开始时间
+    start_time = datetime.now()
+    print("Training started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
+
+    w = lstsq(A, f, lapack_driver="gelss")[0]
 
     end_time = datetime.now()
     elapsed_time = end_time - start_time
     print("Training ended at:", end_time.strftime("%Y-%m-%d %H:%M:%S"))
     print("Elapsed time: ", elapsed_time)
 
+    torch.save(models, 'oned_rfm_diff_psi_b.pt')
     np.savez('oned_rfm_diff_psi_b.npz', w=w,
              config=np.array([Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max], dtype=int))
 
@@ -264,7 +265,7 @@ if __name__ == '__main__':
     # t维度划分的区间数
     Nts = [2, ]
     # 每个局部局域的特征函数数量
-    Ms = [100, ]
+    Ms = [200, ]
     # x维度每个区间的配点数，Qx+1
     Qxs = [30, ]
     # t维度每个区间的配点数，Qt+1
