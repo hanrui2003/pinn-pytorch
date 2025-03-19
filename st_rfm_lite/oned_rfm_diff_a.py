@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
+"""
+用于EAJAM
+"""
 import itertools
 import numpy as np
 import torch
 import torch.nn as nn
+from scipy.sparse import csr_matrix
+import sys
 
 from scipy.linalg import lstsq
 from datetime import datetime
@@ -210,10 +215,24 @@ def cal_matrix(models, points, Nx, Nt, M, Qx, Qt):
 
     A = np.concatenate((A_P, A_B_L, A_B_R, A_I, C_0t, C_0x, C_1x), axis=0)
     f = np.concatenate((f_P, f_B_L, f_B_R, f_I, f_c_0t, f_c_0x, f_c_1x), axis=0)
+    # 构造的矩阵A为稀疏矩阵，这里打印下稀疏矩阵的存储大小，但并不用真的转换为稀疏矩阵。
+    # 因为后续的逻辑，代码中已经用分块乘法实现了稀疏矩阵的快速乘法逻辑。
+    A_sparse = csr_matrix(A)
+    # 计算稀疏矩阵的实际内存占用
+    data_size = A_sparse.data.nbytes  # 非零元素的字节数
+    indices_size = A_sparse.indices.nbytes  # 列索引的字节数
+    indptr_size = A_sparse.indptr.nbytes  # 行偏移的字节数
+    total_memory_bytes = data_size + indices_size + indptr_size  # 总内存占用（字节）
+    total_memory_mb = total_memory_bytes / (1024 * 1024)  # 转换为 MB
+    print("A sparse memory size : ", total_memory_mb)
     return A, f
 
 
 def main(Nx, Nt, M, Qx, Qt):
+    # 记录训练开始时间
+    start_time = datetime.now()
+    print("Training started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
+
     # prepare models and collocation points
     models, points = pre_define_rfm(Nx=Nx, Nt=Nt, M=M, Qx=Qx, Qt=Qt, X_min=X_min, X_max=X_max, T_min=T_min, T_max=T_max)
 
@@ -234,6 +253,11 @@ def main(Nx, Nt, M, Qx, Qt):
         f[i] = f[i] * ratio
     # 为什么选择gelss，默认的不行吗？
     w = lstsq(A, f, lapack_driver="gelss")[0]
+
+    end_time = datetime.now()
+    elapsed_time = end_time - start_time
+    print("Training ended at:", end_time.strftime("%Y-%m-%d %H:%M:%S"))
+    print("Elapsed time: ", elapsed_time)
 
     true_values_, numerical_values_, L_i, L_2 = test(models=models,
                                                      Nx=Nx, Nt=Nt, M=M, Qx=Qx, Qt=Qt,
@@ -323,7 +347,7 @@ if __name__ == '__main__':
     # t维度划分的区间数
     Nts = [2, ]
     # 每个局部局域的特征函数数量
-    Ms = [50, ]
+    Ms = [250, ]
     # x维度每个区间的配点数，Qx+1
     Qxs = [30, ]
     # t维度每个区间的配点数，Qt+1

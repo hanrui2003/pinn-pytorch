@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
+"""
+用于EAJAM
+"""
 import itertools
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.autograd as autograd
 import math
+from scipy.sparse import csr_matrix
 
 from scipy.linalg import lstsq
 from datetime import datetime
@@ -166,7 +170,10 @@ def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, label_points, initial=None
 
 
 def main(Nx, Nt, M, Qx, Qt):
-    print(datetime.now(), "main start")
+    # 记录训练开始时间
+    start_time = datetime.now()
+    print("Training started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
+
     x = np.linspace(X_min, X_max, Nx * Qx + 1)
     t = np.linspace(T_min, T_max, Nt * Qt + 1)
     X, T = np.meshgrid(x, t)
@@ -194,15 +201,19 @@ def main(Nx, Nt, M, Qx, Qt):
         ratio = c / max(-A[i, :].min(), A[i, :].max())
         A[i, :] = A[i, :] * ratio
         f[i] = f[i] * ratio
+
+    print("A dense memory size : ", A.nbytes / (1024 * 1024))
     # 为什么选择gelss，默认的不行吗？
     w = lstsq(A, f, lapack_driver="gelss")[0]
-    print(datetime.now(), "main process end")
 
-    torch.save(models, 'oned_rfm_diff_no_psi.pt')
-    np.savez('oned_rfm_diff_no_psi.npz', w=w,
-             config=np.array([Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max], dtype=int))
+    end_time = datetime.now()
+    elapsed_time = end_time - start_time
+    print("Training ended at:", end_time.strftime("%Y-%m-%d %H:%M:%S"))
+    print("Elapsed time: ", elapsed_time)
 
-    print(datetime.now(), "main end")
+    # torch.save(models, 'oned_rfm_diff_no_psi.pt')
+    # np.savez('oned_rfm_diff_no_psi.npz', w=w,
+    #          config=np.array([Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max], dtype=int))
 
 
 if __name__ == '__main__':

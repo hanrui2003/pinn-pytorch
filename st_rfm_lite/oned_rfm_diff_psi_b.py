@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
+"""
+用于EAJAM
+"""
 import itertools
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.autograd as autograd
 import math
+from scipy.sparse import csr_matrix
 
 from scipy.linalg import lstsq
+from scipy.sparse.linalg import lsqr
 from datetime import datetime
 
 torch.set_default_dtype(torch.float64)
@@ -183,11 +188,15 @@ def cal_matrix(models, Nx, Nt, M, Qx, Qt, pde_points, label_points, initial=None
     f_L = u_real(label_points[:, [0]], label_points[:, [1]])
     f = np.concatenate((f_P, f_L), axis=0)
     print(datetime.now(), "cal_matrix end")
+
     return A, f
 
 
 def main(Nx, Nt, M, Qx, Qt):
-    print(datetime.now(), "main start")
+    # 记录训练开始时间
+    start_time = datetime.now()
+    print("Training started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
+
     x = np.linspace(X_min, X_max, Nx * Qx + 1)
     t = np.linspace(T_min, T_max, Nt * Qt + 1)
     X, T = np.meshgrid(x, t)
@@ -217,12 +226,26 @@ def main(Nx, Nt, M, Qx, Qt):
         ratio = c / max(-A[i, :].min(), A[i, :].max())
         A[i, :] = A[i, :] * ratio
         f[i] = f[i] * ratio
+
+    A_sparse = csr_matrix(A)
+    # 计算稀疏矩阵的实际内存占用
+    data_size = A_sparse.data.nbytes  # 非零元素的字节数
+    indices_size = A_sparse.indices.nbytes  # 列索引的字节数
+    indptr_size = A_sparse.indptr.nbytes  # 行偏移的字节数
+    total_memory_bytes = data_size + indices_size + indptr_size  # 总内存占用（字节）
+    total_memory_mb = total_memory_bytes / (1024 * 1024)  # 转换为 MB
+    print("A sparse memory size : ", total_memory_mb)
+
     # 为什么选择gelss，默认的不行吗？
-    w = lstsq(A, f, lapack_driver="gelss")[0]
+    w = lsqr(A_sparse, f)[0]
+
+    end_time = datetime.now()
+    elapsed_time = end_time - start_time
+    print("Training ended at:", end_time.strftime("%Y-%m-%d %H:%M:%S"))
+    print("Elapsed time: ", elapsed_time)
+
     np.savez('oned_rfm_diff_psi_b.npz', w=w,
              config=np.array([Nx, Nt, M, Qx, Qt, X_min, X_max, T_min, T_max], dtype=int))
-
-    print(datetime.now(), "main end")
 
 
 if __name__ == '__main__':
@@ -241,7 +264,7 @@ if __name__ == '__main__':
     # t维度划分的区间数
     Nts = [2, ]
     # 每个局部局域的特征函数数量
-    Ms = [50, ]
+    Ms = [100, ]
     # x维度每个区间的配点数，Qx+1
     Qxs = [30, ]
     # t维度每个区间的配点数，Qt+1
