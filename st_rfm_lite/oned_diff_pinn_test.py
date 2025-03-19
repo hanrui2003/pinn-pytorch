@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.autograd as autograd
 import math
-from conv_diff_1d_da_pinn import u_real, ConvDiffNet, X_min, X_max, T_min, T_max, Nx, Nt, M, Qx, Qt
+from oned_diff_pinn import u_real, DiffNet, X_min, X_max, T_min, T_max, Nx, Nt, M, Qx, Qt
 
 from datetime import datetime
 import matplotlib.pyplot as plt
@@ -54,7 +54,7 @@ def plot(X1, T1, U1, X2, T2, U2):
 
 if __name__ == '__main__':
     print(datetime.now(), "Main start")
-    model = torch.load('conv_diff_1d_da_pinn_01.pt', map_location=torch.device('cpu'))
+    model = torch.load('oned_diff_pinn_01.pt', map_location=torch.device('cpu'))
 
     test_Qx = 2 * Qx
     test_Qt = 2 * Qt
@@ -69,11 +69,11 @@ if __name__ == '__main__':
     U_true = u_real(X, T)
     epsilon = np.abs(U_true - U_numerical)
     L_inf = np.max(epsilon)
-    L_2 = np.sqrt(np.sum(epsilon ** 2) / len(epsilon))
+    L_2 = np.sqrt(np.sum(epsilon ** 2) / epsilon.size)
 
     print('********************* ERROR *********************')
     print('Nx={:d},Nt={:d},M={:d},Qx={:d},Qt={:d}'.format(Nx, Nt, M, Qx, Qt))
     print(datetime.now(), 'L_inf={:.2e}'.format(L_inf), 'L_2={:.2e}'.format(L_2))
     print(datetime.now(), "Main end")
 
-    plot(X, T, U_true, X, T, U_numerical)
+    # plot(X, T, U_true, X, T, U_numerical)

@@ -25,9 +25,9 @@ Nt = 2
 # 每个局部局域的特征函数数量
 M = 150
 # x维度每个区间的配点数，Qx+1
-Qx = 3
+Qx = 30
 # t维度每个区间的配点数，Qt+1
-Qt = 3
+Qt = 30
 
 
 def u_real(x, t):
@@ -132,13 +132,13 @@ if "__main__" == __name__:
     model.to(device)
     print("model:\n", model)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-2, amsgrad=False)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, amsgrad=False)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2000, gamma=0.5)
 
     # 记录训练开始时间
     start_time = datetime.now()
     print("Training started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
-    for epoch in range(40000):
+    for epoch in range(20000):
         loss = model.loss(y_train_ic_bc, y_label_ic_bc, y_train_pde, y_label_pde)
         optimizer.zero_grad()
         loss.backward()
