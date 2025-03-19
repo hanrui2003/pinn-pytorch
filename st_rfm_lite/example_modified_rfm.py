@@ -1,3 +1,6 @@
+"""
+用于EAJAM
+"""
 import matplotlib.pyplot as plt
 # 使用 macOS 中的中文字体
 # plt.rcParams['font.family'] = 'AppleGothic'
