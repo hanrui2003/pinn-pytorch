@@ -66,6 +66,8 @@ class LocalNet(nn.Module):
         self.hidden_features = hidden_features
         # 半径的倒数
         self.r_inv = torch.tensor([2.0 / (x_max - x_min), 2.0 / (t_max - t_min)])
+        # 扩大半径，每个子区域有重叠部分，反而能得到更高的精度
+        # self.r_inv = self.r_inv / 1.5
         # 区域中心
         self.y_c = torch.tensor([(x_max + x_min) / 2, (t_max + t_min) / 2])
         self.phi = nn.Sequential(nn.Linear(self.in_features, self.hidden_features, bias=True), nn.Tanh())
@@ -230,7 +232,7 @@ if __name__ == '__main__':
     # t维度划分的区间数
     Nts = [2, ]
     # 每个局部局域的特征函数数量
-    Ms = [150, ]
+    Ms = [100, ]
     # x维度每个区间的配点数，Qx+1
     Qxs = [30, ]
     # t维度每个区间的配点数，Qt+1
